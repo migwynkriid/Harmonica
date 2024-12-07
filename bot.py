@@ -1,6 +1,6 @@
 import os
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 import yt_dlp
 import asyncio
@@ -48,6 +48,22 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 DOWNLOADS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'downloads')
 os.makedirs(DOWNLOADS_DIR, exist_ok=True)
 
+def clear_downloads_folder():
+    """Clear all files in the downloads folder"""
+    print("Clearing downloads folder...")
+    try:
+        for file in os.listdir(DOWNLOADS_DIR):
+            file_path = os.path.join(DOWNLOADS_DIR, file)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+                    print(f"Deleted: {file}")
+            except Exception as e:
+                print(f"Error deleting {file}: {str(e)}")
+        print("Downloads folder cleared successfully")
+    except Exception as e:
+        print(f"Error clearing downloads folder: {str(e)}")
+
 # YouTube DL options
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
@@ -83,6 +99,94 @@ FFMPEG_OPTIONS = {
     'options': '-vn',
 }
 
+class CancelButton(discord.ui.View):
+    def __init__(self, bot_instance):
+        super().__init__(timeout=None)
+        self.bot = bot_instance
+        self.cancelled = False
+        self.current_file = None
+
+    @discord.ui.button(label="❌ Cancel", style=discord.ButtonStyle.danger)
+    async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        try:
+            self.cancelled = True
+            if self.bot.current_process and hasattr(self.bot.current_process, 'terminate'):
+                try:
+                    self.bot.current_process.terminate()
+                except:
+                    pass
+            self.bot.current_process = None
+            
+            # Clean up the current file if it exists
+            if self.current_file and os.path.exists(self.current_file):
+                try:
+                    os.remove(self.current_file)
+                    print(f"Cleaned up cancelled file: {self.current_file}")
+                except Exception as e:
+                    print(f"Error cleaning up file: {str(e)}")
+
+            await interaction.response.edit_message(
+                embed=discord.Embed(
+                    title="Cancelled",
+                    description="Download process cancelled by user.",
+                    color=0xe74c3c
+                ),
+                view=None
+            )
+        except Exception as e:
+            print(f"Error in cancel button: {str(e)}")
+
+class DownloadProgress:
+    def __init__(self, status_msg, view):
+        self.status_msg = status_msg
+        self.view = view
+        self.last_update = 0
+        self.title = ""
+        
+    def create_progress_bar(self, percentage, width=20):
+        filled = int(width * percentage / 100)
+        bar = "█" * filled + "░" * (width - filled)
+        return bar
+        
+    async def progress_hook(self, d):
+        if d['status'] == 'downloading':
+            # Only update once per second to avoid rate limits
+            current_time = time.time()
+            if current_time - self.last_update < 1:
+                return
+                
+            self.last_update = current_time
+            
+            try:
+                downloaded = d.get('downloaded_bytes', 0)
+                total = d.get('total_bytes', 0) or d.get('total_bytes_estimate', 0)
+                speed = d.get('speed', 0)
+                if total == 0:
+                    return
+                
+                percentage = (downloaded / total) * 100
+                progress_bar = self.create_progress_bar(percentage)
+                
+                # Format speed in MB/s
+                speed_mb = speed / 1024 / 1024 if speed else 0
+                
+                # Create status message
+                status = f"Downloading: {self.title}\n"
+                status += f"\n{progress_bar} {percentage:.1f}%\n"
+                status += f"Speed: {speed_mb:.1f} MB/s"
+                
+                # Update embed
+                embed = discord.Embed(
+                    title="Downloading",
+                    description=status,
+                    color=0xf1c40f
+                )
+                
+                asyncio.create_task(self.status_msg.edit(embed=embed))
+                
+            except Exception as e:
+                print(f"Error updating progress: {str(e)}")
+
 class MusicBot:
     def __init__(self):
         self.voice_client = None
@@ -93,6 +197,7 @@ class MusicBot:
         self._inactivity_task = None
         self.download_queue = []  # Queue for tracks to be downloaded
         self.currently_downloading = False  # Flag to track download status
+        self.current_process = None  # Track current download process
         # Start the cleanup task
         self.clear_downloads.start()
 
@@ -282,115 +387,221 @@ class MusicBot:
             self.current_song = None
             self.update_activity()
 
-    async def download_song(self, url):
+    async def download_song(self, query, status_msg=None, view=None):
+        """Download a song from YouTube"""
         try:
-            print(f"Attempting to download from URL: {url}")
+            # Check if the query is a URL
+            is_url = query.startswith(('http://', 'https://', 'www.'))
             
-            # Get the paths
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            ytdlp_path = os.path.join(current_dir, 'yt-dlp.exe')
-            cookies_path = os.path.join(current_dir, 'cookies.txt')
+            # If not a URL, treat as a search query
+            if not is_url:
+                query = f"ytsearch:{query}"
             
-            # First, get info to check if it's a playlist
-            info_command = [
-                ytdlp_path,
-                '--cookies', cookies_path,
-                '-J',  # Output json
-                url
+            print(f"Processing query: {query}")
+            
+            # Get video info first
+            info_cmd = [
+                'yt-dlp',
+                '--print-json',
+                '--flat-playlist',
+                query
             ]
             
-            process = await asyncio.create_subprocess_exec(
-                *info_command,
+            # Execute yt-dlp command to get video/playlist info
+            self.current_process = await asyncio.create_subprocess_exec(
+                *info_cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
             
-            stdout, stderr = await process.communicate()
-            
-            if process.returncode != 0:
-                error_message = stderr.decode() if stderr else "Unknown error"
-                print(f"Error getting video info: {error_message}")
-                raise Exception(f"Failed to get video info: {error_message}")
+            # Check if cancelled
+            if view and view.cancelled:
+                self.current_process = None
+                return None
 
+            stdout, stderr = await self.current_process.communicate()
+            
+            if self.current_process.returncode != 0:
+                error_msg = stderr.decode().strip()
+                print(f"Error getting video info: {error_msg}")
+                raise Exception(f"Failed to get video info: {error_msg}")
+            
+            # Parse the JSON output
             try:
-                video_info = json.loads(stdout.decode())
+                first_line = stdout.decode().strip().split('\n')[0]
+                info = json.loads(first_line)
+                
+                # Check if it's a playlist
+                if info.get('_type') == 'playlist':
+                    print("Playlist detected")
+                    # For playlists, parse all entries
+                    entries = []
+                    for line in stdout.decode().strip().split('\n'):
+                        entry_info = json.loads(line)
+                        if entry_info.get('_type') != 'playlist':
+                            entries.append(entry_info)
+                    
+                    return {
+                        'is_playlist': True,
+                        'entries': entries
+                    }
+                else:
+                    # For single video or search result, download it
+                    return await self._download_single_video(info, status_msg, view)
+                    
             except json.JSONDecodeError as e:
                 print(f"Error parsing JSON: {str(e)}")
-                raise Exception("Failed to parse video information")
-
-            # Handle playlists
-            if video_info.get('_type') == 'playlist':
-                if not video_info.get('entries'):
-                    raise Exception("Playlist is empty")
+                raise Exception(f"Failed to parse video info: {str(e)}")
                 
-                # Return a special indicator that this is a playlist
-                return {
-                    'is_playlist': True,
-                    'entries': video_info['entries']
-                }
-
-            # Single video handling
-            return await self._download_single_video(video_info)
-            
         except Exception as e:
-            print(f"Error downloading song: {str(e)}")
-            raise Exception(f"Failed to download the song: {str(e)}")
+            print(f"Error in download_song: {str(e)}")
+            raise
 
-    async def _download_single_video(self, video_info):
+    async def _download_single_video(self, video_info, status_msg=None, view=None):
         """Helper method to download a single video"""
+        output_file = None
         try:
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            ytdlp_path = os.path.join(current_dir, 'yt-dlp.exe')
-            cookies_path = os.path.join(current_dir, 'cookies.txt')
+            # Check if cancelled
+            if view and view.cancelled:
+                return None
 
             video_id = video_info.get('id')
             if not video_id:
-                raise Exception("Could not get video ID")
+                raise Exception("No video ID found in info")
 
-            # Prepare the download command
-            command = [
-                ytdlp_path,
-                '--cookies', cookies_path,
+            title = video_info.get('title', 'Unknown Title')
+            url = video_info.get('webpage_url', video_info.get('url'))
+            thumbnail = video_info.get('thumbnail')
+            
+            # Create safe filename
+            safe_title = "".join(x for x in title if x.isalnum() or x in (' ', '-', '_')).rstrip()
+            output_file = os.path.join(DOWNLOADS_DIR, f"{safe_title}-{video_id}.mp3")
+
+            # Update the view's current file
+            if view:
+                view.current_file = output_file
+
+            # Skip download if file already exists
+            if os.path.exists(output_file):
+                print(f"File already exists: {output_file}")
+                return {
+                    'title': title,
+                    'url': url,
+                    'file_path': output_file,
+                    'thumbnail': thumbnail
+                }
+
+            # Create progress tracker
+            progress = DownloadProgress(status_msg, view)
+            progress.title = title
+
+            # Download the video with progress updates
+            download_cmd = [
+                'yt-dlp',
                 '-x',  # Extract audio
                 '--audio-format', 'mp3',
-                '--audio-quality', '96K',
-                '--embed-thumbnail',
-                '--paths', DOWNLOADS_DIR,
-                '--output', '%(id)s.%(ext)s',
-                '--no-playlist',  # Only download the specific video
-                f'https://www.youtube.com/watch?v={video_id}'  # Use direct video URL
+                '--audio-quality', '0',
+                '--newline',  # Force progress to new lines
+                '--progress-template', '%(progress.downloaded_bytes)s %(progress.total_bytes)s %(progress.speed)s',
+                '-o', output_file,
+                url
             ]
-            
-            # Run yt-dlp command
-            process = await asyncio.create_subprocess_exec(
-                *command,
+
+            self.current_process = await asyncio.create_subprocess_exec(
+                *download_cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-            
-            stdout, stderr = await process.communicate()
-            
-            if process.returncode != 0:
-                error_message = stderr.decode() if stderr else "Unknown error"
-                print(f"yt-dlp error: {error_message}")
-                raise Exception(f"Failed to download: {error_message}")
-            
-            file_path = os.path.join(DOWNLOADS_DIR, f"{video_id}.mp3")
-            
-            if not os.path.exists(file_path):
-                raise Exception(f"Downloaded file not found at {file_path}")
-            
+
+            # Process stdout in real-time for progress updates
+            while True:
+                if view and view.cancelled:
+                    if self.current_process and hasattr(self.current_process, 'terminate'):
+                        try:
+                            self.current_process.terminate()
+                        except:
+                            pass
+                    self.current_process = None
+                    if os.path.exists(output_file):
+                        try:
+                            os.remove(output_file)
+                            print(f"Cleaned up cancelled download: {output_file}")
+                        except Exception as e:
+                            print(f"Error cleaning up file: {str(e)}")
+                    return None
+
+                try:
+                    line = await self.current_process.stdout.readline()
+                    if not line:
+                        break
+                        
+                    # Parse progress information
+                    try:
+                        line = line.decode().strip()
+                        if line:
+                            parts = line.split()
+                            if len(parts) >= 3:
+                                downloaded = int(parts[0])
+                                total = int(parts[1])
+                                speed = float(parts[2])
+                                
+                                await progress.progress_hook({
+                                    'status': 'downloading',
+                                    'downloaded_bytes': downloaded,
+                                    'total_bytes': total,
+                                    'speed': speed
+                                })
+                    except:
+                        pass
+                        
+                except Exception as e:
+                    print(f"Error reading progress: {str(e)}")
+                    break
+
+            # Wait for process to complete
+            await self.current_process.wait()
+
+            if self.current_process.returncode != 0:
+                stderr = await self.current_process.stderr.read()
+                error_msg = stderr.decode().strip()
+                print(f"Error downloading video: {error_msg}")
+                # Clean up failed download
+                if os.path.exists(output_file):
+                    try:
+                        os.remove(output_file)
+                    except:
+                        pass
+                raise Exception(f"Failed to download video: {error_msg}")
+
+            if not os.path.exists(output_file):
+                raise Exception("Download completed but file not found")
+
+            # Update with completion message
+            if status_msg:
+                embed = discord.Embed(
+                    title="Download Complete",
+                    description=f"Successfully downloaded: {title}",
+                    color=0x2ecc71
+                )
+                await status_msg.edit(embed=embed)
+
             return {
-                'title': video_info.get('title', video_id),
-                'file_path': file_path,
-                'duration': video_info.get('duration', 0),
-                'id': video_id,
-                'thumbnail': video_info.get('thumbnail'),
-                'url': f'https://www.youtube.com/watch?v={video_id}'
+                'title': title,
+                'url': url,
+                'file_path': output_file,
+                'thumbnail': thumbnail
             }
+
         except Exception as e:
-            print(f"Error downloading single video: {str(e)}")
-            raise e
+            if not (view and view.cancelled):  # Only show error if not cancelled
+                print(f"Error in _download_single_video: {str(e)}")
+                # Clean up on error
+                if output_file and os.path.exists(output_file):
+                    try:
+                        os.remove(output_file)
+                    except:
+                        pass
+            raise
 
     def clear_queue(self):
         """Clear the song queue and stop current playback"""
@@ -433,119 +644,141 @@ music_bot = None
 
 @bot.event
 async def on_ready():
+    """Called when the bot is ready"""
     global music_bot
-    print(f'{bot.user} has connected to Discord!')
+    print(f"Logged in as {bot.user}")
     music_bot = MusicBot()
     await music_bot.start_inactivity_checker()
+    
+    # Clear downloads folder on startup
+    clear_downloads_folder()
 
 @bot.command(name='play')
 async def play(ctx, *, query):
     """Download and play a song from YouTube"""
     try:
         music_bot.update_activity()
+        
+        # Create cancel button view
+        cancel_view = CancelButton(music_bot)
+        
         status_embed = music_bot.create_embed("Processing", "Processing your request...", color=0xf1c40f)
-        status_msg = await ctx.send(embed=status_embed)
+        status_msg = await ctx.send(embed=status_embed, view=cancel_view)
         
-        result = await music_bot.download_song(query)
-        
-        # Handle playlist
-        if isinstance(result, dict) and result.get('is_playlist'):
-            if not await music_bot.join_voice_channel(ctx):
-                await status_msg.edit(
-                    embed=music_bot.create_embed(
-                        "Error",
-                        "Failed to join voice channel. Please make sure you're in a voice channel.",
-                        color=0xe74c3c
-                    )
-                )
+        try:
+            result = await music_bot.download_song(query, status_msg, cancel_view)
+            
+            # If cancelled, return early without error
+            if cancel_view.cancelled:
                 return
                 
-            playlist_length = len(result['entries'])
-            await status_msg.edit(
-                embed=music_bot.create_embed(
-                    "Processing Playlist",
-                    f"Starting playlist with {playlist_length} songs...",
-                    color=0xf1c40f
-                )
-            )
+            # Remove the cancel button
+            await status_msg.edit(view=None)
             
-            try:
-                # Download first song immediately
-                first_song = await music_bot._download_single_video(result['entries'][0])
-                music_bot.queue.append(first_song)
+            # Handle playlist
+            if isinstance(result, dict) and result.get('is_playlist'):
+                if not await music_bot.join_voice_channel(ctx):
+                    await status_msg.edit(
+                        embed=music_bot.create_embed(
+                            "Error",
+                            "Failed to join voice channel. Please make sure you're in a voice channel.",
+                            color=0xe74c3c
+                        )
+                    )
+                    return
                 
-                # Add remaining songs to download queue
-                music_bot.download_queue.extend(result['entries'][1:])
-                
-                # Start playing first song
-                if not music_bot.voice_client.is_playing():
-                    music_bot.play_next(ctx)
-                
-                # Start background download of next songs
-                asyncio.create_task(music_bot.process_download_queue(ctx))
-                
+                playlist_length = len(result['entries'])
                 await status_msg.edit(
                     embed=music_bot.create_embed(
-                        "Playlist Started",
-                        f"Playing first song. {playlist_length - 1} more songs will be processed in the background.",
-                        color=0x2ecc71
+                        "Processing Playlist",
+                        f"Starting playlist with {playlist_length} songs...",
+                        color=0xf1c40f
                     )
                 )
                 
-            except Exception as e:
-                print(f"Error starting playlist: {str(e)}")
-                await status_msg.edit(
-                    embed=music_bot.create_embed(
-                        "Error",
-                        f"An error occurred while starting the playlist: {str(e)}",
-                        color=0xe74c3c
+                try:
+                    # Download first song immediately
+                    first_song = await music_bot._download_single_video(result['entries'][0])
+                    music_bot.queue.append(first_song)
+                    
+                    # Add remaining songs to download queue
+                    music_bot.download_queue.extend(result['entries'][1:])
+                    
+                    # Start playing first song
+                    if not music_bot.voice_client.is_playing():
+                        music_bot.play_next(ctx)
+                    
+                    # Start background download of next songs
+                    asyncio.create_task(music_bot.process_download_queue(ctx))
+                    
+                    await status_msg.edit(
+                        embed=music_bot.create_embed(
+                            "Playlist Started",
+                            f"Playing first song. {playlist_length - 1} more songs will be processed in the background.",
+                            color=0x2ecc71
+                        )
                     )
-                )
+                    
+                except Exception as e:
+                    print(f"Error starting playlist: {str(e)}")
+                    await status_msg.edit(
+                        embed=music_bot.create_embed(
+                            "Error",
+                            f"An error occurred while starting the playlist: {str(e)}",
+                            color=0xe74c3c
+                        )
+                    )
             
-            return
+            # Handle single video
+            else:
+                if not await music_bot.join_voice_channel(ctx):
+                    await status_msg.edit(
+                        embed=music_bot.create_embed(
+                            "Error",
+                            "Failed to join voice channel. Please make sure you're in a voice channel.",
+                            color=0xe74c3c
+                        )
+                    )
+                    return
         
-        # Handle single video
-        if not await music_bot.join_voice_channel(ctx):
-            await status_msg.edit(
+                if music_bot.voice_client and music_bot.voice_client.is_playing():
+                    music_bot.queue.append(result)
+                    await status_msg.edit(
+                        embed=music_bot.create_embed(
+                            "Added to Queue",
+                            f"[{result['title']}]({result['url']})",
+                            color=0x3498db,
+                            thumbnail_url=result.get('thumbnail')
+                        )
+                    )
+                else:
+                    music_bot.queue.append(result)
+                    music_bot.play_next(ctx)
+                    await status_msg.edit(
+                        embed=music_bot.create_embed(
+                            "Now Playing",
+                            f"[{result['title']}]({result['url']})",
+                            color=0x2ecc71,
+                            thumbnail_url=result.get('thumbnail')
+                        )
+                    )
+
+        except Exception as e:
+            if not cancel_view.cancelled:  # Only show error if not cancelled
+                error_embed = music_bot.create_embed("Error", f"An error occurred: {str(e)}", color=0xe74c3c)
+                await status_msg.edit(embed=error_embed, view=None)
+            return
+            
+    except Exception as e:
+        if not cancel_view.cancelled:  # Only show error if not cancelled
+            print(f"Error in play command: {str(e)}")
+            await ctx.send(
                 embed=music_bot.create_embed(
                     "Error",
-                    "Failed to join voice channel. Please make sure you're in a voice channel.",
+                    f"An error occurred: {str(e)}",
                     color=0xe74c3c
                 )
             )
-            return
-        
-        if music_bot.voice_client and music_bot.voice_client.is_playing():
-            music_bot.queue.append(result)
-            await status_msg.edit(
-                embed=music_bot.create_embed(
-                    "Added to Queue",
-                    f"[{result['title']}]({result['url']})",
-                    color=0x3498db,
-                    thumbnail_url=result.get('thumbnail')
-                )
-            )
-        else:
-            music_bot.queue.append(result)
-            music_bot.play_next(ctx)
-            await status_msg.edit(
-                embed=music_bot.create_embed(
-                    "Now Playing",
-                    f"[{result['title']}]({result['url']})",
-                    color=0x2ecc71,
-                    thumbnail_url=result.get('thumbnail')
-                )
-            )
-
-    except Exception as e:
-        print(f"Error in play command: {str(e)}")
-        await status_msg.edit(
-            embed=music_bot.create_embed(
-                "Error",
-                f"An error occurred: {str(e)}",
-                color=0xe74c3c
-            )
-        )
 
 @bot.command(name='pause')
 async def pause(ctx):
