@@ -38,31 +38,29 @@ def custom_print(*args, **kwargs):
 
 print = custom_print
 
-# Bot configuration
-intents = discord.Intents.default()
-intents.message_content = True
-intents.messages = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+# Constants
+DOWNLOADS_DIR = os.path.join(os.getcwd(), 'downloads')
 
 # Create downloads directory if it doesn't exist
-DOWNLOADS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'downloads')
-os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+if not os.path.exists(DOWNLOADS_DIR):
+    os.makedirs(DOWNLOADS_DIR)
 
 def clear_downloads_folder():
     """Clear all files in the downloads folder"""
-    print("Clearing downloads folder...")
-    try:
+    if os.path.exists(DOWNLOADS_DIR):
         for file in os.listdir(DOWNLOADS_DIR):
             file_path = os.path.join(DOWNLOADS_DIR, file)
             try:
                 if os.path.isfile(file_path):
                     os.unlink(file_path)
-                    print(f"Deleted: {file}")
             except Exception as e:
-                print(f"Error deleting {file}: {str(e)}")
-        print("Downloads folder cleared successfully")
-    except Exception as e:
-        print(f"Error clearing downloads folder: {str(e)}")
+                print(f'Error deleting {file_path}: {e}')
+
+# Bot configuration
+intents = discord.Intents.default()
+intents.message_content = True
+intents.messages = True
+bot = commands.Bot(command_prefix='!', intents=intents)
 
 # YouTube DL options
 YTDL_OPTIONS = {
@@ -420,6 +418,9 @@ class MusicBot:
                     if not self.voice_client.is_playing():
                         await self.play_next(ctx)
                     
+                    # Start background download of next songs
+                    asyncio.create_task(self.process_download_queue(ctx))
+                    
                 except Exception as e:
                     print(f"Error downloading song: {str(e)}")
                     self.download_queue.pop(0)  # Remove failed entry
@@ -444,6 +445,8 @@ class MusicBot:
                 'yt-dlp',
                 '--print-json',
                 '--flat-playlist',
+                '--write-thumbnail',  # Get thumbnail info
+                '--cookies', '../cookies.txt',  # Relative path since we're in downloads dir
                 query
             ]
             
@@ -451,9 +454,10 @@ class MusicBot:
             self.current_process = await asyncio.create_subprocess_exec(
                 *info_cmd,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
+                cwd=DOWNLOADS_DIR  # Set working directory for info command too
             )
-            
+
             # Check if cancelled
             if view and view.cancelled:
                 self.current_process = None
@@ -470,6 +474,15 @@ class MusicBot:
             try:
                 first_line = stdout.decode().strip().split('\n')[0]
                 info = json.loads(first_line)
+                
+                # Get best thumbnail URL
+                if 'thumbnails' in info:
+                    thumbnails = info['thumbnails']
+                    # Sort thumbnails by resolution if available
+                    thumbnails.sort(key=lambda x: x.get('height', 0) * x.get('width', 0), reverse=True)
+                    info['thumbnail'] = thumbnails[0]['url'] if thumbnails else None
+                else:
+                    info['thumbnail'] = None
                 
                 # Check if it's a playlist
                 if info.get('_type') == 'playlist':
@@ -513,9 +526,8 @@ class MusicBot:
             url = video_info.get('webpage_url', video_info.get('url'))
             thumbnail = video_info.get('thumbnail')
             
-            # Create safe filename
-            safe_title = self.sanitize_filename(title)
-            output_file = os.path.join(DOWNLOADS_DIR, f"{safe_title}-{video_id}.mp3")
+            # Use only video ID for filename
+            output_file = os.path.join(DOWNLOADS_DIR, f"{video_id}.mp3")
 
             # Update the view's current file
             if view:
@@ -538,19 +550,28 @@ class MusicBot:
             # Download the video with progress updates
             download_cmd = [
                 'yt-dlp',
+                '-f', 'bestaudio',  # Get best audio only
                 '-x',  # Extract audio
                 '--audio-format', 'mp3',
-                '--audio-quality', '0',
+                '--audio-quality', '96K',  # Set to 96kbps
                 '--newline',  # Force progress to new lines
                 '--progress-template', '%(progress.downloaded_bytes)s %(progress.total_bytes)s %(progress.speed)s',
-                '-o', output_file,
+                '--cookies', '../cookies.txt',  # Adjust cookies path since we're in downloads dir
+                '--no-keep-video',  # Don't keep the video file after conversion
+                '--write-thumbnail',  # Download thumbnail
+                '--embed-thumbnail',  # Embed thumbnail in MP3
+                '--convert-thumbnails', 'jpg',  # Convert thumbnail to jpg
+                '--restrict-filenames',  # Restrict filenames to ASCII characters
+                '--format-sort', 'audio_only',  # Prefer audio-only formats
+                '-o', '%(id)s.%(ext)s',  # Use only video ID for filename
                 url
             ]
 
             self.current_process = await asyncio.create_subprocess_exec(
                 *download_cmd,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
+                cwd=DOWNLOADS_DIR  # Set working directory to downloads
             )
 
             # Process stdout in real-time for progress updates
@@ -658,11 +679,11 @@ async def on_ready():
     """Called when the bot is ready"""
     global music_bot
     print(f"Logged in as {bot.user}")
+    print('Clearing downloads folder...')
+    clear_downloads_folder()
+    print('Downloads folder cleared!')
     music_bot = MusicBot()
     await music_bot.start_inactivity_checker()
-    
-    # Clear downloads folder on startup
-    clear_downloads_folder()
 
 @bot.command(name='play')
 async def play(ctx, *, query):
