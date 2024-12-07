@@ -105,7 +105,7 @@ class CancelButton(discord.ui.View):
         self.cancelled = False
         self.current_file = None
 
-    @discord.ui.button(label="❌ Cancel", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger)
     async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
             self.cancelled = True
@@ -338,7 +338,7 @@ class MusicBot:
                     # If not playing and inactive for too long
                     if not self.voice_client.is_playing() and time.time() - self.last_activity > self.inactivity_timeout:
                         print(f"Leaving voice channel due to {self.inactivity_timeout} seconds of inactivity")
-                        await self.voice_client.disconnect()
+                        await self.leave_voice_channel()
                         self.clear_queue()
                 await asyncio.sleep(60)  # Check every minute
             except Exception as e:
@@ -346,16 +346,68 @@ class MusicBot:
                 await asyncio.sleep(60)  # Still wait before next check even if there's an error
 
     def clear_queue(self):
-        """Clear the queue and current song"""
-        self.queue = []
-        self.current_song = None
-        # Clear download queue
-        while not self.download_queue.empty():
-            try:
-                self.download_queue.get_nowait()
-                self.download_queue.task_done()
-            except asyncio.QueueEmpty:
-                break
+        """Clear both download and playback queues"""
+        try:
+            # Clear the playback queue
+            self.queue.clear()
+            
+            # Clear the download queue
+            items_removed = 0
+            while not self.download_queue.empty():
+                try:
+                    self.download_queue.get_nowait()
+                    items_removed += 1
+                except asyncio.QueueEmpty:
+                    break
+            
+            # Only call task_done() for items we actually removed
+            for _ in range(items_removed):
+                try:
+                    self.download_queue.task_done()
+                except ValueError:
+                    # If we get a ValueError, the queue is already empty
+                    break
+            
+            # Cancel any ongoing downloads
+            if self.current_process:
+                try:
+                    self.current_process.kill()
+                except:
+                    pass
+                self.current_process = None
+
+            # Stop any currently playing audio
+            if self.voice_client and self.voice_client.is_playing():
+                self.voice_client.stop()
+                # Give FFmpeg a moment to clean up
+                time.sleep(0.5)
+
+        except Exception as e:
+            print(f"Error clearing queue: {str(e)}")
+
+    async def stop(self, ctx):
+        """Stop playing and clear the queue"""
+        try:
+            # Stop any currently playing audio and reset voice state
+            if self.voice_client:
+                if self.voice_client.is_playing():
+                    self.voice_client.stop()
+                    # Give FFmpeg a moment to clean up
+                    await asyncio.sleep(0.5)
+                # Disconnect and reset voice client
+                await self.leave_voice_channel()
+
+            # Clear the queue
+            self.clear_queue()
+            self.current_song = None
+            self.update_activity()
+
+            # Send confirmation message
+            await ctx.send(embed=self.create_embed("Stopped", "Music stopped and queue cleared", color=0xe74c3c))
+
+        except Exception as e:
+            print(f"Error in stop command: {str(e)}")
+            await ctx.send(embed=self.create_embed("Error", "Failed to stop playback", color=0xe74c3c))
 
     async def join_voice_channel(self, ctx):
         """Join the user's voice channel"""
@@ -365,54 +417,47 @@ class MusicBot:
 
         try:
             channel = ctx.author.voice.channel
-            if not self.voice_client:
-                self.voice_client = await channel.connect(self_deaf=True)  # Add self_deaf=True to suppress join sound
-            elif self.voice_client.channel != channel:
-                await self.voice_client.move_to(channel)
-            return True
+            
+            # Always disconnect and reset if we have an existing voice client
+            if self.voice_client:
+                try:
+                    if self.voice_client.is_connected():
+                        await self.voice_client.disconnect(force=True)
+                except:
+                    pass
+                self.voice_client = None
+
+            # Create new connection
+            self.voice_client = await channel.connect(self_deaf=True)
+            return self.voice_client.is_connected()
+
         except Exception as e:
             print(f"Error joining voice channel: {str(e)}")
             await ctx.send(embed=self.create_embed("Error", "Failed to join voice channel!", color=0xe74c3c))
+            # Reset voice client if connection failed
+            self.voice_client = None
             return False
 
-    def sanitize_filename(self, filename):
-        """Sanitize filename to handle special characters"""
-        # Remove non-ASCII characters or replace with ASCII equivalents
-        filename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore').decode('ASCII')
-        # Remove any characters that aren't alphanumeric, dash, underscore, or dot
-        filename = re.sub(r'[^\w\-\.]', '_', filename)
-        return filename
-
-    async def update_or_send_message(self, ctx, embed, view=None, force_new=False):
-        """Update existing message or send a new one if none exists or if it's a new command"""
+    async def leave_voice_channel(self):
+        """Leave voice channel and cleanup"""
         try:
-            # Send new message if:
-            # 1. force_new is True
-            # 2. No current message exists
-            # 3. Different user is running a command
-            # 4. Same user but different channel
-            if (force_new or 
-                not self.current_command_msg or 
-                ctx.author.id != self.current_command_author or 
-                ctx.channel.id != self.current_command_msg.channel.id):
-                
-                self.current_command_msg = await ctx.send(embed=embed, view=view)
-                self.current_command_author = ctx.author.id
-            else:
-                await self.current_command_msg.edit(embed=embed, view=view)
-            
-            return self.current_command_msg
+            if self.voice_client:
+                if self.voice_client.is_playing():
+                    self.voice_client.stop()
+                if self.voice_client.is_connected():
+                    await self.voice_client.disconnect(force=True)
         except Exception as e:
-            print(f"Error updating message: {str(e)}")
-            # If editing fails, send a new message
-            self.current_command_msg = await ctx.send(embed=embed, view=view)
-            self.current_command_author = ctx.author.id
-            return self.current_command_msg
+            print(f"Error leaving voice channel: {str(e)}")
+        finally:
+            # Always reset voice client state
+            self.voice_client = None
+            self.current_song = None
 
     async def play_next(self, ctx):
         """Play the next song in the queue"""
         if len(self.queue) > 0:
             try:
+                # Store previous song for comparison
                 previous_song = self.current_song
                 self.current_song = self.queue.pop(0)
                 print(f"Playing next song: {self.current_song['title']}")
@@ -427,17 +472,22 @@ class MusicBot:
                         await self.current_song['status_message'].delete()
                     except:
                         pass
-                
+
+                # Check if the file exists
                 if not os.path.exists(self.current_song['file_path']):
                     print(f"Error: File not found: {self.current_song['file_path']}")
                     if len(self.queue) > 0:
                         await self.play_next(ctx)
                     return
 
+                # Ensure we're in a voice channel
                 if not self.voice_client or not self.voice_client.is_connected():
                     print("Voice client not connected, attempting to reconnect...")
-                    await self.join_voice_channel(ctx)
-                    return
+                    connected = await self.join_voice_channel(ctx)
+                    if not connected:
+                        print("Failed to reconnect to voice channel")
+                        self.voice_client = None
+                        return
 
                 # Only send Now Playing message if it's a different song
                 if not previous_song or previous_song['url'] != self.current_song['url']:
@@ -447,19 +497,27 @@ class MusicBot:
                         thumbnail_url=self.current_song.get('thumbnail')
                     )
                     await ctx.send(embed=now_playing_embed)
-                
+
                 # Reset current message tracking for next command
                 self.current_command_msg = None
                 self.current_command_author = None
 
                 # Play the audio file
-                audio_source = discord.FFmpegPCMAudio(self.current_song['file_path'])
-                self.voice_client.play(
-                    audio_source,
-                    after=lambda e: asyncio.run_coroutine_threadsafe(
-                        self.after_playing_coro(e, ctx), self.voice_client.loop
-                    )
-                )
+                try:
+                    if self.voice_client and self.voice_client.is_connected():
+                        audio_source = discord.FFmpegPCMAudio(self.current_song['file_path'])
+                        self.voice_client.play(
+                            audio_source,
+                            after=lambda e: asyncio.run_coroutine_threadsafe(
+                                self.after_playing_coro(e, ctx), self.bot_loop
+                            )
+                        )
+                    else:
+                        print("Voice client disconnected before playback could start")
+                except Exception as e:
+                    print(f"Error starting playback: {str(e)}")
+                    if len(self.queue) > 0:
+                        await self.play_next(ctx)
             except Exception as e:
                 print(f"Error in play_next: {str(e)}")
                 if len(self.queue) > 0:
@@ -468,16 +526,13 @@ class MusicBot:
             self.current_song = None
             self.update_activity()
 
-    def create_embed(self, title, description, color=0x3498db, thumbnail_url=None):
-        """Create a Discord embed with consistent styling"""
-        embed = discord.Embed(
-            title=title,
-            description=description,
-            color=color
-        )
-        if thumbnail_url:
-            embed.set_thumbnail(url=thumbnail_url)
-        return embed
+    def sanitize_filename(self, filename):
+        """Sanitize filename to handle special characters"""
+        # Remove non-ASCII characters or replace with ASCII equivalents
+        filename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore').decode('ASCII')
+        # Remove any characters that aren't alphanumeric, dash, underscore, or dot
+        filename = re.sub(r'[^\w\-\.]', '_', filename)
+        return filename
 
     async def update_or_send_message(self, ctx, embed, view=None, force_new=False):
         """Update existing message or send a new one if none exists or if it's a new command"""
@@ -704,7 +759,9 @@ class MusicBot:
                         except:
                             pass
                     self.current_process = None
-                    if os.path.exists(output_file):
+                    
+                    # Clean up the current file if it exists
+                    if output_file and os.path.exists(output_file):
                         try:
                             os.remove(output_file)
                             print(f"Cleaned up cancelled download: {output_file}")
@@ -832,27 +889,42 @@ class MusicBot:
                 if self.voice_client and self.voice_client.is_connected():
                     await self.voice_client.disconnect()
 
-    def update_activity(self):
-        """Update the last activity timestamp and bot status"""
-        self.last_activity = time.time()
-        
-        async def set_activity():
-            if self.current_song and (self.voice_client and (self.voice_client.is_playing() or self.voice_client.is_paused())):
-                # If a song is playing/paused, show it in the status
-                status = f" [🎵 {self.current_song['title']}]({self.current_song['url']})"
-                await bot.change_presence(activity=discord.Activity(
-                    type=discord.ActivityType.listening,
-                    name=status
-                ))
+    def create_embed(self, title, description, color=0x3498db, thumbnail_url=None):
+        """Create a Discord embed with consistent styling"""
+        embed = discord.Embed(
+            title=title,
+            description=description,
+            color=color
+        )
+        if thumbnail_url:
+            embed.set_thumbnail(url=thumbnail_url)
+        return embed
+
+    async def update_or_send_message(self, ctx, embed, view=None, force_new=False):
+        """Update existing message or send a new one if none exists or if it's a new command"""
+        try:
+            # Send new message if:
+            # 1. force_new is True
+            # 2. No current message exists
+            # 3. Different user is running a command
+            # 4. Same user but different channel
+            if (force_new or 
+                not self.current_command_msg or 
+                ctx.author.id != self.current_command_author or 
+                ctx.channel.id != self.current_command_msg.channel.id):
+                
+                self.current_command_msg = await ctx.send(embed=embed, view=view)
+                self.current_command_author = ctx.author.id
             else:
-                # If no song is playing, show default status
-                await bot.change_presence(activity=discord.Activity(
-                    type=discord.ActivityType.listening,
-                    name="!play to start music"
-                ))
-        
-        # Schedule the coroutine to run
-        asyncio.run_coroutine_threadsafe(set_activity(), bot.loop)
+                await self.current_command_msg.edit(embed=embed, view=view)
+            
+            return self.current_command_msg
+        except Exception as e:
+            print(f"Error updating message: {str(e)}")
+            # If editing fails, send a new message
+            self.current_command_msg = await ctx.send(embed=embed, view=view)
+            self.current_command_author = ctx.author.id
+            return self.current_command_msg
 
     async def queue(self, ctx):
         """Show the current queue"""
@@ -1125,16 +1197,9 @@ async def log(ctx):
 @bot.command(name='leave')
 async def leave(ctx):
     """Leave the voice channel"""
-    if music_bot.voice_client and music_bot.voice_client.is_connected():
-        music_bot.clear_queue()  # Clear queue when leaving
-        await music_bot.voice_client.disconnect()
-        await ctx.send(
-            embed=music_bot.create_embed(
-                "Left",
-                "Left the voice channel.",
-                color=0x95a5a6
-            )
-        )
+    if music_bot and music_bot.voice_client and music_bot.voice_client.is_connected():
+        await music_bot.leave_voice_channel()
+        await ctx.send(embed=music_bot.create_embed("Left Channel", "Disconnected from voice channel", color=0x3498db))
     else:
         await ctx.send(
             embed=music_bot.create_embed(
