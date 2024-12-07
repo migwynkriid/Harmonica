@@ -1,0 +1,9 @@
+/downloads
+/downloads/*
+.env
+./yt-dlp.exe
+./ffmpeg.exe
+yt-dlp
+ffmpeg
+yt-dlp.exe
+ffmpeg.exe
