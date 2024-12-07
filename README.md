@@ -14,7 +14,9 @@ A Discord bot that plays music in voice channels.
    ```
    DISCORD_TOKEN=your_token_here
    ```
-4. Run the bot:
+4. Import cookies.txt using https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc and place it in the root directory
+
+5. Run the bot:
    ```bash
    python bot.py
    ```

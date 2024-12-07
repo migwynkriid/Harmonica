@@ -12,6 +12,7 @@ import time
 import shutil
 from pathlib import Path
 from discord.ext import tasks
+import json
 
 # Force UTF-8 globally
 if sys.platform.startswith('win'):
@@ -55,7 +56,8 @@ YTDL_OPTIONS = {
     'no_warnings': True,
     'extract_flat': False,
     'force_generic_extractor': False,
-    'outtmpl': '%(id)s.%(ext)s'
+    'outtmpl': '%(id)s.%(ext)s',
+    'cookies': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt')  # Add cookies path here
 }
 
 # FFmpeg options
@@ -63,9 +65,6 @@ FFMPEG_OPTIONS = {
     'executable': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ffmpeg.exe'),
     'options': '-vn',
 }
-
-# Create YT DLP client
-ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
 
 class MusicBot:
     def __init__(self):
@@ -205,76 +204,105 @@ class MusicBot:
 
     async def download_song(self, url):
         try:
-            # Get video info
-            video_info = await bot.loop.run_in_executor(
-                None,
-                lambda: ytdl.extract_info(url, download=False)
+            print(f"Attempting to download from URL: {url}")
+            
+            # Get the paths
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            ytdlp_path = os.path.join(current_dir, 'yt-dlp.exe')
+            cookies_path = os.path.join(current_dir, 'cookies.txt')
+            
+            # Prepare the command
+            command = [
+                ytdlp_path,
+                '--cookies', cookies_path,
+                '-x',  # Extract audio
+                '--audio-format', 'mp3',
+                '--audio-quality', '96K',
+                '--embed-thumbnail',
+                '--paths', DOWNLOADS_DIR,
+                '--output', '%(id)s.%(ext)s',
+                '--no-playlist',
+                url
+            ]
+            
+            # Run yt-dlp command
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
             )
             
-            # Handle search results
-            if 'entries' in video_info:
-                if not video_info['entries']:
-                    raise Exception("No search results found")
-                video_info = video_info['entries'][0]
+            stdout, stderr = await process.communicate()
             
-            if not video_info.get('id'):
-                raise Exception("Could not get video ID from the search results")
-                
-            video_id = video_info['id']
-            title = video_info.get('title', video_id)
-            thumbnail_url = video_info.get('thumbnail')
-            video_url = f"https://www.youtube.com/watch?v={video_id}"
-            print(f"Processing video ID: {video_id}")
+            if process.returncode != 0:
+                error_message = stderr.decode() if stderr else "Unknown error"
+                print(f"yt-dlp error: {error_message}")
+                raise Exception(f"Failed to download: {error_message}")
             
-            # Create filename using video ID only
-            filename = f"{video_id}.mp3"
-            file_path = os.path.join(DOWNLOADS_DIR, filename)
+            # Extract video ID from the URL or output
+            output = stdout.decode()
+            video_id_match = re.search(r'[a-zA-Z0-9_-]{11}', url)
+            if not video_id_match:
+                raise Exception("Could not extract video ID from URL")
             
-            # First check if the exact file exists
-            if os.path.exists(file_path):
-                print(f"Video already downloaded: {file_path}")
+            video_id = video_id_match.group(0)
+            file_path = os.path.join(DOWNLOADS_DIR, f"{video_id}.mp3")
+            
+            if not os.path.exists(file_path):
+                raise Exception(f"Downloaded file not found at {file_path}")
+            
+            # Get video info for title and thumbnail
+            info_command = [
+                ytdlp_path,
+                '--cookies', cookies_path,
+                '-J',  # Output json
+                '--no-playlist',
+                url
+            ]
+            
+            process = await asyncio.create_subprocess_exec(
+                *info_command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await process.communicate()
+            
+            if process.returncode != 0:
+                # If we can't get info, at least return basic info
                 return {
-                    'title': title,
+                    'title': video_id,
+                    'file_path': file_path,
+                    'duration': 0,
+                    'id': video_id,
+                    'thumbnail': None,
+                    'url': url
+                }
+            
+            try:
+                video_info = json.loads(stdout.decode())
+                return {
+                    'title': video_info.get('title', video_id),
                     'file_path': file_path,
                     'duration': video_info.get('duration', 0),
                     'id': video_id,
-                    'thumbnail': thumbnail_url,
-                    'url': video_url
+                    'thumbnail': video_info.get('thumbnail'),
+                    'url': url
+                }
+            except json.JSONDecodeError:
+                # If JSON parsing fails, return basic info
+                return {
+                    'title': video_id,
+                    'file_path': file_path,
+                    'duration': 0,
+                    'id': video_id,
+                    'thumbnail': None,
+                    'url': url
                 }
             
-            # If file doesn't exist, download it
-            print(f"Video not found, downloading ID: {video_id}")
-            
-            # Set download options
-            ytdl_opts = YTDL_OPTIONS.copy()
-            ytdl_opts['outtmpl'] = os.path.join(DOWNLOADS_DIR, '%(id)s.%(ext)s')
-            
-            try:
-                with yt_dlp.YoutubeDL(ytdl_opts) as ydl:
-                    await bot.loop.run_in_executor(
-                        None,
-                        lambda: ydl.download([video_url])
-                    )
-                
-                if os.path.exists(file_path):
-                    return {
-                        'title': title,
-                        'file_path': file_path,
-                        'duration': video_info.get('duration', 0),
-                        'id': video_id,
-                        'thumbnail': thumbnail_url,
-                        'url': video_url
-                    }
-                else:
-                    raise Exception(f"Downloaded file not found at {file_path}")
-                    
-            except Exception as e:
-                print(f"Download error: {str(e)}")
-                raise
-                
         except Exception as e:
-            print(f"Error in download_song: {str(e)}")
-            raise Exception(f"Download error: {str(e)}")
+            print(f"Error downloading song: {str(e)}")
+            raise Exception(f"Failed to download the song: {str(e)}")
 
     def clear_queue(self):
         """Clear the song queue and stop current playback"""
