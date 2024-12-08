@@ -215,13 +215,16 @@ class MusicBot:
         self.now_playing_message = None  # Track the Now Playing message
         self.queued_messages = {}  # Track Added to Queue messages by song URL
         self.last_known_ctx = None  # Store last known context
+        self.bot = None  # Initialize bot attribute
 
-    async def setup(self, bot_loop):
+    async def setup(self, bot_instance):
         """Setup the bot with the event loop"""
-        self.bot_loop = bot_loop
+        self.bot = bot_instance
+        self.bot_loop = bot_instance.loop
         await self.start_command_processor()
-        # Start the download processor
+        await self.start_inactivity_checker()
         asyncio.create_task(self.process_download_queue())
+        print("Command processor started")
 
     async def start_command_processor(self):
         """Start the command processor task"""
@@ -534,6 +537,9 @@ class MusicBot:
                 )
                 self.now_playing_message = await ctx.send(embed=now_playing_embed)
                 
+                # Update bot's activity to show current song
+                await self.bot.change_presence(activity=discord.Game(name=f"{self.current_song['title']}"))
+                
                 # Reset current message tracking for next command
                 self.current_command_msg = None
                 self.current_command_author = None
@@ -570,6 +576,8 @@ class MusicBot:
         else:
             self.current_song = None
             self.update_activity()
+            # Reset activity when no more songs
+            await self.bot.change_presence(activity=discord.Game(name="nothing! use !play"))
             if self.download_queue.empty():  # Only disconnect if nothing left to download
                 if self.voice_client and self.voice_client.is_connected():
                     await self.voice_client.disconnect()
@@ -622,6 +630,9 @@ class MusicBot:
                 thumbnail_url=song.get('thumbnail')
             )
             self.now_playing_message = await ctx.send(embed=now_playing_embed)
+            
+            # Update bot's activity to show current song
+            await self.bot.change_presence(activity=discord.Game(name=f"{song['title']}"))
             
             # Create FFmpeg audio source
             if song.get('is_stream'):
@@ -1466,11 +1477,13 @@ async def on_ready():
     # Initialize the music bot
     if not music_bot:
         music_bot = MusicBot()
-        await music_bot.setup(bot.loop)
+        await music_bot.setup(bot)
         
         # Start the daily restart checker
         check_restart_time.start()
         print("Daily restart checker started")
+        
+    await bot.change_presence(activity=discord.Game(name="nothing! use !play"))
 
 @bot.command(name='play')
 async def play(ctx, *, query):
