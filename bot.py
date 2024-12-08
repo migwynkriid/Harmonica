@@ -638,7 +638,7 @@ class MusicBot:
                 )
 
             # Add volume control
-            audio_source = discord.PCMVolumeTransformer(audio_source)
+            audio_source = discord.PCMVolumeTransformer(audio_source, volume=0.75)
 
             # Store message and song info for after_playing
             current_message = self.now_playing_message
@@ -794,11 +794,38 @@ class MusicBot:
         return query.startswith(('http://', 'https://', 'www.'))
 
     async def download_song(self, query, status_msg=None, view=None):
-        """Download a song from YouTube or handle radio stream"""
+        """Download a song from YouTube, Spotify, or handle radio stream"""
         try:
             # Reset progress tracking
             self._last_progress = -1
 
+            # Check if the query is a Spotify URL
+            if 'open.spotify.com/' in query:
+                if 'playlist/' in query or 'album/' in query:
+                    await status_msg.edit(
+                        embed=self.create_embed(
+                            "Feature Not Available",
+                            "Spotify playlists and albums are currently not available.\nOnly Spotify track links are currently supported.",
+                            color=0xe74c3c
+                        ),
+                        view=None
+                    )
+                    return None
+                elif 'track/' in query:
+                    track_id = query.split('track/')[-1].split('?')[0]
+                    return await self.download_spotify_track(track_id, status_msg)
+                else:
+                    await status_msg.edit(
+                        embed=self.create_embed(
+                            "Error",
+                            "Invalid Spotify URL. Only Spotify track links are currently supported.",
+                            color=0xe74c3c
+                        ),
+                        view=None
+                    )
+                    return None
+
+            # If not a Spotify URL, proceed with existing yt-dlp logic
             # Check if the query is a radio stream URL
             if self.is_radio_stream(query):
                 # For radio streams, we don't need to download, just return the stream info
@@ -997,6 +1024,228 @@ class MusicBot:
                 await status_msg.edit(embed=error_embed, view=None)
             raise
 
+    async def download_spotify_track(self, track_id, status_msg):
+        """Download a Spotify track using spotdl"""
+        try:
+            # Update status message if provided
+            if status_msg:
+                await status_msg.edit(
+                    embed=self.create_embed(
+                        "Processing",
+                        "Downloading Spotify track...",
+                        color=0x1DB954  # Spotify green color
+                    )
+                )
+
+            # Prepare spotdl command
+            spotdl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'spotdl.exe')
+            if not os.path.exists(spotdl_path):
+                raise Exception("spotdl.exe not found in the root directory")
+
+            # First, get metadata using --print-url
+            process = await asyncio.create_subprocess_exec(
+                spotdl_path,
+                f"https://open.spotify.com/track/{track_id}",
+                "--print-url",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await process.communicate()
+            metadata = stdout.decode().split('\n')
+            thumbnail_url = None
+            title = None
+            
+            # Parse metadata for thumbnail and title
+            for line in metadata:
+                if line.startswith('Thumbnail URL: '):
+                    thumbnail_url = line.replace('Thumbnail URL: ', '').strip()
+                elif line.startswith('Title: '):
+                    title = line.replace('Title: ', '').strip()
+
+            # Now download the track
+            process = await asyncio.create_subprocess_exec(
+                spotdl_path,
+                f"https://open.spotify.com/track/{track_id}",
+                "--output", self.downloads_dir,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await process.communicate()
+            
+            if process.returncode != 0:
+                raise Exception(f"Failed to download Spotify track: {stderr.decode()}")
+
+            # Find the downloaded file
+            downloaded_files = [f for f in os.listdir(self.downloads_dir) if f.endswith('.mp3')]
+            if not downloaded_files:
+                raise Exception("No files were downloaded")
+
+            # Get the most recently downloaded file
+            latest_file = max(
+                [os.path.join(self.downloads_dir, f) for f in downloaded_files],
+                key=os.path.getctime
+            )
+
+            # Return the track info with thumbnail
+            return {
+                'title': title or os.path.splitext(os.path.basename(latest_file))[0],
+                'url': f"https://open.spotify.com/track/{track_id}",
+                'file_path': latest_file,
+                'thumbnail': thumbnail_url
+            }
+
+        except Exception as e:
+            print(f"Error downloading Spotify track: {str(e)}")
+            raise
+
+    async def download_spotify_playlist(self, playlist_id, status_msg):
+        """Download a Spotify playlist using spotdl"""
+        try:
+            # Update status message if provided
+            if status_msg:
+                await status_msg.edit(
+                    embed=self.create_embed(
+                        "Processing",
+                        "Downloading Spotify playlist...\nThis may take a while.",
+                        color=0x1DB954  # Spotify green color
+                    )
+                )
+
+            # Prepare spotdl command
+            spotdl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'spotdl.exe')
+            if not os.path.exists(spotdl_path):
+                raise Exception("spotdl.exe not found in the root directory")
+
+            # Run spotdl command
+            process = await asyncio.create_subprocess_exec(
+                spotdl_path,
+                f"https://open.spotify.com/playlist/{playlist_id}",
+                "--output", self.downloads_dir,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+
+            downloaded_count = 0
+            while True:
+                line = await process.stdout.readline()
+                if not line:
+                    break
+                if b"Downloaded" in line:
+                    downloaded_count += 1
+                    if status_msg:
+                        await status_msg.edit(
+                            embed=self.create_embed(
+                                "Processing",
+                                f"Downloading Spotify playlist...\nDownloaded {downloaded_count} tracks so far",
+                                color=0x1DB954
+                            )
+                        )
+
+            stdout, stderr = await process.communicate()
+            
+            if process.returncode != 0:
+                raise Exception(f"Failed to download Spotify playlist: {stderr.decode()}")
+
+            # Find all downloaded files
+            downloaded_files = sorted(
+                [f for f in os.listdir(self.downloads_dir) if f.endswith('.mp3')],
+                key=lambda x: os.path.getctime(os.path.join(self.downloads_dir, x))
+            )
+
+            if not downloaded_files:
+                raise Exception("No files were downloaded from the playlist")
+
+            # Return playlist info with all tracks
+            return [
+                {
+                    'title': os.path.splitext(file)[0],
+                    'url': f"https://open.spotify.com/playlist/{playlist_id}",
+                    'file_path': os.path.join(self.downloads_dir, file),
+                    'thumbnail': None,
+                    'is_from_playlist': True
+                }
+                for file in downloaded_files
+            ]
+
+        except Exception as e:
+            print(f"Error downloading Spotify playlist: {str(e)}")
+            raise
+
+    async def download_spotify_album(self, album_id, status_msg):
+        """Download a Spotify album using spotdl"""
+        try:
+            # Update status message if provided
+            if status_msg:
+                await status_msg.edit(
+                    embed=self.create_embed(
+                        "Processing",
+                        "Downloading Spotify album...\nThis may take a while.",
+                        color=0x1DB954  # Spotify green color
+                    )
+                )
+
+            # Prepare spotdl command
+            spotdl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'spotdl.exe')
+            if not os.path.exists(spotdl_path):
+                raise Exception("spotdl.exe not found in the root directory")
+
+            # Run spotdl command
+            process = await asyncio.create_subprocess_exec(
+                spotdl_path,
+                f"https://open.spotify.com/album/{album_id}",
+                "--output", self.downloads_dir,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+
+            downloaded_count = 0
+            while True:
+                line = await process.stdout.readline()
+                if not line:
+                    break
+                if b"Downloaded" in line:
+                    downloaded_count += 1
+                    if status_msg:
+                        await status_msg.edit(
+                            embed=self.create_embed(
+                                "Processing",
+                                f"Downloading Spotify album...\nDownloaded {downloaded_count} tracks so far",
+                                color=0x1DB954
+                            )
+                        )
+
+            stdout, stderr = await process.communicate()
+            
+            if process.returncode != 0:
+                raise Exception(f"Failed to download Spotify album: {stderr.decode()}")
+
+            # Find all downloaded files
+            downloaded_files = sorted(
+                [f for f in os.listdir(self.downloads_dir) if f.endswith('.mp3')],
+                key=lambda x: os.path.getctime(os.path.join(self.downloads_dir, x))
+            )
+
+            if not downloaded_files:
+                raise Exception("No files were downloaded from the album")
+
+            # Return album info with all tracks
+            return [
+                {
+                    'title': os.path.splitext(file)[0],
+                    'url': f"https://open.spotify.com/album/{album_id}",
+                    'file_path': os.path.join(self.downloads_dir, file),
+                    'thumbnail': None,
+                    'is_from_playlist': True
+                }
+                for file in downloaded_files
+            ]
+
+        except Exception as e:
+            print(f"Error downloading Spotify album: {str(e)}")
+            raise
+
     async def play(self, ctx, *, query):
         """Play a song in the voice channel"""
         try:
@@ -1012,7 +1261,7 @@ class MusicBot:
             elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
                 await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
 
-            self.voice_client = ctx.guild.voice_client
+            music_bot.voice_client = ctx.guild.voice_client
 
             # Create a unique processing message for this request
             processing_embed = self.create_embed(
