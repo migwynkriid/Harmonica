@@ -72,15 +72,10 @@ bot = commands.Bot(command_prefix='!', intents=intents, case_insensitive=True)
 
 # YouTube DL options
 YTDL_OPTIONS = {
-    # Format selection priority:
-    # 1. opus audio only at 96kbps or less (if available)
-    # 2. m4a audio only at 96kbps or less (if opus not available)
-    # 3. best audio stream at 96kbps or less
-    # 4. Fallback to any audio if no 96kbps stream available
     'format': 'bestaudio[acodec=opus][abr<=96]/bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio',
-    'outtmpl': '%(id)s.%(ext)s',
+    'outtmpl': '%(id)s.%(ext)s',  # Simplified template
     'extract_audio': True,
-    'audioformat': 'opus',  # Discord works best with opus
+    'audioformat': 'opus',
     'preferredcodec': 'opus',
     'nopostoverwrites': True,
     'windowsfilenames': True,
@@ -219,6 +214,7 @@ class MusicBot:
         self._last_progress = -1  # Track last progress update
         self.now_playing_message = None  # Track the Now Playing message
         self.queued_messages = {}  # Track Added to Queue messages by song URL
+        self.last_known_ctx = None  # Store last known context
 
     async def setup(self, bot_loop):
         """Setup the bot with the event loop"""
@@ -588,7 +584,22 @@ class MusicBot:
         try:
             # Get and remove the next song from the queue
             song = self.queue.pop(0)  # Remove the song immediately when we start processing it
-            ctx = song['ctx']
+            
+            # Get context from song info, or use the last known context if missing
+            ctx = song.get('ctx')
+            if not ctx:
+                print("Warning: Missing context in song, using last known context")
+                if hasattr(self, 'last_known_ctx'):
+                    ctx = self.last_known_ctx
+                else:
+                    print("Error: No context available for playback")
+                    self.waiting_for_song = False
+                    if self.queue:  # Try next song if this one fails
+                        await self.process_queue()
+                    return
+
+            # Store the context for future use
+            self.last_known_ctx = ctx
 
             # Delete the "Added to Queue" message if it exists
             if song['url'] in self.queued_messages:
@@ -714,7 +725,7 @@ class MusicBot:
             print(f"Error updating message: {str(e)}")
             # If editing fails, send a new message
             self.current_command_msg = await ctx.send(embed=embed, view=view)
-            self.current_command_author = ctx.author.id
+            self.current_command_author = ctx.author_id
             return self.current_command_msg
 
     def is_radio_stream(self, url):
@@ -829,11 +840,44 @@ class MusicBot:
                     # This is a search result, get the first video
                     if not info.get('entries'):
                         raise Exception("No search results found")
-                    video_info = info['entries'][0]
-                elif self.is_playlist_url(query) and info.get('entries'):
+                    info = info['entries'][0]
+                    
+                    # Download the actual video
+                    video_info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(
+                        info['webpage_url'],
+                        download=True
+                    ))
+                    
+                    # Sometimes yt-dlp returns a playlist format even for single videos
+                    if video_info.get('_type') == 'playlist':
+                        video_info = video_info['entries'][0]
+                    
+                    # Get the file path
+                    file_path = os.path.join(self.downloads_dir, f"{video_info['id']}.{video_info.get('ext', 'opus')}")
+                    
+                    # Delete the processing message
+                    if status_msg:
+                        try:
+                            await status_msg.delete()
+                        except Exception as e:
+                            print(f"Error deleting processing message: {e}")
+                    
+                    # Return the song info
+                    return {
+                        'title': video_info['title'],
+                        'url': video_info['webpage_url'] if video_info.get('webpage_url') else video_info['url'],
+                        'file_path': file_path,
+                        'thumbnail': video_info.get('thumbnail'),
+                        'is_from_playlist': False,
+                        'ctx': status_msg.channel if status_msg else None
+                    }
+                elif info.get('_type') == 'playlist' and self.is_playlist_url(query):
                     # It's a playlist, get the first video
                     if not info.get('entries'):
                         raise Exception("Playlist is empty")
+
+                    # Get context from status message
+                    ctx = status_msg.channel if status_msg else None
 
                     # Get first video info for thumbnail
                     first_video = info['entries'][0]
@@ -849,57 +893,102 @@ class MusicBot:
                             "Adding Playlist",
                             f"[🎵 {playlist_title}]({playlist_url})\nAdding {total_videos} songs to queue...",
                             color=0x3498db,
-                            thumbnail_url=video_thumbnail  # Use first video's thumbnail
+                            thumbnail_url=video_thumbnail
                         )
-                        # Remove the cancel button when updating to playlist message
                         await status_msg.edit(embed=playlist_embed, view=None)
-                    
-                    # Get the first video's info
-                    video_info = info['entries'][0]
-                    
-                    # Queue the rest of the playlist asynchronously
-                    asyncio.create_task(self._queue_playlist_videos(info['entries'][1:], status_msg.channel, is_from_playlist=True))
+
+                    # Process each video in the playlist
+                    first_song = None
+                    for i, entry in enumerate(info['entries']):
+                        if not entry:
+                            continue
+                            
+                        try:
+                            # Download each video in the playlist
+                            video_info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(
+                                entry['webpage_url'] if entry.get('webpage_url') else entry['url'],
+                                download=True
+                            ))
+
+                            # Sometimes yt-dlp returns a playlist format even for single videos
+                            if video_info.get('_type') == 'playlist':
+                                video_info = video_info['entries'][0]
+
+                            # Get the file path
+                            file_path = os.path.join(self.downloads_dir, f"{video_info['id']}.{video_info.get('ext', 'opus')}")
+
+                            # Update status message to show progress
+                            if status_msg:
+                                progress_embed = self.create_embed(
+                                    "Adding Playlist",
+                                    f"[🎵 {playlist_title}]({playlist_url})\nDownloading song {i+1}/{total_videos}: {video_info['title']}",
+                                    color=0x3498db
+                                )
+                                await status_msg.edit(embed=progress_embed)
+
+                            # Create song entry
+                            song_entry = {
+                                'title': video_info['title'],
+                                'url': video_info['webpage_url'] if video_info.get('webpage_url') else video_info['url'],
+                                'file_path': file_path,
+                                'thumbnail': video_info.get('thumbnail'),
+                                'is_from_playlist': True,
+                                'ctx': ctx
+                            }
+
+                            # Store first song to return it
+                            if i == 0:
+                                first_song = song_entry
+                            else:
+                                # Add other songs to queue
+                                self.queue.append(song_entry)
+
+                        except Exception as e:
+                            print(f"Error downloading playlist song {i+1}: {str(e)}")
+                            continue
+
+                    # Delete the playlist processing message
+                    if status_msg:
+                        try:
+                            await status_msg.delete()
+                        except Exception as e:
+                            print(f"Error deleting playlist message: {e}")
+
+                    # Return the first song for immediate playback
+                    if first_song:
+                        return first_song
+                    else:
+                        raise Exception("Failed to download any songs from the playlist")
                 else:
-                    # Single video or direct URL
-                    video_info = info
+                    # Download the video
+                    video_info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(
+                        info['webpage_url'] if info.get('webpage_url') else info['url'],
+                        download=True
+                    ))
 
-                # Download the video
-                video_id = video_info['id']
-                title = video_info['title']
-                url = f"https://youtube.com/watch?v={video_id}"
-                
-                # Download this specific video with progress tracking
-                await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    lambda: ydl.download([url])
-                )
+                    # Sometimes yt-dlp returns a playlist format even for single videos
+                    if video_info.get('_type') == 'playlist':
+                        video_info = video_info['entries'][0]
 
-                # After successful download, delete the processing message
-                if status_msg:
-                    try:
-                        await status_msg.delete()
-                    except:
-                        pass  # Message might have been deleted
+                    # Get the file path
+                    file_path = os.path.join(self.downloads_dir, f"{video_info['id']}.{video_info.get('ext', 'opus')}")
 
-                # Get the downloaded file path
-                file_path = None
-                for ext in ['webm', 'm4a', 'mp3']:  # Common audio formats
-                    potential_path = os.path.join(self.downloads_dir, f"{video_id}.{ext}")
-                    if os.path.exists(potential_path):
-                        file_path = potential_path
-                        break
+                    # Delete the processing message after successful download
+                    if status_msg:
+                        try:
+                            await status_msg.delete()
+                        except Exception as e:
+                            print(f"Error deleting processing message: {e}")
+                            pass  # Message might have been deleted already
 
-                if not file_path:
-                    raise Exception("Downloaded file not found")
-
-                # Return the song info
-                return {
-                    'title': title,
-                    'url': url,
-                    'file_path': file_path,
-                    'thumbnail': video_info.get('thumbnail'),
-                    'is_from_playlist': self.is_playlist_url(query)
-                }
+                    # Return the song info
+                    return {
+                        'title': video_info['title'],
+                        'url': f"https://youtube.com/watch?v={video_info['id']}",
+                        'file_path': file_path,
+                        'thumbnail': video_info.get('thumbnail'),
+                        'is_from_playlist': self.is_playlist_url(query)
+                    }
 
         except Exception as e:
             print(f"Error downloading song: {str(e)}")
@@ -1047,7 +1136,7 @@ class MusicBot:
             print(f"Error updating message: {str(e)}")
             # If editing fails, send a new message
             self.current_command_msg = await ctx.send(embed=embed, view=view)
-            self.current_command_author = ctx.author.id
+            self.current_command_author = ctx.author_id
             return self.current_command_msg
 
     async def _queue_playlist_videos(self, entries, ctx, is_from_playlist=False):
