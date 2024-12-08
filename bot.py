@@ -828,15 +828,33 @@ class MusicBot:
             # If not a Spotify URL, proceed with existing yt-dlp logic
             # Check if the query is a radio stream URL
             if self.is_radio_stream(query):
-                # For radio streams, we don't need to download, just return the stream info
-                stream_name = query.split('/')[-1].split('.')[0]  # Get a name from the URL
-                return {
-                    'title': f"Radio Stream: {stream_name}",
-                    'url': query,
-                    'file_path': query,  # Use the URL directly as the file path for FFmpeg
-                    'is_stream': True,  # Mark as a stream
-                    'status_message': status_msg
-                }
+                print("Radio stream detected")
+                try:
+                    # Get a name from the URL
+                    stream_name = query.split('/')[-1].split('.')[0]
+                    result = {
+                        'title': f"Radio Stream: {stream_name}",
+                        'url': query,
+                        'file_path': query,  # Use the URL directly as the file path for FFmpeg
+                        'is_stream': True,
+                        'thumbnail': None
+                    }
+                    # Remove the processing message since we don't need to show download progress for streams
+                    if status_msg:
+                        await status_msg.delete()
+                    return result
+                except Exception as e:
+                    print(f"Error processing radio stream: {str(e)}")
+                    if status_msg:
+                        await status_msg.edit(
+                            embed=self.create_embed(
+                                "Error",
+                                f"Failed to process radio stream: {str(e)}",
+                                color=0xe74c3c
+                            ),
+                            view=None
+                        )
+                    return None
 
             # Ensure downloads directory exists
             if not os.path.exists(self.downloads_dir):
