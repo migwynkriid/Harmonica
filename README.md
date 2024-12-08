@@ -1,16 +1,16 @@
 # Discord Music Bot
 
-A Discord bot that plays music in voice channels.
-
+Discord bot utilizing YT-DLP to download audio files of from YouTube and plays it locally  towards the voice channel.
 ## Setup
 1. Install Python 3.8 or higher
 2. Install dependencies:
    ```bash
    pip install -r requirements.txt
-
-   Also install yt-dlp.exe and ffmpeg.exe for Windows and place it in the root directory
    ```
-3. Rename a `.env.example` file to `.env` and add your Discord bot token:
+Download `yt-dlp`, `ffmpeg`  and place it in the root directory where bot.py is placed in. <br> 
+Optional: Do the same for `spot-dl`
+
+3. Rename the `.env.example` file to `.env` and add your Discord bot token:
    ```
    DISCORD_TOKEN=your_token_here
    ```
