@@ -147,7 +147,7 @@ class DownloadProgress:
         self.title = ""
         
     def create_progress_bar(self, percentage, width=20):
-        filled = int(width * percentage / 100)
+        filled = int(width * (percentage / 100))
         bar = "█" * filled + "░" * (width - filled)
         return bar
         
@@ -213,6 +213,12 @@ class MusicBot:
         self.bot_loop = None  # Store bot's event loop
         self.loop_mode = False  # Track if loop mode is enabled
         self.download_lock = asyncio.Lock()  # Lock for download synchronization
+        self.queue_lock = asyncio.Lock()  # Add queue lock for thread safety
+        self.is_playing = False  # Track if currently playing
+        self.waiting_for_song = False  # Track if waiting for next song
+        self._last_progress = -1  # Track last progress update
+        self.now_playing_message = None  # Track the Now Playing message
+        self.queued_messages = {}  # Track Added to Queue messages by song URL
 
     async def setup(self, bot_loop):
         """Setup the bot with the event loop"""
@@ -258,8 +264,13 @@ class MusicBot:
         view = CancelButton(self)
         
         # Send initial status message
-        status_embed = self.create_embed("Processing", f"Fetching and downloading, it can take a moment:\n{query}", color=0x3498db)
-        status_msg = await self.update_or_send_message(ctx, status_embed, view=view)
+        processing_embed = self.create_embed(
+            "Processing",
+            f"Processing request: {query}",
+            color=0x3498db
+        )
+        status_msg = await self.update_or_send_message(ctx, processing_embed, view=view)
+        view.message = status_msg
 
         # Create download info
         download_info = {
@@ -293,7 +304,7 @@ class MusicBot:
                         print(f"Starting download: {query}")
                         
                         # Download the song
-                        result = await self.download_song(query, status_msg, view)
+                        result = await self.download_song(query, status_msg=status_msg, view=view)
                         
                         if not result:
                             if not view and not is_from_playlist:  # Don't show errors for playlist items
@@ -306,7 +317,16 @@ class MusicBot:
                             try:
                                 await status_msg.delete()
                             except:
-                                pass
+                                pass  # Message might have been deleted
+                        else:
+                            # For playlists, update the status message to show playlist info
+                            if status_msg:
+                                playlist_embed = self.create_embed(
+                                    "Adding Playlist",
+                                    f"Adding {len(result['entries'])} songs to queue...",
+                                    color=0x3498db
+                                )
+                                await status_msg.edit(embed=playlist_embed, view=None)
 
                         # Add to queue or play immediately
                         if self.voice_client and self.voice_client.is_playing():
@@ -315,10 +335,13 @@ class MusicBot:
                             if not is_from_playlist:
                                 queue_embed = self.create_embed(
                                     "Added to Queue", 
-                                    f"[🎵 {result['title']}]({result['url']})", 
+                                    f"[🎵 {result['title']}]({result['url']})",
+                                    color=0x3498db,
                                     thumbnail_url=result.get('thumbnail')
                                 )
-                                await ctx.send(embed=queue_embed)
+                                queue_msg = await ctx.send(embed=queue_embed)
+                                # Store the queue message
+                                self.queued_messages[result['url']] = queue_msg
                         else:
                             self.queue.append(result)
                             await self.play_next(ctx)  # Always show Now Playing
@@ -326,7 +349,7 @@ class MusicBot:
                 except Exception as e:
                     print(f"Error processing download: {str(e)}")
                     if not view and not is_from_playlist:  # Don't show errors for playlist items
-                        error_embed = self.create_embed("Error", f"Failed to process: {str(e)}", color=0xe74c3c)
+                        error_embed = self.create_embed("Error", f"Error processing: {str(e)}", color=0xe74c3c)
                         await self.update_or_send_message(ctx, error_embed)
                 
                 finally:
@@ -473,7 +496,7 @@ class MusicBot:
             try:
                 # Store previous song for comparison
                 previous_song = self.current_song
-                self.current_song = self.queue.pop(0)
+                self.current_song = self.queue.pop(0)  # Remove the song immediately when we start processing it
                 print(f"Playing next song: {self.current_song['title']}")
                 
                 # For radio streams, we don't need to check if the file exists
@@ -493,15 +516,28 @@ class MusicBot:
                         self.voice_client = None
                         return
 
-                # Always show Now Playing message for new songs
-                if not previous_song or previous_song['url'] != self.current_song['url']:
-                    now_playing_embed = self.create_embed(
-                        "Now Playing",
-                        f"[🎵 {self.current_song['title']}]({self.current_song['url']})",
-                        thumbnail_url=self.current_song.get('thumbnail')
-                    )
-                    await ctx.send(embed=now_playing_embed)
+                # If there's a previous Now Playing message, update it to Finished Playing
+                if self.now_playing_message:
+                    try:
+                        finished_embed = self.create_embed(
+                            "Finished Playing",
+                            f"[🎵 {previous_song['title']}]({previous_song['url']})",
+                            color=0x808080,  # Gray color for finished
+                            thumbnail_url=previous_song.get('thumbnail')
+                        )
+                        await self.now_playing_message.edit(embed=finished_embed)
+                    except Exception as e:
+                        print(f"Error updating previous now playing message: {str(e)}")
 
+                # Send Now Playing message and store it
+                now_playing_embed = self.create_embed(
+                    "Now Playing",
+                    f"[🎵 {self.current_song['title']}]({self.current_song['url']})",
+                    color=0x00ff00,
+                    thumbnail_url=self.current_song.get('thumbnail')
+                )
+                self.now_playing_message = await ctx.send(embed=now_playing_embed)
+                
                 # Reset current message tracking for next command
                 self.current_command_msg = None
                 self.current_command_author = None
@@ -521,7 +557,8 @@ class MusicBot:
                         self.voice_client.play(
                             audio_source,
                             after=lambda e: asyncio.run_coroutine_threadsafe(
-                                self.after_playing_coro(e, ctx), self.bot_loop
+                                self.after_playing_coro(e, ctx), 
+                                self.bot_loop
                             )
                         )
                     else:
@@ -540,6 +577,111 @@ class MusicBot:
             if self.download_queue.empty():  # Only disconnect if nothing left to download
                 if self.voice_client and self.voice_client.is_connected():
                     await self.voice_client.disconnect()
+
+    async def process_queue(self):
+        """Process the song queue"""
+        if self.waiting_for_song or not self.queue:
+            return
+
+        self.waiting_for_song = True
+
+        try:
+            # Get and remove the next song from the queue
+            song = self.queue.pop(0)  # Remove the song immediately when we start processing it
+            ctx = song['ctx']
+
+            # Delete the "Added to Queue" message if it exists
+            if song['url'] in self.queued_messages:
+                try:
+                    await self.queued_messages[song['url']].delete()
+                except Exception as e:
+                    print(f"Error deleting queue message: {str(e)}")
+                finally:
+                    del self.queued_messages[song['url']]
+
+            # Play the song
+            self.current_song = song
+            self.is_playing = True
+            
+            # Send Now Playing message and store it
+            now_playing_embed = self.create_embed(
+                "Now Playing",
+                f"[🎵 {song['title']}]({song['url']})",
+                color=0x00ff00,
+                thumbnail_url=song.get('thumbnail')
+            )
+            self.now_playing_message = await ctx.send(embed=now_playing_embed)
+            
+            # Create FFmpeg audio source
+            if song.get('is_stream'):
+                # For radio streams, use the URL directly
+                audio_source = discord.FFmpegPCMAudio(
+                    song['file_path'],
+                    **FFMPEG_OPTIONS
+                )
+            else:
+                # For downloaded songs, use the file path
+                audio_source = discord.FFmpegPCMAudio(
+                    song['file_path'],
+                    **FFMPEG_OPTIONS
+                )
+
+            # Add volume control
+            audio_source = discord.PCMVolumeTransformer(audio_source)
+
+            # Store message and song info for after_playing
+            current_message = self.now_playing_message
+            current_song_info = {
+                'title': song['title'],
+                'url': song['url'],
+                'thumbnail': song.get('thumbnail')
+            }
+
+            def after_playing(error):
+                """Callback after song finishes"""
+                if error:
+                    print(f"Error in playback: {error}")
+                
+                # Update Now Playing to Finished Playing
+                async def update_now_playing():
+                    try:
+                        if current_message:
+                            finished_embed = self.create_embed(
+                                "Finished Playing",
+                                f"[🎵 {current_song_info['title']}]({current_song_info['url']})",
+                                color=0x808080,  # Gray color for finished
+                                thumbnail_url=current_song_info.get('thumbnail')
+                            )
+                            await current_message.edit(embed=finished_embed)
+                    except Exception as e:
+                        print(f"Error updating finished message: {str(e)}")
+                    
+                    # Reset states after updating message
+                    self.is_playing = False
+                    self.waiting_for_song = False
+                    self.current_song = None
+                    self.now_playing_message = None
+                    
+                    # Process next song if any
+                    await self.process_queue()
+                
+                # Schedule the message update
+                asyncio.run_coroutine_threadsafe(update_now_playing(), self.bot_loop)
+
+            # Start playing
+            self.voice_client.play(audio_source, after=after_playing)
+
+        except Exception as e:
+            print(f"Error in process_queue: {str(e)}")
+            if ctx:
+                error_embed = self.create_embed("Error", f"Error playing song: {str(e)}", color=0xff0000)
+                await ctx.send(embed=error_embed)
+
+        finally:
+            self.waiting_for_song = False
+            if not self.is_playing:
+                # If something went wrong and we're not playing, try next song
+                await self.process_queue()
 
     def sanitize_filename(self, filename):
         """Sanitize filename to handle special characters"""
@@ -617,13 +759,21 @@ class MusicBot:
                         # Format the total file size
                         total_size = self.format_size(total)
                         
-                        # Update the processing message with progress bar and file size
-                        processing_embed = self.create_embed(
-                            "Processing",
-                            f"Downloading...\n{progress_bar}\nFile size: {total_size}",
-                            color=0x3498db
-                        )
-                        await status_msg.edit(embed=processing_embed)
+                        # Try to fetch the message to see if it still exists
+                        try:
+                            await status_msg.fetch()  # This will raise NotFound if message is deleted
+                            # Update the processing message with progress bar and file size
+                            processing_embed = self.create_embed(
+                                "Processing",
+                                f"Downloading...\n{progress_bar}\nFile size: {total_size}",
+                                color=0x3498db
+                            )
+                            await status_msg.edit(embed=processing_embed)
+                        except discord.NotFound:
+                            return
+                        except Exception as e:
+                            print(f"Error updating progress message: {str(e)}")
+                            return
             except Exception as e:
                 print(f"Error in progress hook: {str(e)}")
 
@@ -723,87 +873,145 @@ class MusicBot:
                     None,
                     lambda: ydl.download([url])
                 )
-                
-                # Use the actual downloaded file extension
-                file_path = os.path.join(self.downloads_dir, f"{video_id}.{video_info['ext']}")
 
-                # Add a small delay to ensure file operations are complete
-                await asyncio.sleep(1)
-
-                # Verify file exists and is accessible
-                max_retries = 3
-                retry_delay = 1
-                for attempt in range(max_retries):
+                # After successful download, delete the processing message
+                if status_msg:
                     try:
-                        if not os.path.exists(file_path):
-                            raise FileNotFoundError(f"Downloaded file not found: {file_path}")
-                        
-                        # Try to open the file to verify it's not locked
-                        with open(file_path, 'rb') as f:
-                            pass
-                        
-                        # If we get here, the file is accessible
-                        break
-                    except (FileNotFoundError, PermissionError) as e:
-                        if attempt == max_retries - 1:
-                            raise Exception(f"Could not access downloaded file after {max_retries} attempts: {str(e)}")
-                        print(f"Retry {attempt + 1}/{max_retries}: Waiting for file to be accessible...")
-                        await asyncio.sleep(retry_delay)
+                        await status_msg.delete()
+                    except:
+                        pass  # Message might have been deleted
 
-                # Return song info
+                # Get the downloaded file path
+                file_path = None
+                for ext in ['webm', 'm4a', 'mp3']:  # Common audio formats
+                    potential_path = os.path.join(self.downloads_dir, f"{video_id}.{ext}")
+                    if os.path.exists(potential_path):
+                        file_path = potential_path
+                        break
+
+                if not file_path:
+                    raise Exception("Downloaded file not found")
+
+                # Return the song info
                 return {
                     'title': title,
                     'url': url,
                     'file_path': file_path,
                     'thumbnail': video_info.get('thumbnail'),
-                    'status_message': status_msg,
-                    'is_from_playlist': self.is_playlist_url(query)  # Use URL-based playlist detection
+                    'is_from_playlist': self.is_playlist_url(query)
                 }
 
         except Exception as e:
             print(f"Error downloading song: {str(e)}")
-            if status_msg and not (view and view.cancelled):
-                error_embed = self.create_embed("Error", f"Failed to download: {str(e)}", color=0xe74c3c)
-                await status_msg.edit(embed=error_embed)
-            
-            # Cleanup any partial downloads
-            try:
-                if 'file_path' in locals() and os.path.exists(file_path):
-                    os.remove(file_path)
-            except Exception as cleanup_error:
-                print(f"Error cleaning up failed download: {str(cleanup_error)}")
-            
-            return None
+            if status_msg:
+                error_embed = self.create_embed("Error", f"Error downloading song: {str(e)}", color=0xff0000)
+                await status_msg.edit(embed=error_embed, view=None)
+            raise
 
-    async def _queue_playlist_videos(self, entries, ctx, is_from_playlist=False):
-        """Queue the remaining videos from a playlist"""
+    async def play(self, ctx, *, query):
+        """Play a song in the voice channel"""
         try:
-            for entry in entries:
-                # Create a new download info for each video
-                video_url = f"https://youtube.com/watch?v={entry['id']}"
-                
-                # Create download info for playlist items - no status messages
-                download_info = {
-                    'query': video_url,
+            # Check if the user is in a voice channel
+            if not ctx.author.voice:
+                embed = self.create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c)
+                await ctx.send(embed=embed)
+                return
+
+            # Create voice client if not exists
+            if not ctx.guild.voice_client:
+                await ctx.author.voice.channel.connect()
+            elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
+                await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
+
+            self.voice_client = ctx.guild.voice_client
+
+            # Create a unique processing message for this request
+            processing_embed = self.create_embed(
+                "Processing",
+                f"Fetching and downloading the request:\n{query}",
+                color=0x3498db
+            )
+            view = CancelButton(self)
+            status_msg = await ctx.send(embed=processing_embed, view=view)
+            view.message = status_msg
+
+            # Download and queue the song
+            async with self.queue_lock:
+                result = await self.download_song(query, status_msg=status_msg, view=view)
+                if not result:
+                    return
+
+                # Add the song to the queue
+                self.queue.append({
+                    'title': result['title'],
+                    'url': result['url'],
+                    'file_path': result['file_path'],
+                    'thumbnail': result.get('thumbnail'),
                     'ctx': ctx,
-                    'status_msg': None,  # No status message for playlist items
-                    'view': None,  # No cancel button for playlist items
-                    'is_from_playlist': True  # Mark as playlist item
-                }
-                
-                # Add to download queue
-                await self.download_queue.put(download_info)
-                print(f"Added playlist video to queue: {entry['title']}")
-                
+                    'is_stream': result.get('is_stream', False),
+                    'is_from_playlist': result.get('is_from_playlist', False)
+                })
+
+                # If not currently playing, start playing
+                if not self.is_playing and not self.waiting_for_song:
+                    await self.process_queue()
+                else:
+                    # Only send "Added to queue" message if it's not from a playlist
+                    if not result.get('is_from_playlist'):
+                        queue_pos = len(self.queue)
+                        queue_embed = self.create_embed(
+                            "Added to Queue",
+                            f"[🎵 {result['title']}]({result['url']})\nPosition in queue: {queue_pos}",
+                            color=0x3498db,
+                            thumbnail_url=result.get('thumbnail')
+                        )
+                        queue_msg = await ctx.send(embed=queue_embed)
+                        # Store the queue message
+                        self.queued_messages[result['url']] = queue_msg
+
         except Exception as e:
-            print(f"Error queueing playlist videos: {str(e)}")
-            if not is_from_playlist:  # Only show error for the initial playlist add
-                error_embed = self.create_embed(
-                    "Error", 
-                    "Failed to queue some playlist videos. Please try again.", 
-                    color=0xe74c3c
-                )
-                await ctx.send(embed=error_embed)
+            error_msg = f"Error playing song: {str(e)}"
+            print(error_msg)
+            error_embed = self.create_embed("Error", error_msg, color=0xff0000)
+            await ctx.send(embed=error_embed)
+
+    async def after_playing_coro(self, error, ctx):
+        """Coroutine called after a song finishes playing"""
+        if error:
+            print(f"Error in playback: {error}")
+        
+        print("Song finished playing, checking queue...")
+        if len(self.queue) > 0:
+            print(f"Queue length: {len(self.queue)}")
+        if not self.download_queue.empty():
+            print(f"Download queue size: {self.download_queue.qsize()}")
+        
+        # If loop mode is enabled and we have a current song, add it back to the start of the queue
+        if self.loop_mode and self.current_song:
+            # Create a copy of the current song to preserve all attributes
+            looped_song = self.current_song.copy()
+            # Ensure has_played is set to True for the looped song
+            looped_song['has_played'] = True
+            self.queue.insert(0, looped_song)
+            print("Loop mode: Added current song back to queue")
+        
+        # Start processing more downloads if needed
+        if not self.currently_downloading and not self.download_queue.empty():
+            print("More songs in download queue, continuing processing...")
+        
+        # If queue is empty but we're still downloading, wait briefly
+        if len(self.queue) == 0 and not self.download_queue.empty():
+            print("Waiting for next song to finish downloading...")
+            await asyncio.sleep(1)  # Give a moment for download to complete
+            
+        if len(self.queue) > 0 or not self.download_queue.empty():
+            await self.play_next(ctx)
+        else:
+            print("All songs finished, updating activity...")
+            self.update_activity()
+            if self.download_queue.empty():  # Only disconnect if nothing left to download
+                if self.voice_client and self.voice_client.is_connected():
+                    await self.voice_client.disconnect()
 
     def create_embed(self, title, description, color=0x3498db, thumbnail_url=None):
         """Create a Discord embed with consistent styling"""
@@ -842,45 +1050,35 @@ class MusicBot:
             self.current_command_author = ctx.author.id
             return self.current_command_msg
 
-    async def after_playing_coro(self, error, ctx):
-        """Coroutine called after a song finishes playing"""
-        if error:
-            print(f"Error in playback: {error}")
-            embed = self.create_embed("Error", f"An error occurred during playback: {str(error)}", color=0xe74c3c)
-            await ctx.send(embed=embed)  # Send as new message
-        
-        print("Song finished playing, checking queue...")
-        if len(self.queue) > 0:
-            print(f"Queue length: {len(self.queue)}")
-        if not self.download_queue.empty():
-            print(f"Download queue size: {self.download_queue.qsize()}")
-        
-        # If loop mode is enabled and we have a current song, add it back to the start of the queue
-        if self.loop_mode and self.current_song:
-            # Create a copy of the current song to preserve all attributes
-            looped_song = self.current_song.copy()
-            # Ensure has_played is set to True for the looped song
-            looped_song['has_played'] = True
-            self.queue.insert(0, looped_song)
-            print("Loop mode: Added current song back to queue")
-        
-        # Start processing more downloads if needed
-        if not self.currently_downloading and not self.download_queue.empty():
-            print("More songs in download queue, continuing processing...")
-        
-        # If queue is empty but we're still downloading, wait briefly
-        if len(self.queue) == 0 and not self.download_queue.empty():
-            print("Waiting for next song to finish downloading...")
-            await asyncio.sleep(1)  # Give a moment for download to complete
-            
-        if len(self.queue) > 0 or not self.download_queue.empty():
-            await self.play_next(ctx)
-        else:
-            print("All songs finished, updating activity...")
-            self.update_activity()
-            if self.download_queue.empty():  # Only disconnect if nothing left to download
-                if self.voice_client and self.voice_client.is_connected():
-                    await self.voice_client.disconnect()
+    async def _queue_playlist_videos(self, entries, ctx, is_from_playlist=False):
+        """Queue the remaining videos from a playlist"""
+        try:
+            for entry in entries:
+                # Create a new download info for each video
+                video_url = f"https://youtube.com/watch?v={entry['id']}"
+                
+                # Create download info for playlist items - no status messages
+                download_info = {
+                    'query': video_url,
+                    'ctx': ctx,
+                    'status_msg': None,  # No status message for playlist items
+                    'view': None,  # No cancel button for playlist items
+                    'is_from_playlist': True  # Mark as playlist item
+                }
+                
+                # Add to download queue
+                await self.download_queue.put(download_info)
+                print(f"Added playlist video to queue: {entry['title']}")
+                
+        except Exception as e:
+            print(f"Error queueing playlist videos: {str(e)}")
+            if not is_from_playlist:  # Only show error for the initial playlist add
+                error_embed = self.create_embed(
+                    "Error", 
+                    "Failed to queue some playlist videos. Please try again.", 
+                    color=0xe74c3c
+                )
+                await ctx.send(embed=error_embed)
 
 # Global variable for music bot instance
 music_bot = None
@@ -920,22 +1118,71 @@ async def on_ready():
 
 @bot.command(name='play')
 async def play(ctx, *, query):
-    """Download and play a song from YouTube"""
+    """Play a song in the voice channel"""
     try:
-        if not music_bot:
-            raise Exception("Music bot not initialized")
+        # Check if the user is in a voice channel
+        if not ctx.author.voice:
+            embed = music_bot.create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c)
+            await ctx.send(embed=embed)
+            return
 
-        # Start the command processor if it's not running
-        await music_bot.start_command_processor()
+        # Create voice client if not exists
+        if not ctx.guild.voice_client:
+            await ctx.author.voice.channel.connect()
+        elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
+            await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
 
-        # Add the command to the queue
-        print(f"Adding command to queue: !play {query}")
-        await music_bot.command_queue.put((ctx, query))
+        music_bot.voice_client = ctx.guild.voice_client
+
+        # Create a unique processing message for this request
+        processing_embed = music_bot.create_embed(
+            "Processing",
+            f"Fetching and downloading the request:\n{query}",
+            color=0x3498db
+        )
+        view = CancelButton(music_bot)
+        status_msg = await ctx.send(embed=processing_embed, view=view)
+        view.message = status_msg
+
+        # Download and queue the song
+        async with music_bot.queue_lock:
+            result = await music_bot.download_song(query, status_msg=status_msg, view=view)
+            if not result:
+                return
+
+            # Add the song to the queue
+            music_bot.queue.append({
+                'title': result['title'],
+                'url': result['url'],
+                'file_path': result['file_path'],
+                'thumbnail': result.get('thumbnail'),
+                'ctx': ctx,
+                'is_stream': result.get('is_stream', False),
+                'is_from_playlist': result.get('is_from_playlist', False)
+            })
+
+            # If not currently playing, start playing
+            if not music_bot.is_playing and not music_bot.waiting_for_song:
+                await music_bot.process_queue()
+            else:
+                # Only send "Added to queue" message if it's not from a playlist
+                if not result.get('is_from_playlist'):
+                    queue_pos = len(music_bot.queue)
+                    queue_embed = music_bot.create_embed(
+                        "Added to Queue",
+                        f"[🎵 {result['title']}]({result['url']})\nPosition in queue: {queue_pos}",
+                        color=0x3498db,
+                        thumbnail_url=result.get('thumbnail')
+                    )
+                    queue_msg = await ctx.send(embed=queue_embed)
+                    # Store the queue message
+                    music_bot.queued_messages[result['url']] = queue_msg
 
     except Exception as e:
-        print(f"Error queueing play command: {e}")
-        embed = music_bot.create_embed("Error", f"Failed to queue command: {str(e)}", color=0xe74c3c)
-        await ctx.send(embed=embed)
+        error_msg = f"Error playing song: {str(e)}"
+        print(error_msg)
+        error_embed = music_bot.create_embed("Error", error_msg, color=0xff0000)
+        await ctx.send(embed=error_embed)
 
 @bot.command(name='pause')
 async def pause(ctx):
