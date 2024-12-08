@@ -436,7 +436,9 @@ class MusicBot:
             # Clear the queue
             self.clear_queue()
             self.current_song = None
-            self.update_activity()
+            
+            # Reset the bot's status
+            await self.bot.change_presence(activity=discord.Game(name="nothing! use !play "))
 
             # Send confirmation message
             await ctx.send(embed=self.create_embed("Stopped", "Music stopped and queue cleared", color=0xe74c3c))
@@ -577,7 +579,7 @@ class MusicBot:
             self.current_song = None
             self.update_activity()
             # Reset activity when no more songs
-            await self.bot.change_presence(activity=discord.Game(name="nothing! use !play"))
+            await self.bot.change_presence(activity=discord.Game(name="nothing! use !play "))
             if self.download_queue.empty():  # Only disconnect if nothing left to download
                 if self.voice_client and self.voice_client.is_connected():
                     await self.voice_client.disconnect()
@@ -675,17 +677,17 @@ class MusicBot:
                                 thumbnail_url=current_song_info.get('thumbnail')
                             )
                             await current_message.edit(embed=finished_embed)
+                            # Reset states after updating message
+                            self.is_playing = False
+                            self.waiting_for_song = False
+                            self.current_song = None
+                            self.now_playing_message = None
+                            # Reset the bot's status and process next song
+                            activity = discord.Game(name="nothing! use !play ")
+                            await self.bot.change_presence(activity=activity)
+                            await self.process_queue()
                     except Exception as e:
                         print(f"Error updating finished message: {str(e)}")
-                    
-                    # Reset states after updating message
-                    self.is_playing = False
-                    self.waiting_for_song = False
-                    self.current_song = None
-                    self.now_playing_message = None
-                    
-                    # Process next song if any
-                    await self.process_queue()
                 
                 # Schedule the message update
                 asyncio.run_coroutine_threadsafe(update_now_playing(), self.bot_loop)
@@ -1470,6 +1472,9 @@ async def on_ready():
     """Called when the bot is ready"""
     global music_bot
     
+    # Set initial status immediately
+    await bot.change_presence(activity=discord.Game(name="nothing! use !play "))
+    
     print(f"Logged in as {bot.user.name}")
     print(f"Bot ID: {bot.user.id}")
     print("------")
@@ -1483,7 +1488,7 @@ async def on_ready():
         check_restart_time.start()
         print("Daily restart checker started")
         
-    await bot.change_presence(activity=discord.Game(name="nothing! use !play"))
+    await asyncio.sleep(1)
 
 @bot.command(name='play')
 async def play(ctx, *, query):
