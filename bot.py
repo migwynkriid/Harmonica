@@ -1307,20 +1307,12 @@ class MusicBot:
     async def _queue_playlist_videos(self, entries, ctx, is_from_playlist=False, status_msg=None, ydl_opts=None, playlist_title=None, playlist_url=None, total_videos=None):
         """Queue the remaining videos from a playlist for background download"""
         try:
+            processed_videos = 0
             for i, entry in enumerate(entries, start=2):  # Start from 2 since we already downloaded the first video
                 if not entry:
                     continue
 
                 try:
-                    # Update status message to show current download progress
-                    if status_msg and playlist_title and playlist_url:
-                        progress_embed = self.create_embed(
-                            "Adding Playlist",
-                            f"[🎵 {playlist_title}]({playlist_url})\nDownloading song {i}/{total_videos}",
-                            color=0x3498db
-                        )
-                        await status_msg.edit(embed=progress_embed)
-
                     # Download the video
                     with yt_dlp.YoutubeDL(ydl_opts or YTDL_OPTIONS) as ydl:
                         video_info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(
@@ -1346,29 +1338,50 @@ class MusicBot:
 
                     # Add to queue
                     self.queue.append(song_entry)
+                    processed_videos += 1
 
                 except Exception as e:
                     print(f"Error downloading playlist video {i}: {str(e)}")
                     continue
 
-            # Update final status message
+            # Update final status message with playlist summary
             if status_msg and playlist_title and playlist_url:
-                final_embed = self.create_embed(
-                    "Playlist Added",
-                    f"[🎵 {playlist_title}]({playlist_url})\nAll {total_videos} songs have been processed",
-                    color=0x00ff00
-                )
-                await status_msg.edit(embed=final_embed)
+                try:
+                    final_embed = self.create_embed(
+                        "Playlist Added",
+                        f"[🎵 {playlist_title}]({playlist_url})\nAdded {processed_videos}/{total_videos} songs to queue",
+                        color=0x00ff00
+                    )
+                    await status_msg.edit(embed=final_embed, view=None)
+                    
+                    # Delete the status message after a short delay to give users time to read
+                    await asyncio.sleep(5)
+                    try:
+                        await status_msg.delete()
+                    except:
+                        pass  # Ignore if message can't be deleted
+                except Exception as e:
+                    print(f"Error updating final playlist status message: {str(e)}")
 
         except Exception as e:
             print(f"Error in _queue_playlist_videos: {str(e)}")
             if status_msg:
-                error_embed = self.create_embed(
-                    "Error",
-                    f"Failed to process some playlist videos: {str(e)}",
-                    color=0xe74c3c
-                )
-                await status_msg.edit(embed=error_embed)
+                try:
+                    error_embed = self.create_embed(
+                        "Error",
+                        f"Failed to process playlist videos: {str(e)}",
+                        color=0xe74c3c
+                    )
+                    await status_msg.edit(embed=error_embed)
+                    
+                    # Delete the error message after a short delay
+                    await asyncio.sleep(5)
+                    try:
+                        await status_msg.delete()
+                    except:
+                        pass  # Ignore if message can't be deleted
+                except Exception as error_msg_e:
+                    print(f"Error updating error status message: {str(error_msg_e)}")
 
     async def play(self, ctx, *, query):
         """Play a song in the voice channel"""
