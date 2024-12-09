@@ -47,7 +47,6 @@ print = custom_print
 # Constants
 DOWNLOADS_DIR = os.path.join(os.getcwd(), 'downloads')
 OWNER_ID = 220301180562046977  # Add owner ID constant
-RESTART_HOUR = 3  # 3 AM EST
 
 # Create downloads directory if it doesn't exist
 if not os.path.exists(DOWNLOADS_DIR):
@@ -1531,12 +1530,6 @@ async def on_ready():
     if not music_bot:
         music_bot = MusicBot()
         await music_bot.setup(bot)
-        
-        # Start the daily restart checker
-        check_restart_time.start()
-        print("Daily restart checker started")
-    
-    await asyncio.sleep(1)
 
 @bot.command(name='play')
 async def play(ctx, *, query):
@@ -1848,34 +1841,6 @@ async def restart(ctx):
         restart_bot()
     except Exception as e:
         await ctx.send(embed=discord.Embed(title="Error", description=f"Failed to restart: {str(e)}", color=0xe74c3c))
-
-@tasks.loop(minutes=1)
-async def check_restart_time():
-    """Check if it's time for daily restart"""
-    # Convert current time to EST
-    est_time = datetime.now(pytz.timezone('America/New_York'))
-    
-    # Check if it's 3 AM EST
-    if est_time.hour == RESTART_HOUR and est_time.minute == 0:
-        print(f"It's {RESTART_HOUR}:00 AM EST - initiating scheduled restart")
-        await auto_restart()
-
-async def auto_restart():
-    """Perform the restart operation"""
-    print("Performing scheduled restart...")
-    try:
-        # Clear the downloads folder before restarting
-        clear_downloads_folder()
-        
-        # Disconnect from voice if connected
-        if music_bot and music_bot.voice_client:
-            await music_bot.voice_client.disconnect()
-        
-        # Schedule the restart
-        await bot.close()
-        restart_bot()
-    except Exception as e:
-        print(f"Error during scheduled restart: {str(e)}")
 
 # Run the bot
 bot.run(os.getenv('DISCORD_TOKEN'))
