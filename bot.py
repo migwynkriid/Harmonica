@@ -1834,5 +1834,26 @@ async def restart(ctx):
     except Exception as e:
         await ctx.send(embed=discord.Embed(title="Error", description=f"Failed to restart: {str(e)}", color=0xe74c3c))
 
+@bot.event
+async def on_disconnect():
+    """Handle bot disconnection and attempt to reconnect every minute."""
+    reconnect_interval = 60  # seconds
+    attempt = 1
+    try:
+        print("Bot disconnected from Discord. Starting reconnection attempts...")
+        while not bot.is_closed():
+            try:
+                print(f"Reconnection attempt #{attempt}...")
+                await bot.connect(reconnect=True)
+                print("Reconnected successfully!")
+                break
+            except Exception as e:
+                print(f"Reconnection attempt #{attempt} failed: {e}")
+                print(f"Next attempt in {reconnect_interval} seconds...")
+                await asyncio.sleep(reconnect_interval)
+                attempt += 1
+    except Exception as final_error:
+        print(f"Critical error during reconnection process: {final_error}")
+
 # Run the bot
 bot.run(os.getenv('DISCORD_TOKEN'))
