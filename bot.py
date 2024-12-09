@@ -1517,6 +1517,9 @@ async def on_ready():
     """Called when the bot is ready"""
     global music_bot
     
+    # Clear downloads folder on startup
+    clear_downloads_folder()
+    
     # Set initial status immediately
     await bot.change_presence(activity=discord.Game(name="nothing! use !play "))
     
@@ -1532,7 +1535,7 @@ async def on_ready():
         # Start the daily restart checker
         check_restart_time.start()
         print("Daily restart checker started")
-        
+    
     await asyncio.sleep(1)
 
 @bot.command(name='play')
