@@ -70,6 +70,34 @@ intents.message_content = True
 intents.messages = True
 bot = commands.Bot(command_prefix='!', intents=intents, case_insensitive=True)
 
+# Add error handler for CommandNotFound
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        return  # Silently ignore command not found errors
+    # For other errors, print them to the console
+    print(f"Error: {str(error)}")
+
+# Add voice state update handler
+@bot.event
+async def on_voice_state_update(member, before, after):
+    global music_bot
+    if not music_bot or not music_bot.voice_client:
+        return
+
+    # Get the voice channel the bot is in
+    bot_voice_channel = music_bot.voice_client.channel
+    if not bot_voice_channel:
+        return
+
+    # Count members in the channel (excluding bots)
+    members_in_channel = sum(1 for m in bot_voice_channel.members if not m.bot)
+
+    # If no human members in the channel, disconnect the bot
+    if members_in_channel == 0:
+        print(f"No users in voice channel {bot_voice_channel.name}, disconnecting bot")
+        await music_bot.leave_voice_channel()
+
 # YouTube DL options
 YTDL_OPTIONS = {
     'format': 'bestaudio[acodec=opus][abr<=96]/bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio',
@@ -949,74 +977,55 @@ class MusicBot:
                     if status_msg:
                         playlist_embed = self.create_embed(
                             "Adding Playlist",
-                            f"[🎵 {playlist_title}]({playlist_url})\nAdding {total_videos} songs to queue...",
+                            f"[🎵 {playlist_title}]({playlist_url})\nDownloading first song...",
                             color=0x3498db,
                             thumbnail_url=video_thumbnail
                         )
                         await status_msg.edit(embed=playlist_embed, view=None)
 
-                    # Process each video in the playlist
-                    first_song = None
-                    for i, entry in enumerate(info['entries']):
-                        if not entry:
-                            continue
-                            
-                        try:
-                            # Download each video in the playlist
-                            video_info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(
-                                entry['webpage_url'] if entry.get('webpage_url') else entry['url'],
-                                download=True
-                            ))
+                    # Download only the first video initially
+                    first_entry = info['entries'][0]
+                    if not first_entry:
+                        raise Exception("Failed to get first video from playlist")
 
-                            # Sometimes yt-dlp returns a playlist format even for single videos
-                            if video_info.get('_type') == 'playlist':
-                                video_info = video_info['entries'][0]
+                    # Download first video
+                    first_video_info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(
+                        first_entry['webpage_url'] if first_entry.get('webpage_url') else first_entry['url'],
+                        download=True
+                    ))
 
-                            # Get the file path
-                            file_path = os.path.join(self.downloads_dir, f"{video_info['id']}.{video_info.get('ext', 'opus')}")
+                    if first_video_info.get('_type') == 'playlist':
+                        first_video_info = first_video_info['entries'][0]
 
-                            # Update status message to show progress
-                            if status_msg:
-                                progress_embed = self.create_embed(
-                                    "Adding Playlist",
-                                    f"[🎵 {playlist_title}]({playlist_url})\nDownloading song {i+1}/{total_videos}: {video_info['title']}",
-                                    color=0x3498db
-                                )
-                                await status_msg.edit(embed=progress_embed)
+                    # Get the file path for first video
+                    first_file_path = os.path.join(self.downloads_dir, f"{first_video_info['id']}.{first_video_info.get('ext', 'opus')}")
 
-                            # Create song entry
-                            song_entry = {
-                                'title': video_info['title'],
-                                'url': video_info['webpage_url'] if video_info.get('webpage_url') else video_info['url'],
-                                'file_path': file_path,
-                                'thumbnail': video_info.get('thumbnail'),
-                                'is_from_playlist': True,
-                                'ctx': ctx
-                            }
+                    # Create first song entry
+                    first_song = {
+                        'title': first_video_info['title'],
+                        'url': first_video_info['webpage_url'] if first_video_info.get('webpage_url') else first_video_info['url'],
+                        'file_path': first_file_path,
+                        'thumbnail': first_video_info.get('thumbnail'),
+                        'is_from_playlist': True,
+                        'ctx': ctx
+                    }
 
-                            # Store first song to return it
-                            if i == 0:
-                                first_song = song_entry
-                            else:
-                                # Add other songs to queue
-                                self.queue.append(song_entry)
+                    # Queue the remaining videos for background download
+                    remaining_entries = info['entries'][1:]
+                    asyncio.create_task(self._queue_playlist_videos(
+                        entries=remaining_entries,
+                        ctx=ctx,
+                        is_from_playlist=True,
+                        status_msg=status_msg,
+                        ydl_opts=ydl_opts,
+                        playlist_title=playlist_title,
+                        playlist_url=playlist_url,
+                        total_videos=total_videos
+                    ))
 
-                        except Exception as e:
-                            print(f"Error downloading playlist song {i+1}: {str(e)}")
-                            continue
+                    # Return the first song to start playing immediately
+                    return first_song
 
-                    # Delete the playlist processing message
-                    if status_msg:
-                        try:
-                            await status_msg.delete()
-                        except Exception as e:
-                            print(f"Error deleting playlist message: {e}")
-
-                    # Return the first song for immediate playback
-                    if first_song:
-                        return first_song
-                    else:
-                        raise Exception("Failed to download any songs from the playlist")
                 else:
                     # Download the video
                     video_info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(
@@ -1277,6 +1286,72 @@ class MusicBot:
             print(f"Error downloading Spotify album: {str(e)}")
             raise
 
+    async def _queue_playlist_videos(self, entries, ctx, is_from_playlist=False, status_msg=None, ydl_opts=None, playlist_title=None, playlist_url=None, total_videos=None):
+        """Queue the remaining videos from a playlist for background download"""
+        try:
+            for i, entry in enumerate(entries, start=2):  # Start from 2 since we already downloaded the first video
+                if not entry:
+                    continue
+
+                try:
+                    # Update status message to show current download progress
+                    if status_msg and playlist_title and playlist_url:
+                        progress_embed = self.create_embed(
+                            "Adding Playlist",
+                            f"[🎵 {playlist_title}]({playlist_url})\nDownloading song {i}/{total_videos}",
+                            color=0x3498db
+                        )
+                        await status_msg.edit(embed=progress_embed)
+
+                    # Download the video
+                    with yt_dlp.YoutubeDL(ydl_opts or YTDL_OPTIONS) as ydl:
+                        video_info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(
+                            entry['webpage_url'] if entry.get('webpage_url') else entry['url'],
+                            download=True
+                        ))
+
+                    if video_info.get('_type') == 'playlist':
+                        video_info = video_info['entries'][0]
+
+                    # Get the file path
+                    file_path = os.path.join(self.downloads_dir, f"{video_info['id']}.{video_info.get('ext', 'opus')}")
+
+                    # Create song entry
+                    song_entry = {
+                        'title': video_info['title'],
+                        'url': video_info['webpage_url'] if video_info.get('webpage_url') else video_info['url'],
+                        'file_path': file_path,
+                        'thumbnail': video_info.get('thumbnail'),
+                        'is_from_playlist': is_from_playlist,
+                        'ctx': ctx
+                    }
+
+                    # Add to queue
+                    self.queue.append(song_entry)
+
+                except Exception as e:
+                    print(f"Error downloading playlist video {i}: {str(e)}")
+                    continue
+
+            # Update final status message
+            if status_msg and playlist_title and playlist_url:
+                final_embed = self.create_embed(
+                    "Playlist Added",
+                    f"[🎵 {playlist_title}]({playlist_url})\nAll {total_videos} songs have been processed",
+                    color=0x00ff00
+                )
+                await status_msg.edit(embed=final_embed)
+
+        except Exception as e:
+            print(f"Error in _queue_playlist_videos: {str(e)}")
+            if status_msg:
+                error_embed = self.create_embed(
+                    "Error",
+                    f"Failed to process some playlist videos: {str(e)}",
+                    color=0xe74c3c
+                )
+                await status_msg.edit(embed=error_embed)
+
     async def play(self, ctx, *, query):
         """Play a song in the voice channel"""
         try:
@@ -1418,36 +1493,6 @@ class MusicBot:
             self.current_command_msg = await ctx.send(embed=embed, view=view)
             self.current_command_author = ctx.author_id
             return self.current_command_msg
-
-    async def _queue_playlist_videos(self, entries, ctx, is_from_playlist=False):
-        """Queue the remaining videos from a playlist"""
-        try:
-            for entry in entries:
-                # Create a new download info for each video
-                video_url = f"https://youtube.com/watch?v={entry['id']}"
-                
-                # Create download info for playlist items - no status messages
-                download_info = {
-                    'query': video_url,
-                    'ctx': ctx,
-                    'status_msg': None,  # No status message for playlist items
-                    'view': None,  # No cancel button for playlist items
-                    'is_from_playlist': True  # Mark as playlist item
-                }
-                
-                # Add to download queue
-                await self.download_queue.put(download_info)
-                print(f"Added playlist video to queue: {entry['title']}")
-                
-        except Exception as e:
-            print(f"Error queueing playlist videos: {str(e)}")
-            if not is_from_playlist:  # Only show error for the initial playlist add
-                error_embed = self.create_embed(
-                    "Error", 
-                    "Failed to queue some playlist videos. Please try again.", 
-                    color=0xe74c3c
-                )
-                await ctx.send(embed=error_embed)
 
 # Global variable for music bot instance
 music_bot = None
