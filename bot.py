@@ -564,7 +564,7 @@ class MusicBot:
                         
                         # Automatically restart the bot if voice connection fails
                         try:
-                            await ctx.send("⚠️ Voice connection lost. Automatically restarting bot...")
+                            await ctx.send("⚠️ Network error detected!. Automatically restarting bot...")
                             await restart(ctx)
                         except Exception as e:
                             print(f"Error during automatic restart in play_next: {str(e)}")
