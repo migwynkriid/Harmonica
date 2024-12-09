@@ -19,6 +19,19 @@ from pytz import timezone  # Import timezone from pytz
 import pytz  # Import pytz for timezone handling
 import logging  # Add this import if not already present
 
+# Set up logging to capture all output
+file_handler = logging.FileHandler('log.txt', encoding='utf-8')
+console_handler = logging.StreamHandler(sys.stdout)
+
+# Check if handlers are already added to avoid duplication
+if not logging.getLogger().hasHandlers():
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s [%(levelname)s] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[file_handler, console_handler]
+    )
+
 # Configure logging to suppress the ffmpeg process termination message
 logging.getLogger('discord.player').setLevel(logging.WARNING)
 
@@ -109,14 +122,19 @@ YTDL_OPTIONS = {
     'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
-    'no_warnings': True,
     'default_search': 'ytsearch',
     'source_address': '0.0.0.0',
-    'quiet': True,
-    'no_warnings': True,
     'extract_flat': False,
     'force_generic_extractor': False,
+    'verbose': True,  # Enable verbose output
+    'logger': logging.getLogger('yt-dlp')  # Use our logging system
 }
+
+# Configure yt-dlp logger
+yt_dlp_logger = logging.getLogger('yt-dlp')
+yt_dlp_logger.setLevel(logging.DEBUG)  # Set to DEBUG to capture all messages
+yt_dlp_logger.addHandler(file_handler)
+yt_dlp_logger.addHandler(console_handler)
 
 # FFmpeg options (simplified, only used for streaming)
 FFMPEG_OPTIONS = {
@@ -1744,37 +1762,11 @@ async def queue(ctx):
 
 @bot.command(name='log')
 async def log(ctx):
-    """Display the last 100 console log entries"""
     try:
-        if not log_buffer:
-            await ctx.send("No logs available.")
-            return
-
-        # Join all log entries with newlines
-        logs = "\n".join(list(log_buffer))
-        
-        # Split logs into chunks of 1900 characters (leaving room for code block formatting)
-        chunks = []
-        while logs:
-            if len(logs) <= 1900:
-                chunks.append(logs)
-                break
-            
-            # Find the last newline before 1900 characters
-            split_index = logs[:1900].rfind('\n')
-            if split_index == -1:
-                split_index = 1900
-            
-            chunks.append(logs[:split_index])
-            logs = logs[split_index:].lstrip()
-        
-        # Send each chunk as a separate message
-        for chunk in chunks:
-            await ctx.send(f"```\n{chunk}\n```")
-            
+        # Upload the log.txt file to the chat
+        await ctx.send(file=discord.File('log.txt'))
     except Exception as e:
-        print(f"Error sending logs: {str(e)}")
-        await ctx.send("An error occurred while sending the logs.")
+        await ctx.send(f"Error uploading log file: {str(e)}")
 
 @bot.command(name='leave')
 async def leave(ctx):
