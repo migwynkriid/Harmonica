@@ -561,62 +561,67 @@ class MusicBot:
                     if not connected:
                         print("Failed to reconnect to voice channel")
                         self.voice_client = None
+                        
+                        # Automatically restart the bot if voice connection fails
+                        try:
+                            await ctx.send("⚠️ Voice connection lost. Automatically restarting bot...")
+                            await restart(ctx)
+                        except Exception as e:
+                            print(f"Error during automatic restart in play_next: {str(e)}")
                         return
-
-                # If there's a previous Now Playing message, update it to Finished Playing
-                if self.now_playing_message:
-                    try:
-                        finished_embed = self.create_embed(
-                            "Finished Playing",
-                            f"[🎵 {previous_song['title']}]({previous_song['url']})",
-                            color=0x808080,  # Gray color for finished
-                            thumbnail_url=previous_song.get('thumbnail')
-                        )
-                        await self.now_playing_message.edit(embed=finished_embed)
-                    except Exception as e:
-                        print(f"Error updating previous now playing message: {str(e)}")
-
-                # Send Now Playing message and store it
-                now_playing_embed = self.create_embed(
-                    "Now Playing",
-                    f"[🎵 {self.current_song['title']}]({self.current_song['url']})",
-                    color=0x00ff00,
-                    thumbnail_url=self.current_song.get('thumbnail')
-                )
-                self.now_playing_message = await ctx.send(embed=now_playing_embed)
-                
-                # Update bot's activity to show current song
-                await self.bot.change_presence(activity=discord.Game(name=f"{self.current_song['title']}"))
-                
-                # Reset current message tracking for next command
-                self.current_command_msg = None
-                self.current_command_author = None
-
-                # Play the audio
-                try:
-                    if self.voice_client and self.voice_client.is_connected():
-                        # Add reconnect options for streams
-                        ffmpeg_options = {
-                            'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
-                        }
-                        # For streams, use the URL directly
-                        audio_source = discord.FFmpegPCMAudio(
-                            self.current_song['file_path'],
-                            **ffmpeg_options
-                        )
-                        self.voice_client.play(
-                            audio_source,
-                            after=lambda e: asyncio.run_coroutine_threadsafe(
-                                self.after_playing_coro(e, ctx), 
-                                self.bot_loop
+                else:
+                    # If there's a previous Now Playing message, update it to Finished Playing
+                    if self.now_playing_message:
+                        try:
+                            finished_embed = self.create_embed(
+                                "Finished Playing",
+                                f"[🎵 {previous_song['title']}]({previous_song['url']})",
+                                color=0x808080,  # Gray color for finished
+                                thumbnail_url=previous_song.get('thumbnail')
                             )
-                        )
-                    else:
-                        print("Voice client disconnected before playback could start")
-                except Exception as e:
-                    print(f"Error starting playback: {str(e)}")
-                    if len(self.queue) > 0:
-                        await self.play_next(ctx)
+                            await self.now_playing_message.edit(embed=finished_embed)
+                        except Exception as e:
+                            print(f"Error updating previous now playing message: {str(e)}")
+
+                    # Send Now Playing message and store it
+                    now_playing_embed = self.create_embed(
+                        "Now Playing",
+                        f"[🎵 {self.current_song['title']}]({self.current_song['url']})",
+                        color=0x00ff00,
+                        thumbnail_url=self.current_song.get('thumbnail')
+                    )
+                    self.now_playing_message = await ctx.send(embed=now_playing_embed)
+                    
+                    # Update bot's activity to show current song
+                    await self.bot.change_presence(activity=discord.Game(name=f"{self.current_song['title']}"))
+                    
+                    # Reset current message tracking for next command
+                    self.current_command_msg = None
+                    self.current_command_author = None
+
+                    # Play the audio
+                    try:
+                        if self.voice_client and self.voice_client.is_connected():
+                            # Add reconnect options for streams
+                            ffmpeg_options = {
+                                'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
+                            }
+                            # For streams, use the URL directly
+                            audio_source = discord.FFmpegPCMAudio(
+                                self.current_song['file_path'],
+                                **ffmpeg_options
+                            )
+                            self.voice_client.play(
+                                audio_source,
+                                after=lambda e: asyncio.run_coroutine_threadsafe(
+                                    self.after_playing_coro(e, ctx), 
+                                    self.bot_loop
+                                )
+                            )
+                    except Exception as e:
+                        print(f"Error starting playback: {str(e)}")
+                        if len(self.queue) > 0:
+                            await self.play_next(ctx)
             except Exception as e:
                 print(f"Error in play_next: {str(e)}")
                 if len(self.queue) > 0:
@@ -656,6 +661,20 @@ class MusicBot:
 
             # Store the context for future use
             self.last_known_ctx = ctx
+
+            # Verify voice client connection
+            if not self.voice_client or not self.voice_client.is_connected():
+                print("Not connected to voice during process_queue")
+                try:
+                    # Attempt to send restart message
+                    if ctx:
+                        await ctx.send("⚠️ Voice connection lost. Automatically restarting bot...")
+                    
+                    # Trigger bot restart
+                    await restart(ctx)
+                except Exception as e:
+                    print(f"Error during automatic restart in process_queue: {str(e)}")
+                return
 
             # Delete the "Added to Queue" message if it exists
             if song['url'] in self.queued_messages:
@@ -1700,42 +1719,19 @@ async def stop(ctx):
         music_bot.clear_queue()
         if music_bot.voice_client and music_bot.voice_client.is_connected():
             await music_bot.voice_client.disconnect()
-        await ctx.send(
-            embed=music_bot.create_embed(
-                "Stopped ",
-                "Stopped playback and cleared queue.",
-                color=0x95a5a6
-            )
-        )
+        await ctx.send(embed=music_bot.create_embed("Stopped", "Music stopped and queue cleared", color=0xe74c3c))
+
     except Exception as e:
-        await ctx.send(
-            embed=music_bot.create_embed(
-                "Error",
-                f"An error occurred while stopping: {str(e)}",
-                color=0xe74c3c
-            )
-        )
+        await ctx.send(embed=music_bot.create_embed("Error", f"An error occurred while stopping: {str(e)}", color=0xe74c3c))
 
 @bot.command(name='skip')
 async def skip(ctx):
     """Skip the current song"""
     if music_bot.voice_client and (music_bot.voice_client.is_playing() or music_bot.voice_client.is_paused()):
         music_bot.voice_client.stop()
-        await ctx.send(
-            embed=music_bot.create_embed(
-                "Skipped ",
-                "Skipped the current song.",
-                color=0x3498db
-            )
-        )
+        await ctx.send(embed=music_bot.create_embed("Skipped", "Skipped the current song", color=0x3498db))
     else:
-        await ctx.send(
-            embed=music_bot.create_embed(
-                "Error",
-                "Nothing is playing to skip.",
-                color=0xe74c3c
-            )
-        )
+        await ctx.send(embed=music_bot.create_embed("Error", "Nothing is playing to skip", color=0xe74c3c))
 
 @bot.command(name='queue', aliases=['playing'])
 async def queue(ctx):
@@ -1789,25 +1785,13 @@ async def leave(ctx):
         await music_bot.leave_voice_channel()
         await ctx.send(embed=music_bot.create_embed("Left Channel", "Disconnected from voice channel", color=0x3498db))
     else:
-        await ctx.send(
-            embed=music_bot.create_embed(
-                "Error",
-                "I'm not in a voice channel.",
-                color=0xe74c3c
-            )
-        )
+        await ctx.send(embed=music_bot.create_embed("Error", "I'm not in a voice channel", color=0xe74c3c))
 
 @bot.command(name='loop', aliases=['repeat'])
 async def loop(ctx):
     """Toggle loop mode for the current song"""
     if not music_bot.current_song:
-        await ctx.send(
-            embed=music_bot.create_embed(
-                "Error",
-                "No song is currently playing!",
-                color=0xe74c3c
-            )
-        )
+        await ctx.send(embed=music_bot.create_embed("Error", "No song is currently playing!", color=0xe74c3c))
         return
 
     # Toggle loop mode
@@ -1817,13 +1801,7 @@ async def loop(ctx):
     status = "enabled" if music_bot.loop_mode else "disabled"
     color = 0x2ecc71 if music_bot.loop_mode else 0xe74c3c
     
-    await ctx.send(
-        embed=music_bot.create_embed(
-            f"Loop Mode {status.title()}",
-            f"[🎵 {music_bot.current_song['title']}]({music_bot.current_song['url']}) will {'now' if music_bot.loop_mode else 'no longer'} be looped",
-            color=color
-        )
-    )
+    await ctx.send(embed=music_bot.create_embed(f"Loop Mode {status.title()}", f"[🎵 {music_bot.current_song['title']}]({music_bot.current_song['url']}) will {'now' if music_bot.loop_mode else 'no longer'} be looped", color=color))
 
 @bot.command(name='restart')
 async def restart(ctx):
