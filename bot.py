@@ -127,7 +127,8 @@ YTDL_OPTIONS = {
     'extract_flat': False,
     'force_generic_extractor': False,
     'verbose': True,  # Enable verbose output
-    'logger': logging.getLogger('yt-dlp')  # Use our logging system
+    'logger': logging.getLogger('yt-dlp'),  # Use our logging system
+    'ignoreerrors': True  # Add ignore_errors flag
 }
 
 # Configure yt-dlp logger
