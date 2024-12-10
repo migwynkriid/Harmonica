@@ -1826,5 +1826,23 @@ async def restart(ctx):
     except Exception as e:
         await ctx.send(embed=discord.Embed(title="Error", description=f"Failed to restart: {str(e)}", color=0xe74c3c))
 
+@bot.command(name='logclear')
+async def logclear(ctx):
+    """Clear the log file - Owner only command"""
+    if ctx.author.id != OWNER_ID:  # Owner ID check
+        await ctx.send(embed=discord.Embed(title="Error", description="This command is only available to the bot owner.", color=0xe74c3c))
+        return
+
+    try:
+        # Clear the log file
+        with open('log.txt', 'w', encoding='utf-8') as f:
+            f.write('---')  # Write empty string to clear the file
+        
+        # Send success message
+        await ctx.send(embed=discord.Embed(title="Success", description="Log file has been cleared.", color=0x2ecc71))
+        print("Log file cleared by owner")
+    except Exception as e:
+        await ctx.send(embed=discord.Embed(title="Error", description=f"Failed to clear log file: {str(e)}", color=0xe74c3c))
+
 # Run the bot
 bot.run(os.getenv('DISCORD_TOKEN'))
