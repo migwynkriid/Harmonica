@@ -23,14 +23,20 @@ import logging  # Add this import if not already present
 file_handler = logging.FileHandler('log.txt', encoding='utf-8')
 console_handler = logging.StreamHandler(sys.stdout)
 
-# Check if handlers are already added to avoid duplication
-if not logging.getLogger().hasHandlers():
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='%(asctime)s [%(levelname)s] %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
-        handlers=[file_handler, console_handler]
-    )
+# Configure root logger to capture all logs
+logging.basicConfig(
+    level=logging.DEBUG,  # Capture all levels of logs
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[file_handler, console_handler]
+)
+
+# Set logging level for specific libraries
+logging.getLogger('discord').setLevel(logging.DEBUG)  # Capture all discord logs
+logging.getLogger('yt-dlp').setLevel(logging.DEBUG)    # Capture all yt-dlp logs
+
+# Optionally suppress specific loggers if needed
+logging.getLogger('discord.player').setLevel(logging.WARNING)  # Suppress player logs if desired
 
 # Configure logging to suppress the ffmpeg process termination message
 logging.getLogger('discord.player').setLevel(logging.WARNING)
@@ -130,12 +136,6 @@ YTDL_OPTIONS = {
     'logger': logging.getLogger('yt-dlp'),  # Use our logging system
     'ignoreerrors': True  # Add ignore_errors flag
 }
-
-# Configure yt-dlp logger
-yt_dlp_logger = logging.getLogger('yt-dlp')
-yt_dlp_logger.setLevel(logging.DEBUG)  # Set to DEBUG to capture all messages
-yt_dlp_logger.addHandler(file_handler)
-yt_dlp_logger.addHandler(console_handler)
 
 # FFmpeg options (simplified, only used for streaming)
 FFMPEG_OPTIONS = {
