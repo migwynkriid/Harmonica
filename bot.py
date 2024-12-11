@@ -124,6 +124,7 @@ YTDL_OPTIONS = {
     'concurrent_fragments': 4,
     'audioformat': 'opus',
     'preferredcodec': 'opus',
+    'abort_on_unavailable_fragments': True,
     'nopostoverwrites': True,
     'windowsfilenames': True,
     'restrictfilenames': True,
