@@ -118,12 +118,10 @@ async def on_voice_state_update(member, before, after):
 
 # YouTube DL options
 YTDL_OPTIONS = {
-    'format': 'bestaudio[acodec=opus][abr<=96]/bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio',
+    'format': 'bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio',
     'outtmpl': '%(id)s.%(ext)s',  # Simplified template
     'extract_audio': True,
     'concurrent_fragments': 4,
-    'audioformat': 'opus',
-    'preferredcodec': 'opus',
     'abort_on_unavailable_fragments': True,
     'nopostoverwrites': True,
     'windowsfilenames': True,
