@@ -121,6 +121,7 @@ YTDL_OPTIONS = {
     'format': 'bestaudio[acodec=opus][abr<=96]/bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio',
     'outtmpl': '%(id)s.%(ext)s',  # Simplified template
     'extract_audio': True,
+    'concurrent_fragments': 4,
     'audioformat': 'opus',
     'preferredcodec': 'opus',
     'nopostoverwrites': True,
