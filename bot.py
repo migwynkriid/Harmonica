@@ -1866,5 +1866,25 @@ async def logclear(ctx):
     except Exception as e:
         await ctx.send(embed=discord.Embed(title="Error", description=f"Failed to clear log file: {str(e)}", color=0xe74c3c))
 
+@bot.command(name='nowplaying', aliases=['np'])
+async def nowplaying(ctx):
+    """Show the currently playing song"""
+    if not music_bot:
+        return
+
+    if not music_bot.current_song:
+        await ctx.send("No song is currently playing.")
+        return
+
+    # Create embed with current song info
+    embed = music_bot.create_embed(
+        "Now Playing 🎵",
+        f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})",
+        color=0x3498db,
+        thumbnail_url=music_bot.current_song.get('thumbnail')
+    )
+
+    await ctx.send(embed=embed)
+
 # Run the bot
 bot.run(os.getenv('DISCORD_TOKEN'))
