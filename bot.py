@@ -89,12 +89,96 @@ def ensure_spotdl():
         print(f"Error downloading spotdl: {str(e)}")
         return None
 
+def check_ffmpeg_in_path():
+    try:
+        subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+def install_ffmpeg_windows():
+    try:
+        print("FFmpeg not found. Installing FFmpeg using winget...")
+        subprocess.run(['winget', 'install', 'FFmpeg (Essentials Build)'], check=True)
+        print("FFmpeg installed successfully. Please restart the bot for changes to take effect.")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error installing FFmpeg: {e}")
+        return False
+
+def install_ffmpeg_macos():
+    try:
+        # First try with Homebrew
+        print("FFmpeg not found. Attempting to install FFmpeg using Homebrew...")
+        try:
+            subprocess.run(['brew', 'install', 'ffmpeg'], check=True)
+            print("FFmpeg installed successfully using Homebrew. Please restart the bot for changes to take effect.")
+            return True
+        except subprocess.CalledProcessError:
+            print("Homebrew installation failed. Trying MacPorts...")
+            
+            # If Homebrew fails, try MacPorts
+            try:
+                subprocess.run(['sudo', 'port', 'install', 'ffmpeg'], check=True)
+                print("FFmpeg installed successfully using MacPorts. Please restart the bot for changes to take effect.")
+                return True
+            except subprocess.CalledProcessError as e:
+                print(f"MacPorts installation failed: {e}")
+                return False
+    except Exception as e:
+        print(f"Error installing FFmpeg: {e}")
+        return False
+
+def install_ffmpeg_linux():
+    try:
+        print("FFmpeg not found. Installing FFmpeg using apt...")
+        subprocess.run(['sudo', 'apt', 'install', 'ffmpeg', '-y'], check=True)
+        print("FFmpeg installed successfully. Please restart the bot for changes to take effect.")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error installing FFmpeg: {e}")
+        return False
+
 # Function to get appropriate ffmpeg path based on platform
 def get_ffmpeg_path():
     if sys.platform.startswith('win'):
-        return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ffmpeg.exe')
-    else:  # Linux or macOS
-        return 'ffmpeg'  # Use global ffmpeg installation on Unix-like systems (Linux/macOS)
+        # First check in root directory
+        local_ffmpeg = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ffmpeg.exe')
+        if os.path.exists(local_ffmpeg):
+            return local_ffmpeg
+        
+        # Then check in PATH
+        if check_ffmpeg_in_path():
+            return 'ffmpeg'
+        
+        # If not found anywhere, try to install it
+        if install_ffmpeg_windows():
+            return 'ffmpeg'
+        else:
+            print("WARNING: FFmpeg not found and installation failed. Please install FFmpeg manually.")
+            return 'ffmpeg'  # Return ffmpeg anyway, it might be available after restart
+    elif sys.platform.startswith('darwin'):  # macOS
+        # First check in PATH
+        if check_ffmpeg_in_path():
+            return 'ffmpeg'
+        
+        # If not found, try to install it
+        if install_ffmpeg_macos():
+            return 'ffmpeg'
+        else:
+            print("WARNING: FFmpeg not found and installation failed. Please install FFmpeg manually using 'brew install ffmpeg' or 'sudo port install ffmpeg'")
+            return 'ffmpeg'  # Return ffmpeg anyway, it might be available after restart
+    else:  # Linux
+        # First check in PATH
+        if check_ffmpeg_in_path():
+            return 'ffmpeg'
+        
+        # If not found, try to install it
+        if install_ffmpeg_linux():
+            return 'ffmpeg'
+        else:
+            print("WARNING: FFmpeg not found and installation failed. Please install FFmpeg manually using 'sudo apt install ffmpeg'")
+            return 'ffmpeg'  # Return ffmpeg anyway, it might be available after restart
 
 # Download and set up yt-dlp and spotdl
 YTDLP_PATH = ensure_ytdlp()

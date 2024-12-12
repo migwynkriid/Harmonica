@@ -7,8 +7,8 @@ Discord bot utilizing YT-DLP to download audio files of from YouTube and plays i
    ```bash
    pip install -r requirements.txt
    ```
-Download `yt-dlp.exe`, `ffmpeg.exe`  and place it in the root directory where bot.py is placed in. <br> 
-Optional: Do the same for `spot-dl.exe`
+Windows, MacOS, Linux automatically downloads and checks for yt-dlp, spot-dl and ffmpeg, if a file does not exist it gets downloaded and installed.
+MacOS: If ffmpeg fails to intall, place ffmpeg in root directory.
 
 3. Rename the `.env.example` file to `.env` and add your Discord bot token:
    ```
