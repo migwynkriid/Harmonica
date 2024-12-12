@@ -1890,7 +1890,6 @@ async def play(ctx, *, query):
 async def pause(ctx):
     """Pause the currently playing song"""
     try:
-        music_bot.update_activity()
         if music_bot.voice_client and music_bot.voice_client.is_playing():
             music_bot.voice_client.pause()
             music_bot.last_activity = time.time()  # Update activity on pause
@@ -1922,7 +1921,6 @@ async def pause(ctx):
 async def resume(ctx):
     """Resume the currently paused song"""
     try:
-        music_bot.update_activity()
         if music_bot.voice_client and music_bot.voice_client.is_paused():
             music_bot.voice_client.resume()
             music_bot.last_activity = time.time()  # Update activity on resume
