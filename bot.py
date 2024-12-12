@@ -306,6 +306,13 @@ YTDL_OPTIONS = {
     'yt_dlp_filename': YTDLP_PATH
 }
 
+# SpotDL options
+SPOTDL_OPTIONS = [
+    "--log-level", "DEBUG",
+    "--output", DOWNLOADS_DIR,
+    "--yt-dlp-args", str(YTDL_OPTIONS),
+]
+
 # FFmpeg options (simplified, only used for streaming)
 FFMPEG_OPTIONS = {
     'executable': FFMPEG_PATH,  # Use platform-specific ffmpeg path
@@ -1061,15 +1068,12 @@ class MusicBot:
 
             # Check if the query is a Spotify URL
             if 'open.spotify.com/' in query:
-                if 'playlist/' in query or 'album/' in query:
-                    await status_msg.edit(
-                        embed=self.create_embed(
-                            "Feature Not Available",
-                            "Spotify playlists and albums are currently not available.\nOnly Spotify track links are currently supported.",
-                            color=0xe74c3c
-                        )
-                    )
-                    return None
+                if 'playlist/' in query:
+                    playlist_id = query.split('playlist/')[-1].split('?')[0]
+                    return await self.download_spotify_playlist(playlist_id, status_msg)
+                elif 'album/' in query:
+                    album_id = query.split('album/')[-1].split('?')[0]
+                    return await self.download_spotify_album(album_id, status_msg)
                 elif 'track/' in query:
                     track_id = query.split('track/')[-1].split('?')[0]
                     return await self.download_spotify_track(track_id, status_msg)
@@ -1157,7 +1161,7 @@ class MusicBot:
                     # Get the file path
                     file_path = os.path.join(self.downloads_dir, f"{video_info['id']}.{video_info.get('ext', 'opus')}")
                     
-                    # Delete the processing message
+                    # Delete the processing message after successful download
                     if status_msg:
                         try:
                             await status_msg.delete()
@@ -1262,8 +1266,7 @@ class MusicBot:
                             await status_msg.delete()
                         except Exception as e:
                             print(f"Error deleting processing message: {e}")
-                            pass  # Message might have been deleted already
-
+                    
                     # Return the song info
                     return {
                         'title': video_info['title'],
@@ -1300,8 +1303,8 @@ class MusicBot:
             # Create command with proper executable path
             command = [
                 SPOTDL_EXECUTABLE,
+                *SPOTDL_OPTIONS,
                 f"https://open.spotify.com/track/{track_id}",
-                "--output", self.downloads_dir,
             ]
 
             # Run spotdl command
@@ -1359,8 +1362,8 @@ class MusicBot:
             # Create command with proper executable path
             command = [
                 SPOTDL_EXECUTABLE,
+                *SPOTDL_OPTIONS,
                 f"https://open.spotify.com/playlist/{playlist_id}",
-                "--output", self.downloads_dir,
             ]
 
             # Run spotdl command
@@ -1400,17 +1403,30 @@ class MusicBot:
             if not downloaded_files:
                 raise Exception("No files were downloaded from the playlist")
 
-            # Return playlist info with all tracks
-            return [
-                {
-                    'title': os.path.splitext(file)[0],
-                    'url': f"https://open.spotify.com/playlist/{playlist_id}",
-                    'file_path': os.path.join(self.downloads_dir, file),
+            # Add downloaded tracks to the queue with metadata
+            for track in downloaded_files:
+                track_info = {
+                    'title': os.path.splitext(track)[0],
+                    'url': f"https://open.spotify.com/playlist/{playlist_id}",  # Placeholder URL
+                    'file_path': os.path.join(self.downloads_dir, track),
                     'thumbnail': None,
                     'is_from_playlist': True
                 }
-                for file in downloaded_files
-            ]
+                self.queue.append(track_info)
+
+            # Start playing if not already
+            if not self.is_playing:
+                await self.play_next(status_msg.channel)
+
+            # Check if all songs are downloaded
+            total_expected_tracks = downloaded_count
+            if total_expected_tracks == len(downloaded_files):
+                # Remove processing message
+                if status_msg:
+                    try:
+                        await status_msg.delete()
+                    except Exception as e:
+                        print(f"Error removing processing message: {str(e)}")
 
         except Exception as e:
             print(f"Error downloading Spotify playlist: {str(e)}")
@@ -1436,8 +1452,8 @@ class MusicBot:
             # Create command with proper executable path
             command = [
                 SPOTDL_EXECUTABLE,
+                *SPOTDL_OPTIONS,
                 f"https://open.spotify.com/album/{album_id}",
-                "--output", self.downloads_dir,
             ]
 
             # Run spotdl command
@@ -1477,17 +1493,30 @@ class MusicBot:
             if not downloaded_files:
                 raise Exception("No files were downloaded from the album")
 
-            # Return album info with all tracks
-            return [
-                {
-                    'title': os.path.splitext(file)[0],
-                    'url': f"https://open.spotify.com/album/{album_id}",
-                    'file_path': os.path.join(self.downloads_dir, file),
+            # Add downloaded tracks to the queue with metadata
+            for track in downloaded_files:
+                track_info = {
+                    'title': os.path.splitext(track)[0],
+                    'url': f"https://open.spotify.com/album/{album_id}",  # Placeholder URL
+                    'file_path': os.path.join(self.downloads_dir, track),
                     'thumbnail': None,
                     'is_from_playlist': True
                 }
-                for file in downloaded_files
-            ]
+                self.queue.append(track_info)
+
+            # Start playing if not already
+            if not self.is_playing:
+                await self.play_next(status_msg.channel)
+
+            # Check if all songs are downloaded
+            total_expected_tracks = downloaded_count
+            if total_expected_tracks == len(downloaded_files):
+                # Remove processing message
+                if status_msg:
+                    try:
+                        await status_msg.delete()
+                    except Exception as e:
+                        print(f"Error removing processing message: {str(e)}")
 
         except Exception as e:
             print(f"Error downloading Spotify album: {str(e)}")
@@ -1511,13 +1540,7 @@ class MusicBot:
 
                 total_videos = len(info['entries'])
 
-                # Write links to playlist.txt
-                with open('playlist.txt', 'w', encoding='utf-8') as f:
-                    for entry in info['entries']:
-                        if entry:
-                            video_url = f"https://youtube.com/watch?v={entry['id']}"
-                            f.write(f"{video_url}\n")
-
+                # Update status message if provided
                 if status_msg:
                     playlist_embed = self.create_embed(
                         "Processing Playlist",
@@ -1582,6 +1605,7 @@ class MusicBot:
                 )
                 try:
                     await status_msg.edit(embed=final_embed)
+                    await status_msg.delete(delay=5)  # Remove processing message after all songs are processed
                 except:
                     pass
 
@@ -1611,6 +1635,7 @@ class MusicBot:
                 )
                 try:
                     await status_msg.edit(embed=final_embed)
+                    await status_msg.delete(delay=5)  # Remove processing message after all songs are processed
                 except:
                     pass
 
@@ -1640,7 +1665,7 @@ class MusicBot:
                 f"Fetching and downloading the request:\n{query}",
                 color=0x3498db
             )
-            status_msg = await ctx.send(embed=processing_embed)
+            status_msg = await self.update_or_send_message(ctx, processing_embed)
 
             # Download and queue the song
             async with self.queue_lock:
