@@ -15,3 +15,9 @@ playlist.txt
 spot-dl.exe
 spot-dl
 yt-dlp
+pyvenv.cfg
+venv
+/lib/*
+/include/*
+/bin/*
+/bin
