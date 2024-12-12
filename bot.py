@@ -417,7 +417,7 @@ class MusicBot:
         self.downloads_dir = DOWNLOADS_DIR
         self.cookie_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt')
         self.last_update = 0  # Initialize last_update for progress tracking
-        self.inactivity_timeout = 1800  # 30 minutes in seconds
+        self.inactivity_timeout = 900  # 15 minutes in seconds
         self._inactivity_task = None
         self.last_activity = time.time()
         self.bot_loop = None  # Store bot's event loop
@@ -451,8 +451,13 @@ class MusicBot:
         """Process commands from the queue one at a time"""
         while True:
             try:
+                # Wait for the next command
+                command_info = await self.command_queue.get()
+                self.last_activity = time.time()  # Update activity when processing commands
+                
                 # Get the next command from the queue
-                ctx, query = await self.command_queue.get()
+                ctx, query = command_info
+                
                 print(f"Processing command: !play {query}")
 
                 try:
@@ -474,6 +479,8 @@ class MusicBot:
         if not ctx.voice_client and not await self.join_voice_channel(ctx):
             raise Exception("Could not join voice channel")
 
+        self.last_activity = time.time()  # Update activity when handling play command
+        
         # Send initial status message
         processing_embed = self.create_embed(
             "Processing",
@@ -578,13 +585,17 @@ class MusicBot:
         """Check for inactivity and leave voice if inactive too long"""
         while True:
             try:
+                await asyncio.sleep(60)  # Check every minute
+                
                 if self.voice_client and self.voice_client.is_connected():
+                    # If music is playing, update activity
+                    if self.voice_client.is_playing():
+                        self.last_activity = time.time()
                     # If not playing and inactive for too long
-                    if not self.voice_client.is_playing() and time.time() - self.last_activity > self.inactivity_timeout:
+                    elif time.time() - self.last_activity > self.inactivity_timeout:
                         print(f"Leaving voice channel due to {self.inactivity_timeout} seconds of inactivity")
                         await self.leave_voice_channel()
                         self.clear_queue()
-                await asyncio.sleep(60)  # Check every minute
             except Exception as e:
                 print(f"Error in inactivity checker: {str(e)}")
                 await asyncio.sleep(60)  # Still wait before next check even if there's an error
@@ -675,6 +686,7 @@ class MusicBot:
 
             # Create new connection
             self.voice_client = await channel.connect(self_deaf=True)
+            self.last_activity = time.time()  # Update activity when joining channel
             return self.voice_client.is_connected()
 
         except Exception as e:
@@ -706,6 +718,7 @@ class MusicBot:
                 # Store previous song for comparison
                 previous_song = self.current_song
                 self.current_song = self.queue.pop(0)  # Remove the song immediately when we start processing it
+                self.last_activity = time.time()  # Update activity when starting new song
                 print(f"Playing next song: {self.current_song['title']}")
                 
                 # For radio streams, we don't need to check if the file exists
@@ -1490,6 +1503,7 @@ class MusicBot:
             }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # First extract info without downloading to check if it's a playlist
                 info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(url, download=False))
                 
                 if not info or not info.get('entries'):
@@ -1854,6 +1868,7 @@ async def pause(ctx):
         music_bot.update_activity()
         if music_bot.voice_client and music_bot.voice_client.is_playing():
             music_bot.voice_client.pause()
+            music_bot.last_activity = time.time()  # Update activity on pause
             await ctx.send(
                 embed=music_bot.create_embed(
                     "Paused ",
@@ -1885,6 +1900,7 @@ async def resume(ctx):
         music_bot.update_activity()
         if music_bot.voice_client and music_bot.voice_client.is_paused():
             music_bot.voice_client.resume()
+            music_bot.last_activity = time.time()  # Update activity on resume
             await ctx.send(
                 embed=music_bot.create_embed(
                     "Resumed ",
@@ -1926,6 +1942,7 @@ async def skip(ctx):
     """Skip the current song"""
     if music_bot.voice_client and (music_bot.voice_client.is_playing() or music_bot.voice_client.is_paused()):
         music_bot.voice_client.stop()
+        music_bot.last_activity = time.time()  # Update activity on skip
         await ctx.send(embed=music_bot.create_embed("Skipped", "Skipped the current song", color=0x3498db))
     else:
         await ctx.send(embed=music_bot.create_embed("Error", "Nothing is playing to skip", color=0xe74c3c))
