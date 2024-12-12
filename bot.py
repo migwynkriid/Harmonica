@@ -349,7 +349,7 @@ class MusicBot:
                         print(f"Starting download: {query}")
                         
                         # Download the song
-                        result = await self.download_song(query, status_msg=status_msg, view=view)
+                        result = await self.download_song(query, status_msg=status_msg, view=view, ctx=ctx)
                         
                         if not result:
                             if not view and not is_from_playlist:  # Don't show errors for playlist items
@@ -564,7 +564,7 @@ class MusicBot:
                         
                         # Automatically restart the bot if voice connection fails
                         try:
-                            await ctx.send("⚠️ Network error detected!. Automatically restarting bot...")
+                            await ctx.send("⚠️ Internal error detected!. Automatically restarting bot...")
                             await restart(ctx)
                         except Exception as e:
                             print(f"Error during automatic restart in play_next: {str(e)}")
@@ -871,11 +871,18 @@ class MusicBot:
         # Simple URL validation
         return query.startswith(('http://', 'https://', 'www.'))
 
-    async def download_song(self, query, status_msg=None, view=None):
+    async def download_song(self, query, status_msg=None, view=None, ctx=None):
         """Download a song from YouTube, Spotify, or handle radio stream"""
         try:
             # Reset progress tracking
             self._last_progress = -1
+
+            # Check if it's a YouTube playlist
+            if self.is_playlist_url(query):
+                # We need ctx for voice channel operations
+                ctx = ctx or status_msg.channel if status_msg else None
+                await self._handle_playlist(query, ctx, status_msg)
+                return None
 
             # Check if the query is a Spotify URL
             if 'open.spotify.com/' in query:
@@ -1000,7 +1007,7 @@ class MusicBot:
                         raise Exception("Playlist is empty")
 
                     # Get context from status message
-                    ctx = status_msg.channel if status_msg else None
+                    ctx = ctx or status_msg.channel if status_msg else None
 
                     # Get first video info for thumbnail
                     first_video = info['entries'][0]
@@ -1323,84 +1330,99 @@ class MusicBot:
             print(f"Error downloading Spotify album: {str(e)}")
             raise
 
-    async def _queue_playlist_videos(self, entries, ctx, is_from_playlist=False, status_msg=None, ydl_opts=None, playlist_title=None, playlist_url=None, total_videos=None):
-        """Queue the remaining videos from a playlist for background download"""
+    async def _handle_playlist(self, url, ctx, status_msg=None):
+        """Handle a YouTube playlist by extracting video links and downloading them sequentially"""
         try:
-            processed_videos = 0
-            for i, entry in enumerate(entries, start=2):  # Start from 2 since we already downloaded the first video
-                if not entry:
-                    continue
+            # First extract all video information
+            ydl_opts = {
+                'extract_flat': True,  # Don't download videos yet
+                'quiet': True
+            }
 
-                try:
-                    # Download the video
-                    with yt_dlp.YoutubeDL(ydl_opts or YTDL_OPTIONS) as ydl:
-                        video_info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(
-                            entry['webpage_url'] if entry.get('webpage_url') else entry['url'],
-                            download=True
-                        ))
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(url, download=False))
+                
+                if not info or not info.get('entries'):
+                    raise Exception("Could not extract playlist information")
 
-                    if video_info.get('_type') == 'playlist':
-                        video_info = video_info['entries'][0]
+                total_videos = len(info['entries'])
 
-                    # Get the file path
-                    file_path = os.path.join(self.downloads_dir, f"{video_info['id']}.{video_info.get('ext', 'opus')}")
+                # Write links to playlist.txt
+                with open('playlist.txt', 'w', encoding='utf-8') as f:
+                    for entry in info['entries']:
+                        if entry:
+                            video_url = f"https://youtube.com/watch?v={entry['id']}"
+                            f.write(f"{video_url}\n")
 
-                    # Create song entry
-                    song_entry = {
-                        'title': video_info['title'],
-                        'url': video_info['webpage_url'] if video_info.get('webpage_url') else video_info['url'],
-                        'file_path': file_path,
-                        'thumbnail': video_info.get('thumbnail'),
-                        'is_from_playlist': is_from_playlist,
-                        'ctx': ctx
-                    }
-
-                    # Add to queue
-                    self.queue.append(song_entry)
-                    processed_videos += 1
-
-                except Exception as e:
-                    print(f"Error downloading playlist video {i}: {str(e)}")
-                    continue
-
-            # Update final status message with playlist summary
-            if status_msg and playlist_title and playlist_url:
-                try:
-                    final_embed = self.create_embed(
-                        "Playlist Added",
-                        f"[🎵 {playlist_title}]({playlist_url})\nAdded {processed_videos}/{total_videos} songs to queue",
-                        color=0x00ff00
+                if status_msg:
+                    playlist_embed = self.create_embed(
+                        "Processing Playlist",
+                        f"Extracted {total_videos} links. Starting downloads...",
+                        color=0x3498db
                     )
-                    await status_msg.edit(embed=final_embed, view=None)
-                    
-                    # Delete the status message after a short delay to give users time to read
-                    await asyncio.sleep(5)
-                    try:
-                        await status_msg.delete()
-                    except:
-                        pass  # Ignore if message can't be deleted
-                except Exception as e:
-                    print(f"Error updating final playlist status message: {str(e)}")
+                    await status_msg.edit(embed=playlist_embed, view=None)
+
+                # Join voice channel if not already in one
+                if not self.voice_client or not self.voice_client.is_connected():
+                    await self.join_voice_channel(ctx)
+
+                # Download and play the first video
+                if info['entries']:
+                    first_entry = info['entries'][0]
+                    if first_entry:
+                        first_url = f"https://youtube.com/watch?v={first_entry['id']}"
+                        first_song = await self.download_song(first_url, status_msg=None)
+                        if first_song:
+                            self.queue.append(first_song)
+                            # Start playing immediately
+                            if not self.is_playing:
+                                await self.play_next(ctx)
+
+                # Start background task for remaining videos
+                if len(info['entries']) > 1:
+                    asyncio.create_task(self._process_playlist_downloads(info['entries'][1:], ctx, status_msg))
+
+                return True
 
         except Exception as e:
-            print(f"Error in _queue_playlist_videos: {str(e)}")
+            print(f"Error processing playlist: {str(e)}")
             if status_msg:
+                error_embed = self.create_embed(
+                    "Error",
+                    f"Failed to process playlist: {str(e)}",
+                    color=0xe74c3c
+                )
+                await status_msg.edit(embed=error_embed, view=None)
+            return False
+
+    async def _process_playlist_downloads(self, entries, ctx, status_msg=None):
+        """Process remaining playlist videos in the background"""
+        try:
+            for entry in entries:
+                if entry:
+                    video_url = f"https://youtube.com/watch?v={entry['id']}"
+                    song_info = await self.download_song(video_url, status_msg=None)
+                    if song_info:
+                        async with self.queue_lock:
+                            self.queue.append(song_info)
+                            # Start playing if not already playing
+                            if not self.is_playing and not self.voice_client.is_playing():
+                                await self.play_next(ctx)
+
+            # Final status update
+            if status_msg:
+                final_embed = self.create_embed(
+                    "Playlist Complete",
+                    f"All songs have been downloaded and queued",
+                    color=0x00ff00
+                )
                 try:
-                    error_embed = self.create_embed(
-                        "Error",
-                        f"Failed to process playlist videos: {str(e)}",
-                        color=0xe74c3c
-                    )
-                    await status_msg.edit(embed=error_embed)
-                    
-                    # Delete the error message after a short delay
-                    await asyncio.sleep(5)
-                    try:
-                        await status_msg.delete()
-                    except:
-                        pass  # Ignore if message can't be deleted
-                except Exception as error_msg_e:
-                    print(f"Error updating error status message: {str(error_msg_e)}")
+                    await status_msg.edit(embed=final_embed)
+                except:
+                    pass
+
+        except Exception as e:
+            print(f"Error in playlist download processing: {str(e)}")
 
     async def play(self, ctx, *, query):
         """Play a song in the voice channel"""
@@ -1431,7 +1453,7 @@ class MusicBot:
 
             # Download and queue the song
             async with self.queue_lock:
-                result = await self.download_song(query, status_msg=status_msg, view=view)
+                result = await self.download_song(query, status_msg=status_msg, view=view, ctx=ctx)
                 if not result:
                     return
 
@@ -1612,7 +1634,7 @@ async def play(ctx, *, query):
 
         # Download and queue the song
         async with music_bot.queue_lock:
-            result = await music_bot.download_song(query, status_msg=status_msg, view=view)
+            result = await music_bot.download_song(query, status_msg=status_msg, view=view, ctx=ctx)
             if not result:
                 return
 
