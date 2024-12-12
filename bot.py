@@ -255,6 +255,20 @@ intents.message_content = True
 intents.messages = True
 bot = commands.Bot(command_prefix='!', intents=intents, case_insensitive=True)
 
+# Global error handler for command errors
+@bot.event
+async def on_command_error(ctx, error):
+    # Log the error to the console
+    print(f"Error in command {ctx.command}: {str(error)}")
+    # Send error message to the Discord chat
+    await ctx.send(
+        embed=music_bot.create_embed(
+            "Error",
+            f"Error: {str(error)}",
+            color=0xe74c3c
+        )
+    )
+
 # Add error handler for CommandNotFound
 @bot.event
 async def on_command_error(ctx, error):
@@ -1642,9 +1656,19 @@ class MusicBot:
         except Exception as e:
             print(f"Error in playlist download processing: {str(e)}")
 
-    async def play(self, ctx, *, query):
+    async def play(self, ctx, *, query=None):
         """Play a song in the voice channel"""
         try:
+            # Check if query is provided
+            if not query:
+                usage_embed = self.create_embed(
+                    "Usage",
+                    "Usage: !play YouTube Link/Youtube Search/Spotify Link",
+                    color=0xe74c3c
+                )
+                await ctx.send(embed=usage_embed)
+                return
+
             # Check if the user is in a voice channel
             if not ctx.author.voice:
                 embed = self.create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c)
@@ -1821,9 +1845,19 @@ async def on_ready():
         await music_bot.setup(bot)
 
 @bot.command(name='play')
-async def play(ctx, *, query):
+async def play(ctx, *, query=None):
     """Play a song in the voice channel"""
     try:
+        # Check if query is provided
+        if not query:
+            usage_embed = music_bot.create_embed(
+                "Usage",
+                "Usage: !play YouTube Link/Youtube Search/Spotify Link",
+                color=0xe74c3c
+            )
+            await ctx.send(embed=usage_embed)
+            return
+
         # Check if the user is in a voice channel
         if not ctx.author.voice:
             embed = music_bot.create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c)
@@ -1890,6 +1924,7 @@ async def play(ctx, *, query):
 async def pause(ctx):
     """Pause the currently playing song"""
     try:
+        # Removed music_bot.update_activity() as it does not exist
         if music_bot.voice_client and music_bot.voice_client.is_playing():
             music_bot.voice_client.pause()
             music_bot.last_activity = time.time()  # Update activity on pause
@@ -1909,6 +1944,7 @@ async def pause(ctx):
                 )
             )
     except Exception as e:
+        print(f"Error in pause command: {str(e)}")  # Log the error to the console
         await ctx.send(
             embed=music_bot.create_embed(
                 "Error",
@@ -1921,6 +1957,7 @@ async def pause(ctx):
 async def resume(ctx):
     """Resume the currently paused song"""
     try:
+        # Removed music_bot.update_activity() as it does not exist
         if music_bot.voice_client and music_bot.voice_client.is_paused():
             music_bot.voice_client.resume()
             music_bot.last_activity = time.time()  # Update activity on resume
@@ -1940,6 +1977,7 @@ async def resume(ctx):
                 )
             )
     except Exception as e:
+        print(f"Error in resume command: {str(e)}")  # Log the error to the console
         await ctx.send(
             embed=music_bot.create_embed(
                 "Error",
