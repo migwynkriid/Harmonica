@@ -17,7 +17,9 @@ spot-dl
 yt-dlp
 pyvenv.cfg
 venv
+/lib
 /lib/*
 /include/*
+/include
 /bin/*
 /bin
