@@ -474,24 +474,19 @@ class MusicBot:
         if not ctx.voice_client and not await self.join_voice_channel(ctx):
             raise Exception("Could not join voice channel")
 
-        # Create cancel button view
-        view = CancelButton(self)
-        
         # Send initial status message
         processing_embed = self.create_embed(
             "Processing",
             f"Processing request: {query}",
             color=0x3498db
         )
-        status_msg = await self.update_or_send_message(ctx, processing_embed, view=view)
-        view.message = status_msg
+        status_msg = await self.update_or_send_message(ctx, processing_embed)
 
         # Create download info
         download_info = {
             'query': query,
             'ctx': ctx,
-            'status_msg': status_msg,
-            'view': view
+            'status_msg': status_msg
         }
 
         # Add to download queue
@@ -509,8 +504,6 @@ class MusicBot:
                 query = download_info['query']
                 ctx = download_info['ctx']
                 status_msg = download_info['status_msg']
-                view = download_info['view']
-                is_from_playlist = download_info.get('is_from_playlist', False)
 
                 try:
                     async with self.download_lock:  # Ensure only one download at a time
@@ -518,10 +511,10 @@ class MusicBot:
                         print(f"Starting download: {query}")
                         
                         # Download the song
-                        result = await self.download_song(query, status_msg=status_msg, view=view, ctx=ctx)
+                        result = await self.download_song(query, status_msg=status_msg, ctx=ctx)
                         
                         if not result:
-                            if not view and not is_from_playlist:  # Don't show errors for playlist items
+                            if not status_msg:
                                 error_embed = self.create_embed("Error", "Failed to download song", color=0xe74c3c)
                                 await self.update_or_send_message(ctx, error_embed)
                             continue
@@ -540,13 +533,13 @@ class MusicBot:
                                     f"Adding {len(result['entries'])} songs to queue...",
                                     color=0x3498db
                                 )
-                                await status_msg.edit(embed=playlist_embed, view=None)
+                                await status_msg.edit(embed=playlist_embed)
 
                         # Add to queue or play immediately
                         if self.voice_client and self.voice_client.is_playing():
                             self.queue.append(result)
                             # Only show "Added to Queue" for non-playlist items
-                            if not is_from_playlist:
+                            if not result.get('is_from_playlist'):
                                 queue_embed = self.create_embed(
                                     "Added to Queue", 
                                     f"[🎵 {result['title']}]({result['url']})",
@@ -562,7 +555,7 @@ class MusicBot:
 
                 except Exception as e:
                     print(f"Error processing download: {str(e)}")
-                    if not view and not is_from_playlist:  # Don't show errors for playlist items
+                    if not status_msg:
                         error_embed = self.create_embed("Error", f"Error processing: {str(e)}", color=0xe74c3c)
                         await self.update_or_send_message(ctx, error_embed)
                 
@@ -1040,7 +1033,7 @@ class MusicBot:
         # Simple URL validation
         return query.startswith(('http://', 'https://', 'www.'))
 
-    async def download_song(self, query, status_msg=None, view=None, ctx=None):
+    async def download_song(self, query, status_msg=None, ctx=None):
         """Download a song from YouTube, Spotify, or handle radio stream"""
         try:
             # Reset progress tracking
@@ -1061,8 +1054,7 @@ class MusicBot:
                             "Feature Not Available",
                             "Spotify playlists and albums are currently not available.\nOnly Spotify track links are currently supported.",
                             color=0xe74c3c
-                        ),
-                        view=None
+                        )
                     )
                     return None
                 elif 'track/' in query:
@@ -1074,8 +1066,7 @@ class MusicBot:
                             "Error",
                             "Invalid Spotify URL. Only Spotify track links are currently supported.",
                             color=0xe74c3c
-                        ),
-                        view=None
+                        )
                     )
                     return None
 
@@ -1105,8 +1096,7 @@ class MusicBot:
                                 "Error",
                                 f"Failed to process radio stream: {str(e)}",
                                 color=0xe74c3c
-                            ),
-                            view=None
+                            )
                         )
                     return None
 
@@ -1194,7 +1184,7 @@ class MusicBot:
                             color=0x3498db,
                             thumbnail_url=video_thumbnail
                         )
-                        await status_msg.edit(embed=playlist_embed, view=None)
+                        await status_msg.edit(embed=playlist_embed)
 
                     # Download only the first video initially
                     first_entry = info['entries'][0]
@@ -1274,7 +1264,7 @@ class MusicBot:
             print(f"Error downloading song: {str(e)}")
             if status_msg:
                 error_embed = self.create_embed("Error", f"Error downloading song: {str(e)}", color=0xff0000)
-                await status_msg.edit(embed=error_embed, view=None)
+                await status_msg.edit(embed=error_embed)
             raise
 
     async def download_spotify_track(self, track_id, status_msg):
@@ -1520,7 +1510,7 @@ class MusicBot:
                         f"Extracted {total_videos} links. Starting downloads...",
                         color=0x3498db
                     )
-                    await status_msg.edit(embed=playlist_embed, view=None)
+                    await status_msg.edit(embed=playlist_embed)
 
                 # Join voice channel if not already in one
                 if not self.voice_client or not self.voice_client.is_connected():
@@ -1552,7 +1542,7 @@ class MusicBot:
                     f"Failed to process playlist: {str(e)}",
                     color=0xe74c3c
                 )
-                await status_msg.edit(embed=error_embed, view=None)
+                await status_msg.edit(embed=error_embed)
             return False
 
     async def _process_playlist_downloads(self, entries, ctx, status_msg=None):
@@ -1636,13 +1626,11 @@ class MusicBot:
                 f"Fetching and downloading the request:\n{query}",
                 color=0x3498db
             )
-            view = CancelButton(self)
-            status_msg = await ctx.send(embed=processing_embed, view=view)
-            view.message = status_msg
+            status_msg = await ctx.send(embed=processing_embed)
 
             # Download and queue the song
             async with self.queue_lock:
-                result = await self.download_song(query, status_msg=status_msg, view=view, ctx=ctx)
+                result = await self.download_song(query, status_msg=status_msg, ctx=ctx)
                 if not result:
                     return
 
@@ -1817,13 +1805,11 @@ async def play(ctx, *, query):
             f"Fetching and downloading the request:\n{query}",
             color=0x3498db
         )
-        view = CancelButton(music_bot)
-        status_msg = await ctx.send(embed=processing_embed, view=view)
-        view.message = status_msg
+        status_msg = await ctx.send(embed=processing_embed)
 
         # Download and queue the song
         async with music_bot.queue_lock:
-            result = await music_bot.download_song(query, status_msg=status_msg, view=view, ctx=ctx)
+            result = await music_bot.download_song(query, status_msg=status_msg, ctx=ctx)
             if not result:
                 return
 
