@@ -1087,7 +1087,7 @@ class MusicBot:
                     # Get a name from the URL
                     stream_name = query.split('/')[-1].split('.')[0]
                     result = {
-                        'title': f"Radio Stream: {stream_name}",
+                        'title': stream_name,
                         'url': query,
                         'file_path': query,  # Use the URL directly as the file path for FFmpeg
                         'is_stream': True,
