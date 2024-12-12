@@ -15,9 +15,91 @@ from discord.ext import tasks
 import json
 from collections import deque
 from datetime import datetime
-from pytz import timezone  # Import timezone from pytz
-import pytz  # Import pytz for timezone handling
-import logging  # Add this import if not already present
+from pytz import timezone
+import pytz
+import logging
+import urllib.request
+import subprocess
+
+# Function to download yt-dlp based on platform
+def ensure_ytdlp():
+    try:
+        if sys.platform.startswith('win'):
+            ytdlp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yt-dlp.exe')
+            if not os.path.exists(ytdlp_path):
+                print("Downloading yt-dlp.exe...")
+                url = "https://github.com/yt-dlp/yt-dlp/releases/download/2024.12.06/yt-dlp.exe"
+                urllib.request.urlretrieve(url, ytdlp_path)
+                os.chmod(ytdlp_path, 0o755)  # Make executable
+                print("yt-dlp.exe downloaded successfully")
+            return ytdlp_path
+        elif sys.platform.startswith('darwin'):  # macOS
+            ytdlp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yt-dlp')
+            if not os.path.exists(ytdlp_path):
+                print("Downloading yt-dlp for macOS...")
+                url = "https://github.com/yt-dlp/yt-dlp/releases/download/2024.12.06/yt-dlp_macos"
+                urllib.request.urlretrieve(url, ytdlp_path)
+                os.chmod(ytdlp_path, 0o755)  # Make executable
+                print("yt-dlp downloaded successfully")
+            return ytdlp_path
+        else:  # Linux
+            ytdlp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yt-dlp')
+            if not os.path.exists(ytdlp_path):
+                print("Downloading yt-dlp for Linux...")
+                url = "https://github.com/yt-dlp/yt-dlp/releases/download/2024.12.06/yt-dlp_linux_aarch64"
+                urllib.request.urlretrieve(url, ytdlp_path)
+                os.chmod(ytdlp_path, 0o755)  # Make executable
+                print("yt-dlp downloaded successfully")
+            return ytdlp_path
+    except Exception as e:
+        print(f"Error downloading yt-dlp: {str(e)}")
+        return None
+
+# Function to download spotdl based on platform
+def ensure_spotdl():
+    try:
+        if sys.platform.startswith('win'):
+            spotdl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'spot-dl.exe')
+            if not os.path.exists(spotdl_path):
+                print("Downloading spotdl for Windows...")
+                url = "https://github.com/spotDL/spotify-downloader/releases/download/v4.2.10/spotdl-4.2.10-win32.exe"
+                urllib.request.urlretrieve(url, spotdl_path)
+                os.chmod(spotdl_path, 0o755)  # Make executable
+                print("spotdl downloaded successfully")
+            return spotdl_path
+        elif sys.platform.startswith('darwin'):  # macOS
+            spotdl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'spot-dl')
+            if not os.path.exists(spotdl_path):
+                print("Downloading spotdl for macOS...")
+                url = "https://github.com/spotDL/spotify-downloader/releases/download/v4.2.10/spotdl-4.2.10-darwin"
+                urllib.request.urlretrieve(url, spotdl_path)
+                os.chmod(spotdl_path, 0o755)  # Make executable
+                print("spotdl downloaded successfully")
+            return spotdl_path
+        else:  # Linux
+            spotdl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'spot-dl')
+            if not os.path.exists(spotdl_path):
+                print("Downloading spotdl for Linux...")
+                url = "https://github.com/spotDL/spotify-downloader/releases/download/v4.2.10/spotdl-4.2.10-linux"
+                urllib.request.urlretrieve(url, spotdl_path)
+                os.chmod(spotdl_path, 0o755)  # Make executable
+                print("spotdl downloaded successfully")
+            return spotdl_path
+    except Exception as e:
+        print(f"Error downloading spotdl: {str(e)}")
+        return None
+
+# Function to get appropriate ffmpeg path based on platform
+def get_ffmpeg_path():
+    if sys.platform.startswith('win'):
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ffmpeg.exe')
+    else:  # Linux or macOS
+        return 'ffmpeg'  # Use global ffmpeg installation on Unix-like systems (Linux/macOS)
+
+# Download and set up yt-dlp and spotdl
+YTDLP_PATH = ensure_ytdlp()
+SPOTDL_PATH = ensure_spotdl()
+FFMPEG_PATH = get_ffmpeg_path()
 
 # Set up logging to capture all output
 file_handler = logging.FileHandler('log.txt', encoding='utf-8')
@@ -65,7 +147,8 @@ print = custom_print
 
 # Constants
 DOWNLOADS_DIR = os.path.join(os.getcwd(), 'downloads')
-OWNER_ID = 220301180562046977  # Add owner ID constant
+OWNER_ID = 220301180562046977
+SPOTDL_EXECUTABLE = SPOTDL_PATH
 
 # Create downloads directory if it doesn't exist
 if not os.path.exists(DOWNLOADS_DIR):
@@ -119,7 +202,7 @@ async def on_voice_state_update(member, before, after):
 # YouTube DL options
 YTDL_OPTIONS = {
     'format': 'bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio',
-    'outtmpl': '%(id)s.%(ext)s',  # Simplified template
+    'outtmpl': '%(id)s.%(ext)s',
     'extract_audio': True,
     'concurrent_fragments': 4,
     'abort_on_unavailable_fragments': True,
@@ -132,15 +215,17 @@ YTDL_OPTIONS = {
     'source_address': '0.0.0.0',
     'extract_flat': False,
     'force_generic_extractor': False,
-    'verbose': True,  # Enable verbose output
-    'logger': logging.getLogger('yt-dlp'),  # Use our logging system
-    'ignoreerrors': True  # Add ignore_errors flag
+    'verbose': True,
+    'logger': logging.getLogger('yt-dlp'),
+    'ignoreerrors': True,
+    'ffmpeg_location': FFMPEG_PATH,  # Use platform-specific ffmpeg path
+    'yt_dlp_filename': YTDLP_PATH
 }
 
 # FFmpeg options (simplified, only used for streaming)
 FFMPEG_OPTIONS = {
-    'executable': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ffmpeg.exe'),
-    'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',  # Added reconnect options for stability
+    'executable': FFMPEG_PATH,  # Use platform-specific ffmpeg path
+    'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
 }
 
 class CancelButton(discord.ui.View):
@@ -485,7 +570,7 @@ class MusicBot:
             
             # Reset the bot's status
             await self.bot.change_presence(activity=discord.Game(name="nothing! use !play "))
-
+            
             # Send confirmation message
             await ctx.send(embed=self.create_embed("Stopped", "Music stopped and queue cleared", color=0xe74c3c))
 
@@ -1122,40 +1207,23 @@ class MusicBot:
                 )
 
             # Prepare spotdl command
-            spotdl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'spotdl.exe')
-            if not os.path.exists(spotdl_path):
-                raise Exception("spotdl.exe not found in the root directory")
+            if not os.path.exists(SPOTDL_EXECUTABLE):
+                raise Exception("spotdl not found")
 
-            # First, get metadata using --print-url
-            process = await asyncio.create_subprocess_exec(
-                spotdl_path,
-                f"https://open.spotify.com/track/{track_id}",
-                "--print-url",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            
-            stdout, stderr = await process.communicate()
-            metadata = stdout.decode().split('\n')
-            thumbnail_url = None
-            title = None
-            
-            # Parse metadata for thumbnail and title
-            for line in metadata:
-                if line.startswith('Thumbnail URL: '):
-                    thumbnail_url = line.replace('Thumbnail URL: ', '').strip()
-                elif line.startswith('Title: '):
-                    title = line.replace('Title: ', '').strip()
-
-            # Now download the track
-            process = await asyncio.create_subprocess_exec(
-                spotdl_path,
+            # Create command with proper executable path
+            command = [
+                SPOTDL_EXECUTABLE,
                 f"https://open.spotify.com/track/{track_id}",
                 "--output", self.downloads_dir,
+            ]
+
+            # Run spotdl command
+            process = await asyncio.create_subprocess_exec(
+                *command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-            
+
             stdout, stderr = await process.communicate()
             
             if process.returncode != 0:
@@ -1174,10 +1242,10 @@ class MusicBot:
 
             # Return the track info with thumbnail
             return {
-                'title': title or os.path.splitext(os.path.basename(latest_file))[0],
+                'title': os.path.splitext(os.path.basename(latest_file))[0],
                 'url': f"https://open.spotify.com/track/{track_id}",
                 'file_path': latest_file,
-                'thumbnail': thumbnail_url
+                'thumbnail': None
             }
 
         except Exception as e:
@@ -1198,15 +1266,19 @@ class MusicBot:
                 )
 
             # Prepare spotdl command
-            spotdl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'spotdl.exe')
-            if not os.path.exists(spotdl_path):
-                raise Exception("spotdl.exe not found in the root directory")
+            if not os.path.exists(SPOTDL_EXECUTABLE):
+                raise Exception("spotdl not found")
+
+            # Create command with proper executable path
+            command = [
+                SPOTDL_EXECUTABLE,
+                f"https://open.spotify.com/playlist/{playlist_id}",
+                "--output", self.downloads_dir,
+            ]
 
             # Run spotdl command
             process = await asyncio.create_subprocess_exec(
-                spotdl_path,
-                f"https://open.spotify.com/playlist/{playlist_id}",
-                "--output", self.downloads_dir,
+                *command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -1271,15 +1343,19 @@ class MusicBot:
                 )
 
             # Prepare spotdl command
-            spotdl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'spotdl.exe')
-            if not os.path.exists(spotdl_path):
-                raise Exception("spotdl.exe not found in the root directory")
+            if not os.path.exists(SPOTDL_EXECUTABLE):
+                raise Exception("spotdl not found")
+
+            # Create command with proper executable path
+            command = [
+                SPOTDL_EXECUTABLE,
+                f"https://open.spotify.com/album/{album_id}",
+                "--output", self.downloads_dir,
+            ]
 
             # Run spotdl command
             process = await asyncio.create_subprocess_exec(
-                spotdl_path,
-                f"https://open.spotify.com/album/{album_id}",
-                "--output", self.downloads_dir,
+                *command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -1396,6 +1472,35 @@ class MusicBot:
             return False
 
     async def _process_playlist_downloads(self, entries, ctx, status_msg=None):
+        """Process remaining playlist videos in the background"""
+        try:
+            for entry in entries:
+                if entry:
+                    video_url = f"https://youtube.com/watch?v={entry['id']}"
+                    song_info = await self.download_song(video_url, status_msg=None)
+                    if song_info:
+                        async with self.queue_lock:
+                            self.queue.append(song_info)
+                            # Start playing if not already playing
+                            if not self.is_playing and not self.voice_client.is_playing():
+                                await self.play_next(ctx)
+
+            # Final status update
+            if status_msg:
+                final_embed = self.create_embed(
+                    "Playlist Complete",
+                    f"All songs have been downloaded and queued",
+                    color=0x00ff00
+                )
+                try:
+                    await status_msg.edit(embed=final_embed)
+                except:
+                    pass
+
+        except Exception as e:
+            print(f"Error in playlist download processing: {str(e)}")
+
+    async def _queue_playlist_videos(self, entries, ctx, is_from_playlist, status_msg, ydl_opts, playlist_title, playlist_url, total_videos):
         """Process remaining playlist videos in the background"""
         try:
             for entry in entries:
