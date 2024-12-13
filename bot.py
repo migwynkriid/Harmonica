@@ -2119,6 +2119,14 @@ async def logclear(ctx):
     except Exception as e:
         await ctx.send(embed=discord.Embed(title="Error", description=f"Failed to clear log file: {str(e)}", color=0xe74c3c))
 
+@bot.command(name='max')
+async def max(ctx):
+    """Simulate !play with RadioMax URL"""
+    try:
+        await play(ctx, query='https://azuracast.novi-net.net/radio/8010/radiomax.aac')
+    except Exception as e:
+        await ctx.send(embed=music_bot.create_embed("Error", f"An error occurred while executing !max: {str(e)}", color=0xe74c3c))
+
 @bot.command(name='nowplaying', aliases=['np'])
 async def nowplaying(ctx):
     """Show the currently playing song"""
