@@ -1,6 +1,6 @@
-# Discord Music Bot
+# Harmonica -Discord Music Bot
 
-Presenting " Harmonica " This self hosted bot uses YT-DLP to download audio files from YouTube and Spotify to play them directly in your Discord voice channel. It's a great way to enjoy music with friends on Discord.
+Presenting " Harmonica " This self hosted bot uses YT-DLP to download audio files from YouTube and Spotify to play them directly in your Discord voice channel.
 
 Currently it is considered Work In Progress, it has and will have bugs, but the general idea is there and works.
 
@@ -62,5 +62,6 @@ Currently it is considered Work In Progress, it has and will have bugs, but the 
 ## Troubleshooting
 - **FFmpeg Installation**: Ensure `ffmpeg` is in your system's PATH. If issues persist, manually download and place `ffmpeg` in the bot's root directory.
 - **Bot Token Issues**: Double-check that the Discord bot token is correctly placed in the `.env` file.
+- **Please Sign-In YouTube Issue**: Your cookies.txt file may be either invalid, missing or expired. Export it as .json 
 
-For further assistance, please refer to the bot's documentation or contact support.
+For further assistance, please refer to the bot's documentation or open a Issue on GitHub.
