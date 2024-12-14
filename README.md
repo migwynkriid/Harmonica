@@ -4,6 +4,12 @@ Presenting " Harmonica " This self hosted bot uses YT-DLP to download audio file
 
 Currently it is considered Work In Progress, it has and will have bugs, but the general idea is there and works.
 
+![image](https://github.com/user-attachments/assets/e5f51fc2-994c-4e54-9702-650040512182)
+![image](https://github.com/user-attachments/assets/1b1d18f3-fd22-44be-8069-f3f4098bddb1)
+![image](https://github.com/user-attachments/assets/2a486230-cc0c-476d-8ccf-f65075ff09fe)
+![image](https://github.com/user-attachments/assets/f60c7ce9-295b-457c-90c2-81375da8b18c)
+![image](https://github.com/user-attachments/assets/4974cabd-10c0-41cf-a996-2562baa9b52e)
+
 ## Setup
 
 ### Prerequisites
