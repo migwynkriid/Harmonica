@@ -2147,6 +2147,9 @@ async def nowplaying(ctx):
 
     await ctx.send(embed=embed)
 
+# Remove default help command before registering custom one
+bot.remove_command('help')
+
 @bot.command(name='help')
 async def help_command(ctx):
     """Send an embedded message with all commands and explanations"""
