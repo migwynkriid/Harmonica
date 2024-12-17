@@ -19,7 +19,7 @@ Recommend to only use it on a private Discord server, you have to self host it o
 - **Windows**: If `ffmpeg` is installed during the first initialization, you will need to relaunch the `bot.py` script.
 - **macOS**: If `ffmpeg` fails to install automatically, manually place `ffmpeg` in the root directory.
 - **Linux**: The setup script will automatically handle `ffmpeg` installation.
-- **General**: yt-dlp, spot-dl and ffmpeg will be downloaded and set up automatically.
+- **General**: yt-dlp and ffmpeg will be downloaded and set up automatically.
 
 3. **Environment Variables**: Rename the `.env.example` file to `.env` and add your Discord bot token:
    ```
