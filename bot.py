@@ -633,9 +633,17 @@ class MusicBot:
                         # Only delete status message if it's not a playlist message
                         if status_msg and not result.get('is_from_playlist'):
                             try:
-                                await status_msg.delete()
-                            except:
-                                pass  # Message might have been deleted
+                                message_exists = True
+                                try:
+                                    await status_msg.fetch()
+                                except discord.NotFound:
+                                    message_exists = False
+                                
+                                if message_exists:
+                                    await status_msg.delete()
+                            except Exception as e:
+                                print(f"Note: Could not delete processing message: {e}")
+                                # Continue execution even if message deletion fails
                         else:
                             # For playlists, update the status message to show playlist info
                             if status_msg:
@@ -1181,14 +1189,32 @@ class MusicBot:
                         return None
                 elif 'album/' in query:
                     tracks = await get_spotify_album_details(query)
+                    first_song = None
                     for track in tracks:
-                        await self.download_song(track, status_msg, ctx)
-                    return None
+                        print(f"Processing track: {track}")
+                        song_info = await self.download_song(track, status_msg, ctx)
+                        if song_info:
+                            if not first_song:
+                                first_song = song_info
+                            else:
+                                async with self.queue_lock:
+                                    self.queue.append(song_info)
+                                    print(f"Added to queue: {song_info['title']}")
+                    return first_song
                 elif 'playlist/' in query:
                     tracks = await get_spotify_playlist_details(query)
+                    first_song = None
                     for track in tracks:
-                        await self.download_song(track, status_msg, ctx)
-                    return None
+                        print(f"Processing track: {track}")
+                        song_info = await self.download_song(track, status_msg, ctx)
+                        if song_info:
+                            if not first_song:
+                                first_song = song_info
+                            else:
+                                async with self.queue_lock:
+                                    self.queue.append(song_info)
+                                    print(f"Added to queue: {song_info['title']}")
+                    return first_song
 
             # If not a Spotify URL, proceed with existing yt-dlp logic
             # Check if the query is a radio stream URL
@@ -1267,9 +1293,17 @@ class MusicBot:
                     # Delete the processing message after successful download
                     if status_msg:
                         try:
-                            await status_msg.delete()
+                            message_exists = True
+                            try:
+                                await status_msg.fetch()
+                            except discord.NotFound:
+                                message_exists = False
+                            
+                            if message_exists:
+                                await status_msg.delete()
                         except Exception as e:
-                            print(f"Error deleting processing message: {e}")
+                            print(f"Note: Could not delete processing message: {e}")
+                            # Continue execution even if message deletion fails
                     
                     # Return the song info
                     return {
@@ -1366,9 +1400,17 @@ class MusicBot:
                     # Delete the processing message after successful download
                     if status_msg:
                         try:
-                            await status_msg.delete()
+                            message_exists = True
+                            try:
+                                await status_msg.fetch()
+                            except discord.NotFound:
+                                message_exists = False
+                            
+                            if message_exists:
+                                await status_msg.delete()
                         except Exception as e:
-                            print(f"Error deleting processing message: {e}")
+                            print(f"Note: Could not delete processing message: {e}")
+                            # Continue execution even if message deletion fails
                     
                     # Return the song info
                     return {
