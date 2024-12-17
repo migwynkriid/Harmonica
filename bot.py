@@ -1961,7 +1961,7 @@ class MusicBot:
                 else:
                     # Set default listening status
                     activity = discord.Activity(
-                        type=discord.ActivityType.listening,
+                        type=discord.ActivityType.playing,
                         name="nothing! use !play "
                     )
                 await self.bot.change_presence(activity=activity)
