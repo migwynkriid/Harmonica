@@ -46,7 +46,20 @@ def ensure_ytdlp():
             ytdlp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yt-dlp')
             if not os.path.exists(ytdlp_path):
                 print("Downloading yt-dlp for Linux...")
-                url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download//yt-dlp_linux_aarch64"
+                
+                # Get machine architecture
+                import platform
+                machine = platform.machine().lower()
+                
+                # Select appropriate URL based on architecture
+                if machine in ['aarch64', 'arm64']:
+                    url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64"
+                elif machine == 'armv7l':
+                    url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_armv7l"
+                else:  # x86_64, amd64, etc.
+                    url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux"
+                
+                print(f"Detected architecture: {machine}, downloading appropriate version...")
                 urllib.request.urlretrieve(url, ytdlp_path)
                 os.chmod(ytdlp_path, 0o755)  # Make executable
                 print("yt-dlp downloaded successfully")
@@ -299,7 +312,7 @@ async def on_voice_state_update(member, before, after):
 
 # YouTube DL options
 YTDL_OPTIONS = {
-    'format': 'bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio',
+    'format': 'bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio/best/bestaudio*',  # More flexible format selection with fallbacks
     'outtmpl': '%(id)s.%(ext)s',
     'extract_audio': True,
     'concurrent_fragments': 4,
