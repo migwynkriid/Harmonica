@@ -28,7 +28,7 @@ def ensure_ytdlp():
             ytdlp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yt-dlp.exe')
             if not os.path.exists(ytdlp_path):
                 print("Downloading yt-dlp.exe...")
-                url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+                url = "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp.exe"
                 urllib.request.urlretrieve(url, ytdlp_path)
                 os.chmod(ytdlp_path, 0o755)  # Make executable
                 print("yt-dlp.exe downloaded successfully")
@@ -37,7 +37,7 @@ def ensure_ytdlp():
             ytdlp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yt-dlp')
             if not os.path.exists(ytdlp_path):
                 print("Downloading yt-dlp for macOS...")
-                url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos"
+                url = "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp_macos"
                 urllib.request.urlretrieve(url, ytdlp_path)
                 os.chmod(ytdlp_path, 0o755)  # Make executable
                 print("yt-dlp downloaded successfully")
@@ -53,11 +53,11 @@ def ensure_ytdlp():
                 
                 # Select appropriate URL based on architecture
                 if machine in ['aarch64', 'arm64']:
-                    url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64"
+                    url = "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp_linux_aarch64"
                 elif machine == 'armv7l':
-                    url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_armv7l"
+                    url = "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp_linux_armv7l"
                 else:  # x86_64, amd64, etc.
-                    url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux"
+                    url = "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp_linux"
                 
                 print(f"Detected architecture: {machine}, downloading appropriate version...")
                 urllib.request.urlretrieve(url, ytdlp_path)
