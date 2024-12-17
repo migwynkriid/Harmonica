@@ -68,39 +68,55 @@ def ensure_ytdlp():
         print(f"Error downloading yt-dlp: {str(e)}")
         return None
 
+# Function to get the latest spotDL release URL for a given platform
+def get_latest_spotdl_url(platform):
+    try:
+        # GitHub API endpoint for the latest release
+        api_url = "https://api.github.com/repos/spotDL/spotify-downloader/releases/latest"
+        with urllib.request.urlopen(api_url) as response:
+            release_data = json.loads(response.read().decode())
+
+        # Find the correct asset based on the platform
+        for asset in release_data["assets"]:
+            if platform == "win" and asset["name"].endswith("win32.exe"):
+                return asset["browser_download_url"]
+            elif platform == "darwin" and "darwin" in asset["name"]:
+                return asset["browser_download_url"]
+            elif platform == "linux" and "linux" in asset["name"]:
+                return asset["browser_download_url"]
+    except Exception as e:
+        print(f"Error fetching latest spotDL release: {str(e)}")
+    return None
+
 # Function to download spotdl based on platform
 def ensure_spotdl():
     try:
         if sys.platform.startswith('win'):
+            platform = "win"
             spotdl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'spot-dl.exe')
-            if not os.path.exists(spotdl_path):
-                print("Downloading spotdl for Windows...")
-                url = "https://github.com/spotDL/spotify-downloader/releases/download/v4.2.10/spotdl-4.2.10-win32.exe"
-                urllib.request.urlretrieve(url, spotdl_path)
-                os.chmod(spotdl_path, 0o755)  # Make executable
-                print("spotdl downloaded successfully")
-            return spotdl_path
         elif sys.platform.startswith('darwin'):  # macOS
+            platform = "darwin"
             spotdl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'spot-dl')
-            if not os.path.exists(spotdl_path):
-                print("Downloading spotdl for macOS...")
-                url = "https://github.com/spotDL/spotify-downloader/releases/download/v4.2.10/spotdl-4.2.10-darwin"
-                urllib.request.urlretrieve(url, spotdl_path)
-                os.chmod(spotdl_path, 0o755)  # Make executable
-                print("spotdl downloaded successfully")
-            return spotdl_path
         else:  # Linux
+            platform = "linux"
             spotdl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'spot-dl')
-            if not os.path.exists(spotdl_path):
-                print("Downloading spotdl for Linux...")
-                url = "https://github.com/spotDL/spotify-downloader/releases/download/v4.2.10/spotdl-4.2.10-linux"
-                urllib.request.urlretrieve(url, spotdl_path)
-                os.chmod(spotdl_path, 0o755)  # Make executable
-                print("spotdl downloaded successfully")
-            return spotdl_path
+
+        # Check if spotdl already exists
+        if not os.path.exists(spotdl_path):
+            print(f"Downloading spotdl for {platform}...")
+            url = get_latest_spotdl_url(platform)
+            if not url:
+                print("Failed to retrieve the download URL for the latest spotDL release.")
+                return None
+
+            urllib.request.urlretrieve(url, spotdl_path)
+            os.chmod(spotdl_path, 0o755)  # Make executable
+            print("spotdl downloaded successfully")
+        return spotdl_path
     except Exception as e:
         print(f"Error downloading spotdl: {str(e)}")
         return None
+
 
 def check_ffmpeg_in_path():
     try:
