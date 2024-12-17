@@ -24,3 +24,6 @@ venv
 /bin/*
 /bin
 spotifyplaylist.txt
+.spotifyenv
+.cache
+.DS_Store

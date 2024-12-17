@@ -25,6 +25,12 @@ Recommend to only use it on a private Discord server, you have to self host it o
    ```
    DISCORD_TOKEN=your_token_here
    ```
+3.1 **Spotify Credentials**: Rename the `.spotifyenv.example` file to `.spotifyenv` and add your Spotify credentials:
+   ```
+   SPOTIPY_CLIENT_ID=your_client_id_here
+   SPOTIPY_CLIENT_SECRET=your_client_secret_here
+   ```
+   You can get these credentials by following the instructions in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/applications).
 
 4. **Cookies**: Import cookies.txt using the [Get Cookies.txt extension](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc) and place it in the root directory.
 

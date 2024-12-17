@@ -20,6 +20,8 @@ import pytz
 import logging
 import urllib.request
 import subprocess
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
 
 # Function to download yt-dlp based on platform
 def ensure_ytdlp():
@@ -209,6 +211,13 @@ def get_ffmpeg_path():
             print("WARNING: FFmpeg not found and installation failed. Please install FFmpeg manually using 'sudo apt install ffmpeg'")
             return 'ffmpeg'  # Return ffmpeg anyway, it might be available after restart
 
+# Function to get yt-dlp path, prioritizing local over global
+def get_ytdlp_path():
+    local_path = os.path.join(os.getcwd(), 'yt-dlp')
+    if os.path.exists(local_path):
+        return local_path
+    return 'yt-dlp'  # Fallback to global yt-dlp
+
 # Download and set up yt-dlp and spotdl
 YTDLP_PATH = ensure_ytdlp()
 SPOTDL_PATH = ensure_spotdl()
@@ -243,6 +252,9 @@ if sys.platform.startswith('win'):
 
 # Load environment variables
 load_dotenv()
+
+# Load Spotify credentials
+load_dotenv(dotenv_path=".spotifyenv")
 
 # Create a log buffer using deque with max length
 log_buffer = deque(maxlen=100)
@@ -283,6 +295,48 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.messages = True
 bot = commands.Bot(command_prefix='!', intents=intents, case_insensitive=True)
+
+# Initialize Spotipy client
+sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
+    client_id=os.getenv('SPOTIPY_CLIENT_ID'),
+    client_secret=os.getenv('SPOTIPY_CLIENT_SECRET')
+))
+
+# Function to extract Spotify track details
+async def get_spotify_track_details(spotify_url):
+    try:
+        if 'track/' in spotify_url:
+            track_id = spotify_url.split('track/')[-1].split('?')[0]
+            track_info = sp.track(track_id)
+            artist_name = track_info['artists'][0]['name']
+            track_name = track_info['name']
+            return f"{artist_name} - {track_name}"
+        # Add handling for album and playlist if needed
+    except Exception as e:
+        print(f"Error retrieving Spotify track details: {str(e)}")
+        return None
+
+async def get_spotify_album_details(spotify_url):
+    try:
+        if 'album/' in spotify_url:
+            album_id = spotify_url.split('album/')[-1].split('?')[0]
+            album_info = sp.album_tracks(album_id)
+            tracks = [f"{track['artists'][0]['name']} - {track['name']}" for track in album_info['items']]
+            return tracks
+    except Exception as e:
+        print(f"Error retrieving Spotify album details: {str(e)}")
+        return []
+
+async def get_spotify_playlist_details(spotify_url):
+    try:
+        if 'playlist/' in spotify_url:
+            playlist_id = spotify_url.split('playlist/')[-1].split('?')[0]
+            playlist_info = sp.playlist_tracks(playlist_id)
+            tracks = [f"{track['track']['artists'][0]['name']} - {track['track']['name']}" for track in playlist_info['items']]
+            return tracks
+    except Exception as e:
+        print(f"Error retrieving Spotify playlist details: {str(e)}")
+        return []
 
 # Global error handler for command errors
 @bot.event
@@ -325,7 +379,7 @@ async def on_voice_state_update(member, before, after):
     if members_in_channel == 0:
         print(f"No users in voice channel {bot_voice_channel.name}, disconnecting bot")
         await music_bot.leave_voice_channel()
-
+        
 # YouTube DL options
 YTDL_OPTIONS = {
     'format': 'bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio/best/bestaudio*',  # More flexible format selection with fallbacks
@@ -346,7 +400,7 @@ YTDL_OPTIONS = {
     'logger': logging.getLogger('yt-dlp'),
     'ignoreerrors': True,
     'ffmpeg_location': FFMPEG_PATH,  # Use platform-specific ffmpeg path
-    'yt_dlp_filename': YTDLP_PATH
+    'yt_dlp_filename': get_ytdlp_path()
 }
 
 # SpotDL options
@@ -1111,23 +1165,29 @@ class MusicBot:
 
             # Check if the query is a Spotify URL
             if 'open.spotify.com/' in query:
-                if 'playlist/' in query:
-                    playlist_id = query.split('playlist/')[-1].split('?')[0]
-                    return await self.download_spotify_playlist(playlist_id, status_msg)
+                if 'track/' in query:
+                    spotify_details = await get_spotify_track_details(query)
+                    if spotify_details:
+                        query = spotify_details
+                    else:
+                        if status_msg:
+                            await status_msg.edit(
+                                embed=self.create_embed(
+                                    "Error",
+                                    "Could not retrieve details from Spotify URL.",
+                                    color=0xe74c3c
+                                )
+                            )
+                        return None
                 elif 'album/' in query:
-                    album_id = query.split('album/')[-1].split('?')[0]
-                    return await self.download_spotify_album(album_id, status_msg)
-                elif 'track/' in query:
-                    track_id = query.split('track/')[-1].split('?')[0]
-                    return await self.download_spotify_track(track_id, status_msg)
-                else:
-                    await status_msg.edit(
-                        embed=self.create_embed(
-                            "Error",
-                            "Invalid Spotify URL. Only Spotify track links are currently supported.",
-                            color=0xe74c3c
-                        )
-                    )
+                    tracks = await get_spotify_album_details(query)
+                    for track in tracks:
+                        await self.download_song(track, status_msg, ctx)
+                    return None
+                elif 'playlist/' in query:
+                    tracks = await get_spotify_playlist_details(query)
+                    for track in tracks:
+                        await self.download_song(track, status_msg, ctx)
                     return None
 
             # If not a Spotify URL, proceed with existing yt-dlp logic
