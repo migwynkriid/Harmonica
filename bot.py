@@ -1319,47 +1319,48 @@ class MusicBot:
                         await status_msg.edit(embed=playlist_embed)
 
                     # Download only the first video initially
-                    first_entry = info['entries'][0]
-                    if not first_entry:
-                        raise Exception("Failed to get first video from playlist")
+                    if info['entries']:
+                        first_entry = info['entries'][0]
+                        if not first_entry:
+                            raise Exception("Failed to get first video from playlist")
 
-                    # Download first video
-                    first_video_info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(
-                        first_entry['webpage_url'] if first_entry.get('webpage_url') else first_entry['url'],
-                        download=True
-                    ))
+                        # Download first video
+                        first_video_info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(
+                            first_entry['webpage_url'] if first_entry.get('webpage_url') else first_entry['url'],
+                            download=True
+                        ))
 
-                    if first_video_info.get('_type') == 'playlist':
-                        first_video_info = first_video_info['entries'][0]
+                        if first_video_info.get('_type') == 'playlist':
+                            first_video_info = first_video_info['entries'][0]
 
-                    # Get the file path for first video
-                    first_file_path = os.path.join(self.downloads_dir, f"{first_video_info['id']}.{first_video_info.get('ext', 'opus')}")
+                        # Get the file path for first video
+                        first_file_path = os.path.join(self.downloads_dir, f"{first_video_info['id']}.{first_video_info.get('ext', 'opus')}")
 
-                    # Create first song entry
-                    first_song = {
-                        'title': first_video_info['title'],
-                        'url': first_video_info['webpage_url'] if first_video_info.get('webpage_url') else first_video_info['url'],
-                        'file_path': first_file_path,
-                        'thumbnail': first_video_info.get('thumbnail'),
-                        'ctx': ctx,
-                        'is_from_playlist': True
-                    }
+                        # Create first song entry
+                        first_song = {
+                            'title': first_video_info['title'],
+                            'url': first_video_info['webpage_url'] if first_video_info.get('webpage_url') else first_video_info['url'],
+                            'file_path': first_file_path,
+                            'thumbnail': first_video_info.get('thumbnail'),
+                            'ctx': ctx,
+                            'is_from_playlist': True
+                        }
 
-                    # Queue the remaining videos for background download
-                    remaining_entries = info['entries'][1:]
-                    asyncio.create_task(self._queue_playlist_videos(
-                        entries=remaining_entries,
-                        ctx=ctx,
-                        is_from_playlist=True,
-                        status_msg=status_msg,
-                        ydl_opts=ydl_opts,
-                        playlist_title=playlist_title,
-                        playlist_url=playlist_url,
-                        total_videos=total_videos
-                    ))
+                        # Queue the remaining videos for background download
+                        remaining_entries = info['entries'][1:]
+                        asyncio.create_task(self._queue_playlist_videos(
+                            entries=remaining_entries,
+                            ctx=ctx,
+                            is_from_playlist=True,
+                            status_msg=status_msg,
+                            ydl_opts=ydl_opts,
+                            playlist_title=playlist_title,
+                            playlist_url=playlist_url,
+                            total_videos=total_videos
+                        ))
 
-                    # Return the first song to start playing immediately
-                    return first_song
+                        # Return the first song to start playing immediately
+                        return first_song
 
                 else:
                     # Download the video
@@ -1819,6 +1820,32 @@ class MusicBot:
             print(error_msg)
             error_embed = self.create_embed("Error", error_msg, color=0xff0000)
             await ctx.send(embed=error_embed)
+
+    async def ytdlp_version(ctx):
+        """Check the version of the locally installed yt-dlp"""
+        try:
+            ytdlp_path = ensure_ytdlp()
+            if not ytdlp_path:
+                await ctx.send(embed=self.create_embed("Error", "yt-dlp executable not found", color=0xe74c3c))
+                return
+
+            # Run yt-dlp --version command
+            process = await asyncio.create_subprocess_exec(
+                ytdlp_path,
+                '--version',
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
+            
+            if process.returncode == 0:
+                version = stdout.decode().strip()
+                await ctx.send(embed=self.create_embed("yt-dlp Version", f"Version: {version}", color=0x3498db))
+            else:
+                error = stderr.decode().strip()
+                await ctx.send(embed=self.create_embed("Error", f"Failed to get yt-dlp version: {error}", color=0xe74c3c))
+        except Exception as e:
+            await ctx.send(embed=self.create_embed("Error", f"Error checking yt-dlp version: {str(e)}", color=0xe74c3c))
 
     async def after_playing_coro(self, error, ctx):
         """Coroutine called after a song finishes playing"""
@@ -2314,6 +2341,33 @@ async def nowplaying(ctx):
     )
 
     await ctx.send(embed=embed)
+
+@bot.command(name='ytdlp')
+async def ytdlp(ctx):
+    """Check the version of the locally installed yt-dlp"""
+    try:
+        ytdlp_path = ensure_ytdlp()
+        if not ytdlp_path:
+            await ctx.send(embed=music_bot.create_embed("Error", "yt-dlp executable not found", color=0xe74c3c))
+            return
+
+        # Run yt-dlp --version command
+        process = await asyncio.create_subprocess_exec(
+            ytdlp_path,
+            '--version',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode == 0:
+            version = stdout.decode().strip()
+            await ctx.send(embed=music_bot.create_embed("yt-dlp Version", f"Version: {version}", color=0x3498db))
+        else:
+            error = stderr.decode().strip()
+            await ctx.send(embed=music_bot.create_embed("Error", f"Failed to get yt-dlp version: {error}", color=0xe74c3c))
+    except Exception as e:
+        await ctx.send(embed=music_bot.create_embed("Error", f"Error checking yt-dlp version: {str(e)}", color=0xe74c3c))
 
 # Remove default help command before registering custom one
 bot.remove_command('help')
