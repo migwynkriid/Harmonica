@@ -1002,8 +1002,8 @@ class MusicBot:
                         if current_message:
                             finished_embed = self.create_embed(
                                 "Finished Playing",
-                                f"[🎵 {current_song_info['title']}]({current_song_info['url']})",
-                                color=0x808080,  # Gray color for finished
+                                f"[{current_song_info['title']}]({current_song_info['url']})",
+                                color=0x808080,  # Green color to indicate completion
                                 thumbnail_url=current_song_info.get('thumbnail')
                             )
                             await current_message.edit(embed=finished_embed)
@@ -1853,11 +1853,65 @@ class MusicBot:
             await self.play_next(ctx)
         else:
             print("All songs finished, updating activity...")
-            self.update_activity()
+            # Update the now playing message to show playback has finished
+            if self.now_playing_message:
+                try:
+                    finished_embed = self.create_embed(
+                        "Finished Playing",
+                        f"[{self.current_song['title']}]({self.current_song['url']})",
+                        color=0x808080,  # Green color to indicate completion
+                        thumbnail_url=self.current_song.get('thumbnail')
+                    )
+                    await self.now_playing_message.edit(embed=finished_embed)
+                except Exception as e:
+                    print(f"Error updating finished message: {str(e)}")
+            
+            # Clear status first
+            self.is_playing = False
+            self.current_song = None
+            await self.update_activity()  # This will now clear the activity
+            
+            # Then handle disconnection
             if self.download_queue.empty():  # Only disconnect if nothing left to download
                 if self.voice_client and self.voice_client.is_connected():
                     await self.voice_client.disconnect()
 
+    async def queue(self, ctx):
+        """Display the current queue"""
+        if not self.queue and not self.current_song:
+            embed = self.create_embed("Queue Empty", "No songs in queue", color=0xe74c3c)
+            await ctx.send(embed=embed)
+            return
+            
+        # Create queue embed
+        queue_text = ""
+        total_songs = len(self.queue)
+        
+        # Add currently playing song
+        if self.current_song:
+            status = "🔁 Now playing" if self.loop_mode else "▶️ Now playing"
+            queue_text += f"{status}: [{self.current_song['title']}]({self.current_song['url']})\n\n"
+        
+        # Add queued songs
+        if self.queue:
+            queue_text += "**Up Next:**\n"
+            for i, song in enumerate(self.queue[:10], 1):
+                queue_text += f"`{i}.` [{song['title']}]({song['url']})\n"
+            
+            if len(self.queue) > 10:
+                queue_text += f"\n*...and {len(self.queue) - 10} more songs*"
+        
+        # Add download queue info
+        if not self.download_queue.empty():
+            queue_text += f"\n\n*{self.download_queue.qsize()} songs being processed...*"
+        
+        embed = self.create_embed(
+            f"Queue - {total_songs} songs",
+            queue_text,
+            color=0x3498db
+        )
+        await ctx.send(embed=embed)
+    
     def create_embed(self, title, description, color=0x3498db, thumbnail_url=None):
         """Create a Discord embed with consistent styling"""
         embed = discord.Embed(
@@ -1894,6 +1948,25 @@ class MusicBot:
             self.current_command_msg = await ctx.send(embed=embed, view=view)
             self.current_command_author = ctx.author_id
             return self.current_command_msg
+
+    async def update_activity(self):
+        """Update the bot's activity status"""
+        try:
+            if self.bot:
+                if self.current_song and self.is_playing:
+                    activity = discord.Activity(
+                        type=discord.ActivityType.playing,
+                        name=f"🎵 {self.current_song['title']}"
+                    )
+                else:
+                    # Set default listening status
+                    activity = discord.Activity(
+                        type=discord.ActivityType.listening,
+                        name="nothing! use !play "
+                    )
+                await self.bot.change_presence(activity=activity)
+        except Exception as e:
+            print(f"Error updating activity: {str(e)}")
 
 # Global variable for music bot instance
 music_bot = None
