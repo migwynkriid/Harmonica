@@ -507,39 +507,75 @@ class DownloadProgress:
 class MusicBot:
     def __init__(self):
         """Initialize the music bot"""
-        self.voice_client = None
-        self.queue = []  # Music queue
-        self.download_queue = asyncio.Queue()  # Queue for tracks to be downloaded
-        self.currently_downloading = False
-        self.current_song = None
-        self.current_process = None
+        # Queue and playback related
+        self.queue = []  # Queue of songs to play
+        self.current_song = None  # Currently playing song
+        self.is_playing = False  # Flag to track if bot is currently playing
+        self.voice_client = None  # Voice client instance
+        self.loop_mode = False  # Flag to track if loop mode is enabled
+        self.waiting_for_song = False  # Flag to track if waiting for a song to be ready
+        
+        # Async related
+        self.queue_lock = asyncio.Lock()  # Lock for queue operations
+        self.download_queue = asyncio.Queue()  # Queue for background downloads
+        self.currently_downloading = False  # Flag to track if currently downloading
         self.command_queue = asyncio.Queue()  # Queue for play commands
         self.command_processor_task = None  # Task for processing commands
-        self.status_messages = {}
-        self.current_command_msg = None
-        self.current_command_author = None
-        self.downloads_dir = DOWNLOADS_DIR
+        self.download_lock = asyncio.Lock()  # Lock for download synchronization
+        self.bot_loop = None  # Store bot's event loop
+        
+        # Message tracking
+        self.queued_messages = {}  # Store messages for each queued song
+        self.current_command_msg = None  # Store the current command message
+        self.current_command_author = None  # Store the current command author
+        self.status_messages = {}  # Track status messages
+        self.now_playing_message = None  # Track Now Playing message
+        
+        # File system related
+        self.downloads_dir = os.path.join(os.getcwd(), 'downloads')  # Directory for downloaded files
         self.cookie_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt')
-        self.last_update = 0  # Initialize last_update for progress tracking
+        
+        # Create downloads directory if it doesn't exist
+        if not os.path.exists(self.downloads_dir):
+            os.makedirs(self.downloads_dir)
+
+        # Activity tracking
+        self.last_activity = time.time()
         self.inactivity_timeout = 900  # 15 minutes in seconds
         self._inactivity_task = None
-        self.last_activity = time.time()
-        self.bot_loop = None  # Store bot's event loop
-        self.loop_mode = False  # Track if loop mode is enabled
-        self.download_lock = asyncio.Lock()  # Lock for download synchronization
-        self.queue_lock = asyncio.Lock()  # Add queue lock for thread safety
-        self.is_playing = False  # Track if currently playing
-        self.waiting_for_song = False  # Track if waiting for next song
-        self._last_progress = -1  # Track last progress update
-        self.now_playing_message = None  # Track the Now Playing message
-        self.queued_messages = {}  # Track Added to Queue messages by song URL
-        self.last_known_ctx = None  # Store last known context
-        self.bot = None  # Initialize bot attribute
+        self.last_update = 0
+        self._last_progress = -1
+        self.last_known_ctx = None
+        self.bot = None
+
+        # Initialize Spotify client
+        load_dotenv('.spotifyenv')
+        client_id = os.getenv('SPOTIPY_CLIENT_ID')
+        client_secret = os.getenv('SPOTIPY_CLIENT_SECRET')
+        
+        print(f"Spotify environment file path: {os.path.abspath('.spotifyenv')}")
+        print(f"Spotify client ID found: {'Yes' if client_id else 'No'}")
+        print(f"Spotify client secret found: {'Yes' if client_secret else 'No'}")
+        
+        if not client_id or not client_secret:
+            print("Warning: Spotify credentials not found. Spotify functionality will be limited.")
+            self.sp = None
+        else:
+            try:
+                client_credentials_manager = SpotifyClientCredentials(
+                    client_id=client_id,
+                    client_secret=client_secret
+                )
+                self.sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+                print("Successfully initialized Spotify client")
+            except Exception as e:
+                print(f"Error initializing Spotify client: {str(e)}")
+                self.sp = None
 
     async def setup(self, bot_instance):
         """Setup the bot with the event loop"""
         self.bot = bot_instance
-        self.bot_loop = bot_instance.loop
+        self.bot_loop = asyncio.get_event_loop()
         await self.start_command_processor()
         await self.start_inactivity_checker()
         asyncio.create_task(self.process_download_queue())
@@ -690,6 +726,7 @@ class MusicBot:
         """Start the inactivity checker"""
         try:
             await self.check_inactivity()
+            self._inactivity_task = self.bot_loop.create_task(self.check_inactivity())
         except Exception as e:
             print(f"Error starting inactivity checker: {str(e)}")
 
@@ -1302,7 +1339,7 @@ class MusicBot:
                             if message_exists:
                                 await status_msg.delete()
                         except Exception as e:
-                            print(f"Note: Could not delete processing message: {e}")
+                            print(f"Note: Could not delete processing message: {str(e)}")
                             # Continue execution even if message deletion fails
                     
                     # Return the song info
@@ -1363,8 +1400,8 @@ class MusicBot:
                         'url': first_video_info['webpage_url'] if first_video_info.get('webpage_url') else first_video_info['url'],
                         'file_path': first_file_path,
                         'thumbnail': first_video_info.get('thumbnail'),
-                        'is_from_playlist': True,
-                        'ctx': ctx
+                        'ctx': ctx,
+                        'is_from_playlist': True
                     }
 
                     # Queue the remaining videos for background download
@@ -1409,7 +1446,7 @@ class MusicBot:
                             if message_exists:
                                 await status_msg.delete()
                         except Exception as e:
-                            print(f"Note: Could not delete processing message: {e}")
+                            print(f"Note: Could not delete processing message: {str(e)}")
                             # Continue execution even if message deletion fails
                     
                     # Return the song info
@@ -1428,244 +1465,218 @@ class MusicBot:
                 await status_msg.edit(embed=error_embed)
             raise
 
-    async def download_spotify_track(self, track_id, status_msg):
-        """Download a Spotify track using spotdl"""
+    async def handle_spotify_url(self, url, ctx, status_msg=None):
+        """Handle Spotify URLs by extracting track info and downloading via YouTube"""
         try:
-            # Update status message if provided
-            if status_msg:
-                await status_msg.edit(
-                    embed=self.create_embed(
-                        "Processing",
-                        "Downloading Spotify track...",
-                        color=0x1DB954  # Spotify green color
-                    )
-                )
+            # Check if Spotify client is available
+            if not self.sp:
+                raise ValueError("Spotify functionality is not available. Please check your Spotify credentials in .spotifyenv")
 
-            # Prepare spotdl command
-            if not os.path.exists(SPOTDL_EXECUTABLE):
-                raise Exception("spotdl not found")
+            # Extract Spotify URI type and ID
+            spotify_match = re.match(r'https://open\.spotify\.com/(track|album|playlist)/([a-zA-Z0-9]+)', url)
+            if not spotify_match:
+                raise ValueError("Invalid Spotify URL")
 
-            # Create command with proper executable path
-            command = [
-                SPOTDL_EXECUTABLE,
-                *SPOTDL_OPTIONS,
-                f"https://open.spotify.com/track/{track_id}",
-            ]
+            content_type, content_id = spotify_match.groups()
 
-            # Run spotdl command
-            process = await asyncio.create_subprocess_exec(
-                *command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-
-            stdout, stderr = await process.communicate()
-            
-            if process.returncode != 0:
-                raise Exception(f"Failed to download Spotify track: {stderr.decode()}")
-
-            # Find the downloaded file
-            downloaded_files = [f for f in os.listdir(self.downloads_dir) if f.endswith('.mp3')]
-            if not downloaded_files:
-                raise Exception("No files were downloaded")
-
-            # Get the most recently downloaded file
-            latest_file = max(
-                [os.path.join(self.downloads_dir, f) for f in downloaded_files],
-                key=os.path.getctime
-            )
-
-            # Return the track info with thumbnail
-            return {
-                'title': os.path.splitext(os.path.basename(latest_file))[0],
-                'url': f"https://open.spotify.com/track/{track_id}",
-                'file_path': latest_file,
-                'thumbnail': None
-            }
+            if content_type == 'track':
+                return await self.handle_spotify_track(content_id, ctx, status_msg)
+            elif content_type == 'album':
+                return await self.handle_spotify_album(content_id, ctx, status_msg)
+            elif content_type == 'playlist':
+                return await self.handle_spotify_playlist(content_id, ctx, status_msg)
 
         except Exception as e:
-            print(f"Error downloading Spotify track: {str(e)}")
+            print(f"Error handling Spotify URL: {str(e)}")
+            if status_msg:
+                error_embed = self.create_embed("Error", f"Failed to process Spotify content: {str(e)}", color=0xe74c3c)
+                await status_msg.edit(embed=error_embed)
+            return None
+
+    async def handle_spotify_track(self, track_id, ctx, status_msg=None):
+        """Handle a single Spotify track"""
+        try:
+            # Get track details from Spotify
+            track = self.sp.track(track_id)
+            if not track:
+                raise ValueError("Could not find track on Spotify")
+
+            # Create search query for YouTube
+            artists = ", ".join([artist['name'] for artist in track['artists']])
+            search_query = f"{track['name']} {artists}"
+
+            # Update status message
+            if status_msg:
+                await status_msg.edit(embed=self.create_embed(
+                    "Processing",
+                    f"Searching for: {search_query}",
+                    color=0x1DB954
+                ))
+
+            # Download using yt-dlp
+            return await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
+
+        except Exception as e:
+            print(f"Error handling Spotify track: {str(e)}")
             raise
 
-    async def download_spotify_playlist(self, playlist_id, status_msg):
-        """Download a Spotify playlist using spotdl"""
+    async def handle_spotify_album(self, album_id, ctx, status_msg=None):
+        """Handle a Spotify album"""
         try:
-            # Update status message if provided
+            # Get album details from Spotify
+            album = self.sp.album(album_id)
+            if not album:
+                raise ValueError("Could not find album on Spotify")
+
+            # Update status message
             if status_msg:
-                await status_msg.edit(
-                    embed=self.create_embed(
-                        "Processing",
-                        "Downloading Spotify playlist...\nThis may take a while.",
-                        color=0x1DB954  # Spotify green color
-                    )
-                )
+                await status_msg.edit(embed=self.create_embed(
+                    "Processing Album",
+                    f"Processing album: {album['name']}\nTotal tracks: {album['total_tracks']}",
+                    color=0x1DB954,
+                    thumbnail_url=album['images'][0]['url'] if album['images'] else None
+                ))
 
-            # Prepare spotdl command
-            if not os.path.exists(SPOTDL_EXECUTABLE):
-                raise Exception("spotdl not found")
+            # Get all tracks from the album
+            tracks = []
+            results = self.sp.album_tracks(album_id)
+            tracks.extend(results['items'])
+            while results['next']:
+                results = self.sp.next(results)
+                tracks.extend(results['items'])
 
-            # Create command with proper executable path
-            command = [
-                SPOTDL_EXECUTABLE,
-                *SPOTDL_OPTIONS,
-                f"https://open.spotify.com/playlist/{playlist_id}",
-            ]
+            # Process first track immediately
+            if tracks:
+                first_track = tracks[0]
+                artists = ", ".join([artist['name'] for artist in first_track['artists']])
+                search_query = f"{first_track['name']} {artists}"
+                
+                first_song = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
+                if first_song:
+                    first_song['is_from_playlist'] = True
+                    self.queue.append(first_song)
+                    if not self.is_playing:
+                        await self.play_next(ctx)
 
-            # Run spotdl command
-            process = await asyncio.create_subprocess_exec(
-                *command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
+            # Queue remaining tracks for background processing
+            if len(tracks) > 1:
+                asyncio.create_task(self._process_spotify_tracks(
+                    tracks[1:],
+                    ctx,
+                    status_msg,
+                    f"Album: {album['name']}"
+                ))
 
-            downloaded_count = 0
-            while True:
-                line = await process.stdout.readline()
-                if not line:
-                    break
-                if b"Downloaded" in line:
-                    downloaded_count += 1
-                    if status_msg:
-                        await status_msg.edit(
-                            embed=self.create_embed(
-                                "Processing",
-                                f"Downloading Spotify playlist...\nDownloaded {downloaded_count} tracks so far",
-                                color=0x1DB954
-                            )
-                        )
+            return first_song if tracks else None
 
-            stdout, stderr = await process.communicate()
-            
-            if process.returncode != 0:
-                raise Exception(f"Failed to download Spotify playlist: {stderr.decode()}")
+        except Exception as e:
+            print(f"Error handling Spotify album: {str(e)}")
+            raise
 
-            # Find all downloaded files
-            downloaded_files = sorted(
-                [f for f in os.listdir(self.downloads_dir) if f.endswith('.mp3')],
-                key=lambda x: os.path.getctime(os.path.join(self.downloads_dir, x))
-            )
+    async def handle_spotify_playlist(self, playlist_id, ctx, status_msg=None):
+        """Handle a Spotify playlist"""
+        try:
+            # Get playlist details from Spotify
+            playlist = self.sp.playlist(playlist_id)
+            if not playlist:
+                raise ValueError("Could not find playlist on Spotify")
 
-            if not downloaded_files:
-                raise Exception("No files were downloaded from the playlist")
+            # Update status message
+            if status_msg:
+                await status_msg.edit(embed=self.create_embed(
+                    "Processing Playlist",
+                    f"Processing playlist: {playlist['name']}\nTotal tracks: {playlist['tracks']['total']}",
+                    color=0x1DB954,
+                    thumbnail_url=playlist['images'][0]['url'] if playlist['images'] else None
+                ))
 
-            # Add downloaded tracks to the queue with metadata
-            for track in downloaded_files:
-                track_info = {
-                    'title': os.path.splitext(track)[0],
-                    'url': f"https://open.spotify.com/playlist/{playlist_id}",  # Placeholder URL
-                    'file_path': os.path.join(self.downloads_dir, track),
-                    'thumbnail': None,
-                    'is_from_playlist': True
-                }
-                self.queue.append(track_info)
+            # Get all tracks from the playlist
+            tracks = []
+            results = playlist['tracks']
+            tracks.extend(results['items'])
+            while results['next']:
+                results = self.sp.next(results)
+                tracks.extend(results['items'])
 
-            # Start playing if not already
-            if not self.is_playing:
-                await self.play_next(status_msg.channel)
+            # Process first track immediately
+            if tracks:
+                first_track = tracks[0]['track']
+                artists = ", ".join([artist['name'] for artist in first_track['artists']])
+                search_query = f"{first_track['name']} {artists}"
+                
+                first_song = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
+                if first_song:
+                    first_song['is_from_playlist'] = True
+                    self.queue.append(first_song)
+                    if not self.is_playing:
+                        await self.play_next(ctx)
 
-            # Check if all songs are downloaded
-            total_expected_tracks = downloaded_count
-            if total_expected_tracks == len(downloaded_files):
-                # Remove processing message
-                if status_msg:
+            # Queue remaining tracks for background processing
+            if len(tracks) > 1:
+                asyncio.create_task(self._process_spotify_tracks(
+                    [t['track'] for t in tracks[1:]],
+                    ctx,
+                    status_msg,
+                    f"Playlist: {playlist['name']}"
+                ))
+
+            return first_song if tracks else None
+
+        except Exception as e:
+            print(f"Error handling Spotify playlist: {str(e)}")
+            raise
+
+    async def _process_spotify_tracks(self, tracks, ctx, status_msg, source_name):
+        """Process remaining Spotify tracks in the background"""
+        try:
+            total_tracks = len(tracks)
+            processed = 0
+
+            for track in tracks:
+                if not track:  # Skip any None tracks
+                    continue
+
+                artists = ", ".join([artist['name'] for artist in track['artists']])
+                search_query = f"{track['name']} {artists}"
+
+                try:
+                    song_info = await self.download_song(search_query, status_msg=None, ctx=ctx)
+                    if song_info:
+                        song_info['is_from_playlist'] = True
+                        async with self.queue_lock:
+                            self.queue.append(song_info)
+                            if not self.is_playing and not self.voice_client.is_playing():
+                                await self.play_next(ctx)
+                except Exception as e:
+                    print(f"Error processing track '{track['name']}': {str(e)}")
+                    continue
+
+                processed += 1
+                if status_msg and processed % 5 == 0:  # Update status every 5 tracks
                     try:
-                        await status_msg.delete()
-                    except Exception as e:
-                        print(f"Error removing processing message: {str(e)}")
+                        await status_msg.edit(embed=self.create_embed(
+                            "Processing",
+                            f"Processing {source_name}\nProgress: {processed}/{total_tracks} tracks",
+                            color=0x1DB954
+                        ))
+                    except:
+                        pass  # Ignore if message edit fails
 
-        except Exception as e:
-            print(f"Error downloading Spotify playlist: {str(e)}")
-            raise
-
-    async def download_spotify_album(self, album_id, status_msg):
-        """Download a Spotify album using spotdl"""
-        try:
-            # Update status message if provided
+            # Final status update
             if status_msg:
-                await status_msg.edit(
-                    embed=self.create_embed(
-                        "Processing",
-                        "Downloading Spotify album...\nThis may take a while.",
-                        color=0x1DB954  # Spotify green color
-                    )
+                final_embed = self.create_embed(
+                    "Complete",
+                    f"Finished processing {source_name}\nTotal tracks added: {processed}",
+                    color=0x1DB954
                 )
-
-            # Prepare spotdl command
-            if not os.path.exists(SPOTDL_EXECUTABLE):
-                raise Exception("spotdl not found")
-
-            # Create command with proper executable path
-            command = [
-                SPOTDL_EXECUTABLE,
-                *SPOTDL_OPTIONS,
-                f"https://open.spotify.com/album/{album_id}",
-            ]
-
-            # Run spotdl command
-            process = await asyncio.create_subprocess_exec(
-                *command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-
-            downloaded_count = 0
-            while True:
-                line = await process.stdout.readline()
-                if not line:
-                    break
-                if b"Downloaded" in line:
-                    downloaded_count += 1
-                    if status_msg:
-                        await status_msg.edit(
-                            embed=self.create_embed(
-                                "Processing",
-                                f"Downloading Spotify album...\nDownloaded {downloaded_count} tracks so far",
-                                color=0x1DB954
-                            )
-                        )
-
-            stdout, stderr = await process.communicate()
-            
-            if process.returncode != 0:
-                raise Exception(f"Failed to download Spotify album: {stderr.decode()}")
-
-            # Find all downloaded files
-            downloaded_files = sorted(
-                [f for f in os.listdir(self.downloads_dir) if f.endswith('.mp3')],
-                key=lambda x: os.path.getctime(os.path.join(self.downloads_dir, x))
-            )
-
-            if not downloaded_files:
-                raise Exception("No files were downloaded from the album")
-
-            # Add downloaded tracks to the queue with metadata
-            for track in downloaded_files:
-                track_info = {
-                    'title': os.path.splitext(track)[0],
-                    'url': f"https://open.spotify.com/album/{album_id}",  # Placeholder URL
-                    'file_path': os.path.join(self.downloads_dir, track),
-                    'thumbnail': None,
-                    'is_from_playlist': True
-                }
-                self.queue.append(track_info)
-
-            # Start playing if not already
-            if not self.is_playing:
-                await self.play_next(status_msg.channel)
-
-            # Check if all songs are downloaded
-            total_expected_tracks = downloaded_count
-            if total_expected_tracks == len(downloaded_files):
-                # Remove processing message
-                if status_msg:
-                    try:
-                        await status_msg.delete()
-                    except Exception as e:
-                        print(f"Error removing processing message: {str(e)}")
+                try:
+                    await status_msg.edit(embed=final_embed)
+                    await status_msg.delete(delay=5)
+                except:
+                    pass
 
         except Exception as e:
-            print(f"Error downloading Spotify album: {str(e)}")
-            raise
+            print(f"Error in _process_spotify_tracks: {str(e)}")
 
     async def _handle_playlist(self, url, ctx, status_msg=None):
         """Handle a YouTube playlist by extracting video links and downloading them sequentially"""
@@ -1817,44 +1828,50 @@ class MusicBot:
             # Create a unique processing message for this request
             processing_embed = self.create_embed(
                 "Processing",
-                f"Fetching and downloading the request:\n{query}",
+                f"Processing your request...",
                 color=0x3498db
             )
-            status_msg = await self.update_or_send_message(ctx, processing_embed)
+            status_msg = await ctx.send(embed=processing_embed)
 
-            # Download and queue the song
-            async with self.queue_lock:
-                result = await self.download_song(query, status_msg=status_msg, ctx=ctx)
+            # Check if it's a Spotify URL
+            if 'open.spotify.com' in query:
+                result = await self.handle_spotify_url(query, ctx, status_msg)
                 if not result:
                     return
+            else:
+                # Handle as regular YouTube query
+                async with self.queue_lock:
+                    result = await self.download_song(query, status_msg=status_msg, ctx=ctx)
+                    if not result:
+                        return
 
-                # Add the song to the queue
-                self.queue.append({
-                    'title': result['title'],
-                    'url': result['url'],
-                    'file_path': result['file_path'],
-                    'thumbnail': result.get('thumbnail'),
-                    'ctx': ctx,
-                    'is_stream': result.get('is_stream', False),
-                    'is_from_playlist': result.get('is_from_playlist', False)
-                })
+                    # Add the song to the queue
+                    self.queue.append({
+                        'title': result['title'],
+                        'url': result['url'],
+                        'file_path': result['file_path'],
+                        'thumbnail': result.get('thumbnail'),
+                        'ctx': ctx,
+                        'is_stream': result.get('is_stream', False),
+                        'is_from_playlist': result.get('is_from_playlist', False)
+                    })
 
-                # If not currently playing, start playing
-                if not self.is_playing and not self.waiting_for_song:
-                    await self.process_queue()
-                else:
-                    # Only send "Added to queue" message if it's not from a playlist
-                    if not result.get('is_from_playlist'):
-                        queue_pos = len(self.queue)
-                        queue_embed = self.create_embed(
-                            "Added to Queue",
-                            f"[🎵 {result['title']}]({result['url']})\nPosition in queue: {queue_pos}",
-                            color=0x3498db,
-                            thumbnail_url=result.get('thumbnail')
-                        )
-                        queue_msg = await ctx.send(embed=queue_embed)
-                        # Store the queue message
-                        self.queued_messages[result['url']] = queue_msg
+                    # If not currently playing, start playing
+                    if not self.is_playing and not self.waiting_for_song:
+                        await self.process_queue()
+                    else:
+                        # Only send "Added to queue" message if it's not from a playlist
+                        if not result.get('is_from_playlist'):
+                            queue_pos = len(self.queue)
+                            queue_embed = self.create_embed(
+                                "Added to Queue",
+                                f"[🎵 {result['title']}]({result['url']})\nPosition in queue: {queue_pos}",
+                                color=0x3498db,
+                                thumbnail_url=result.get('thumbnail')
+                            )
+                            queue_msg = await ctx.send(embed=queue_embed)
+                            # Store the queue message
+                            self.queued_messages[result['url']] = queue_msg
 
         except Exception as e:
             error_msg = f"Error playing song: {str(e)}"
@@ -2006,44 +2023,50 @@ async def play(ctx, *, query=None):
         # Create a unique processing message for this request
         processing_embed = music_bot.create_embed(
             "Processing",
-            f"Fetching and downloading the request:\n{query}",
+            f"Processing your request...",
             color=0x3498db
         )
         status_msg = await ctx.send(embed=processing_embed)
 
-        # Download and queue the song
-        async with music_bot.queue_lock:
-            result = await music_bot.download_song(query, status_msg=status_msg, ctx=ctx)
+        # Check if it's a Spotify URL
+        if 'open.spotify.com' in query:
+            result = await music_bot.handle_spotify_url(query, ctx, status_msg)
             if not result:
                 return
+        else:
+            # Handle as regular YouTube query
+            async with music_bot.queue_lock:
+                result = await music_bot.download_song(query, status_msg=status_msg, ctx=ctx)
+                if not result:
+                    return
 
-            # Add the song to the queue
-            music_bot.queue.append({
-                'title': result['title'],
-                'url': result['url'],
-                'file_path': result['file_path'],
-                'thumbnail': result.get('thumbnail'),
-                'ctx': ctx,
-                'is_stream': result.get('is_stream', False),
-                'is_from_playlist': result.get('is_from_playlist', False)
-            })
+                # Add the song to the queue
+                music_bot.queue.append({
+                    'title': result['title'],
+                    'url': result['url'],
+                    'file_path': result['file_path'],
+                    'thumbnail': result.get('thumbnail'),
+                    'ctx': ctx,
+                    'is_stream': result.get('is_stream', False),
+                    'is_from_playlist': result.get('is_from_playlist', False)
+                })
 
-            # If not currently playing, start playing
-            if not music_bot.is_playing and not music_bot.waiting_for_song:
-                await music_bot.process_queue()
-            else:
-                # Only send "Added to queue" message if it's not from a playlist
-                if not result.get('is_from_playlist'):
-                    queue_pos = len(music_bot.queue)
-                    queue_embed = music_bot.create_embed(
-                        "Added to Queue",
-                        f"[🎵 {result['title']}]({result['url']})\nPosition in queue: {queue_pos}",
-                        color=0x3498db,
-                        thumbnail_url=result.get('thumbnail')
-                    )
-                    queue_msg = await ctx.send(embed=queue_embed)
-                    # Store the queue message
-                    music_bot.queued_messages[result['url']] = queue_msg
+                # If not currently playing, start playing
+                if not music_bot.is_playing and not music_bot.waiting_for_song:
+                    await music_bot.process_queue()
+                else:
+                    # Only send "Added to queue" message if it's not from a playlist
+                    if not result.get('is_from_playlist'):
+                        queue_pos = len(music_bot.queue)
+                        queue_embed = music_bot.create_embed(
+                            "Added to Queue",
+                            f"[🎵 {result['title']}]({result['url']})\nPosition in queue: {queue_pos}",
+                            color=0x3498db,
+                            thumbnail_url=result.get('thumbnail')
+                        )
+                        queue_msg = await ctx.send(embed=queue_embed)
+                        # Store the queue message
+                        music_bot.queued_messages[result['url']] = queue_msg
 
     except Exception as e:
         error_msg = f"Error playing song: {str(e)}"
