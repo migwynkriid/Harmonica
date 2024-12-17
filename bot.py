@@ -28,7 +28,7 @@ def ensure_ytdlp():
             ytdlp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yt-dlp.exe')
             if not os.path.exists(ytdlp_path):
                 print("Downloading yt-dlp.exe...")
-                url = "https://github.com/yt-dlp/yt-dlp/releases/download/2024.12.06/yt-dlp.exe"
+                url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
                 urllib.request.urlretrieve(url, ytdlp_path)
                 os.chmod(ytdlp_path, 0o755)  # Make executable
                 print("yt-dlp.exe downloaded successfully")
@@ -37,7 +37,7 @@ def ensure_ytdlp():
             ytdlp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yt-dlp')
             if not os.path.exists(ytdlp_path):
                 print("Downloading yt-dlp for macOS...")
-                url = "https://github.com/yt-dlp/yt-dlp/releases/download/2024.12.06/yt-dlp_macos"
+                url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos"
                 urllib.request.urlretrieve(url, ytdlp_path)
                 os.chmod(ytdlp_path, 0o755)  # Make executable
                 print("yt-dlp downloaded successfully")
@@ -46,7 +46,7 @@ def ensure_ytdlp():
             ytdlp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yt-dlp')
             if not os.path.exists(ytdlp_path):
                 print("Downloading yt-dlp for Linux...")
-                url = "https://github.com/yt-dlp/yt-dlp/releases/download/2024.12.06/yt-dlp_linux_aarch64"
+                url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download//yt-dlp_linux_aarch64"
                 urllib.request.urlretrieve(url, ytdlp_path)
                 os.chmod(ytdlp_path, 0o755)  # Make executable
                 print("yt-dlp downloaded successfully")
