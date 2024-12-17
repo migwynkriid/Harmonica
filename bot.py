@@ -869,7 +869,7 @@ class MusicBot:
                         if self.voice_client and self.voice_client.is_connected():
                             # Add reconnect options for streams
                             ffmpeg_options = {
-                                'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
+                                'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
                             }
                             # For streams, use the URL directly
                             audio_source = discord.FFmpegPCMAudio(
@@ -1872,9 +1872,9 @@ class MusicBot:
             await self.update_activity()  # This will now clear the activity
             
             # Then handle disconnection
-            if self.download_queue.empty():  # Only disconnect if nothing left to download
-                if self.voice_client and self.voice_client.is_connected():
-                    await self.voice_client.disconnect()
+            # if self.download_queue.empty():  # Only disconnect if nothing left to download
+            #     if self.voice_client and self.voice_client.is_connected():
+            #         await self.voice_client.disconnect()
 
     async def queue(self, ctx):
         """Display the current queue"""
