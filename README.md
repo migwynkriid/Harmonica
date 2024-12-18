@@ -39,6 +39,8 @@ Recommend to only use it on a private Discord server, you have to self host it o
    python bot.py
    ```
 
+6. **Configure Configuration**: Edit the `config.json` file to configure the OWNER ID and PREFIX.
+
 ## Features
 - **Play Music**: Stream music from YouTube directly into your Discord voice channel.
 - **Playback Controls**: Basic controls like play, pause, skip, and stop.
