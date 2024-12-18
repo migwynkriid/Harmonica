@@ -23,6 +23,12 @@ import subprocess
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
+# Load config
+with open('config.json', 'r') as f:
+    config = json.load(f)
+    OWNER_ID = config['OWNER_ID']
+    PREFIX = config['PREFIX']
+
 # Function to download yt-dlp based on platform
 def ensure_ytdlp():
     try:
@@ -221,7 +227,7 @@ print = custom_print
 
 # Constants
 DOWNLOADS_DIR = os.path.join(os.getcwd(), 'downloads')
-OWNER_ID = 220301180562046977
+OWNER_ID = config['OWNER_ID']
 
 # Create downloads directory if it doesn't exist
 if not os.path.exists(DOWNLOADS_DIR):
@@ -242,7 +248,13 @@ def clear_downloads_folder():
 intents = discord.Intents.default()
 intents.message_content = True
 intents.messages = True
-bot = commands.Bot(command_prefix='!', intents=intents, case_insensitive=True)
+intents.voice_states = True
+
+bot = commands.Bot(
+    command_prefix=PREFIX,
+    intents=intents,
+    help_command=None
+)
 
 # Initialize Spotipy client
 sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
@@ -1848,7 +1860,7 @@ class MusicBot:
             await ctx.send(embed=self.create_embed("Error", f"Error checking yt-dlp version: {str(e)}", color=0xe74c3c))
 
     async def after_playing_coro(self, error, ctx):
-        """Coroutine called after a song finishes playing"""
+        """Coroutine called after a song finishes"""
         if error:
             print(f"Error in playback: {error}")
         
@@ -2241,7 +2253,12 @@ async def queue(ctx):
     await ctx.send(embed=embed)
 
 @bot.command(name='log')
+@commands.is_owner()
 async def log(ctx):
+    """Clear the log file - Owner only command"""
+    if ctx.author.id != OWNER_ID:  # Owner ID check
+        await ctx.send(embed=discord.Embed(title="Error", description="This command is only available to the bot owner.", color=0xe74c3c))
+        return
     try:
         # Upload the log.txt file to the chat
         await ctx.send(file=discord.File('log.txt'))
@@ -2274,6 +2291,7 @@ async def loop(ctx):
     await ctx.send(embed=music_bot.create_embed(f"Loop Mode {status.title()}", f"[🎵 {music_bot.current_song['title']}]({music_bot.current_song['url']}) will {'now' if music_bot.loop_mode else 'no longer'} be looped", color=color))
 
 @bot.command(name='restart')
+@commands.is_owner()
 async def restart(ctx):
     """Restart the bot (Owner only)"""
     if ctx.author.id != OWNER_ID:
@@ -2297,6 +2315,7 @@ async def restart(ctx):
         await ctx.send(embed=discord.Embed(title="Error", description=f"Failed to restart: {str(e)}", color=0xe74c3c))
 
 @bot.command(name='logclear')
+@commands.is_owner()
 async def logclear(ctx):
     """Clear the log file - Owner only command"""
     if ctx.author.id != OWNER_ID:  # Owner ID check
@@ -2343,7 +2362,12 @@ async def nowplaying(ctx):
     await ctx.send(embed=embed)
 
 @bot.command(name='ytdlp')
+@commands.is_owner()
 async def ytdlp(ctx):
+    """Clear the log file - Owner only command"""
+    if ctx.author.id != OWNER_ID:  # Owner ID check
+        await ctx.send(embed=discord.Embed(title="Error", description="This command is only available to the bot owner.", color=0xe74c3c))
+        return
     """Check the version of the locally installed yt-dlp"""
     try:
         ytdlp_path = ensure_ytdlp()
@@ -2370,7 +2394,12 @@ async def ytdlp(ctx):
         await ctx.send(embed=music_bot.create_embed("Error", f"Error checking yt-dlp version: {str(e)}", color=0xe74c3c))
 
 @bot.command(name='update')
+@commands.is_owner()
 async def updateytdlp(ctx):
+    """Clear the log file - Owner only command"""
+    if ctx.author.id != OWNER_ID:  # Owner ID check
+        await ctx.send(embed=discord.Embed(title="Error", description="This command is only available to the bot owner.", color=0xe74c3c))
+        return
     """Update the yt-dlp executable"""
     try:
         await ctx.send(embed=discord.Embed(title="yt-dlp", description="Updating...", color=0x2ecc71))
