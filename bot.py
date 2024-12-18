@@ -612,7 +612,7 @@ class MusicBot:
                             try:
                                 message_exists = True
                                 try:
-                                    await status_msg.fetch()
+                                    await status_msg.fetch()  # This will raise NotFound if message is deleted
                                 except discord.NotFound:
                                     message_exists = False
                                 
@@ -2369,6 +2369,30 @@ async def ytdlp(ctx):
     except Exception as e:
         await ctx.send(embed=music_bot.create_embed("Error", f"Error checking yt-dlp version: {str(e)}", color=0xe74c3c))
 
+@bot.command(name='update')
+async def updateytdlp(ctx):
+    """Update the yt-dlp executable"""
+    try:
+        await ctx.send(embed=discord.Embed(title="yt-dlp", description="Updating...", color=0x2ecc71))
+        
+        ytdlp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yt-dlp.exe' if sys.platform.startswith('win') else 'yt-dlp')
+        if os.path.exists(ytdlp_path):
+            os.remove(ytdlp_path)
+
+        ensure_ytdlp()  
+
+        # Get version after update
+        try:
+            result = subprocess.run([ytdlp_path, '--version'], capture_output=True, text=True)
+            version = result.stdout.strip()
+        except Exception:
+            version = "Unknown"
+        
+        embed = discord.Embed(title="yt-dlp Update", description=f"Yt-dlp is updated to version `{version}`\nPlease restart the bot using {ctx.prefix}restart", color=0x3498db)
+        await ctx.send(embed=embed)
+    except Exception as e:
+        await ctx.send(embed=discord.Embed(title="Error", description=f"Error updating yt-dlp: {str(e)}", color=0xe74c3c))
+
 # Remove default help command before registering custom one
 bot.remove_command('help')
 
@@ -2384,10 +2408,12 @@ async def help_command(ctx):
     help_embed.add_field(name="!leave", value="Leave the voice channel.", inline=False)
     help_embed.add_field(name="!loop", value="Toggle loop mode for the current song.", inline=False)
     help_embed.add_field(name="!stop", value="Stop playback, clear the queue, and leave the voice channel.", inline=False)
-    help_embed.add_field(name="!log", value="Log the current context.", inline=False)
+    help_embed.add_field(name="!log", value="Log the current context. (Owner Only)", inline=False)
     help_embed.add_field(name="!restart", value="Restart the bot (Owner only).", inline=False)
-    help_embed.add_field(name="!logclear", value="Clear the log file (Owner only command).", inline=False)
+    help_embed.add_field(name="!logclear", value="Clear the log file (Owner Only).", inline=False)
     help_embed.add_field(name="!nowplaying", value="Show the currently playing song.", inline=False)
+    help_embed.add_field(name="!ytdlp", value="Check the version of the locally installed yt-dlp. (Owner Only)", inline=False)
+    help_embed.add_field(name="!update", value="Updates the yt-dlp executable. (Owner Only)", inline=False)
     await ctx.send(embed=help_embed)
 
 # Run the bot
