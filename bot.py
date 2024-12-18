@@ -2035,11 +2035,15 @@ async def on_ready():
     
     # Set initial status immediately
     await bot.change_presence(activity=discord.Game(name="nothing! use !play "))
-    
+    print(f"------------------")
     print(f"Logged in as {bot.user.name}")
     print(f"Bot ID: {bot.user.id}")
-    print("------")
-    
+    print(f"Bot Invite URL: {discord.utils.oauth_url(bot.user.id)}")
+    print(f"------------------")
+    print(f"Loaded configuration:")
+    print(f"Owner ID: {OWNER_ID}")
+    print(f"Command Prefix: {PREFIX}")
+
     # Initialize the music bot
     if not music_bot:
         music_bot = MusicBot()
