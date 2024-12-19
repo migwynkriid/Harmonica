@@ -2470,7 +2470,7 @@ async def help_command(ctx):
     help_embed.add_field(name="!restart", value="Restart the bot (Owner only).", inline=False)
     help_embed.add_field(name="!logclear", value="Clear the log file (Owner Only).", inline=False)
     help_embed.add_field(name="!nowplaying", value="Show the currently playing song.", inline=False)
-    help_embed.add_field(name="!ytdlp", value="Check the version of the locally installed yt-dlp. (Owner Only)", inline=False)
+    help_embed.add_field(name="!version", value="Check the version of yt-dlp and commit info. (Owner Only)", inline=False)
     help_embed.add_field(name="!update", value="Updates the yt-dlp executable. (Owner Only)", inline=False)
     await ctx.send(embed=help_embed)
 
