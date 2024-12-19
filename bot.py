@@ -2368,7 +2368,6 @@ async def nowplaying(ctx):
 @bot.command(name='ytdlp')
 @commands.is_owner()
 async def ytdlp(ctx):
-    """Clear the log file - Owner only command"""
     if ctx.author.id != OWNER_ID:  # Owner ID check
         await ctx.send(embed=discord.Embed(title="Error", description="This command is only available to the bot owner.", color=0xe74c3c))
         return
@@ -2400,7 +2399,6 @@ async def ytdlp(ctx):
 @bot.command(name='update')
 @commands.is_owner()
 async def updateytdlp(ctx):
-    """Clear the log file - Owner only command"""
     if ctx.author.id != OWNER_ID:  # Owner ID check
         await ctx.send(embed=discord.Embed(title="Error", description="This command is only available to the bot owner.", color=0xe74c3c))
         return
