@@ -385,7 +385,7 @@ class CancelButton(discord.ui.View):
                     self.bot.current_process.terminate()
                 except:
                     pass
-            self.bot.current_process = None
+                self.bot.current_process = None
             
             # Clean up the current file if it exists
             if self.current_file and os.path.exists(self.current_file):
@@ -1836,7 +1836,7 @@ class MusicBot:
     async def ytdlp_version(ctx):
         """Check the version of the locally installed yt-dlp"""
         try:
-            ytdlp_path = ensure_ytdlp()
+            ytdlp_path = get_ytdlp_path()
             if not ytdlp_path:
                 await ctx.send(embed=self.create_embed("Error", "yt-dlp executable not found", color=0xe74c3c))
                 return
@@ -1852,7 +1852,9 @@ class MusicBot:
             
             if process.returncode == 0:
                 version = stdout.decode().strip()
-                await ctx.send(embed=self.create_embed("yt-dlp Version", f"Version: {version}", color=0x3498db))
+                embed = self.create_embed("yt-dlp Version", f"yt-dlp: {version}", color=0x3498db)
+                embed.add_field(name="Version Code", value="22", inline=False)
+                await ctx.send(embed=embed)
             else:
                 error = stderr.decode().strip()
                 await ctx.send(embed=self.create_embed("Error", f"Failed to get yt-dlp version: {error}", color=0xe74c3c))
@@ -2365,7 +2367,7 @@ async def nowplaying(ctx):
 
     await ctx.send(embed=embed)
 
-@bot.command(name='ytdlp')
+@bot.command(name='version')
 @commands.is_owner()
 async def ytdlp(ctx):
     if ctx.author.id != OWNER_ID:  # Owner ID check
@@ -2373,28 +2375,53 @@ async def ytdlp(ctx):
         return
     """Check the version of the locally installed yt-dlp"""
     try:
-        ytdlp_path = ensure_ytdlp()
-        if not ytdlp_path:
-            await ctx.send(embed=music_bot.create_embed("Error", "yt-dlp executable not found", color=0xe74c3c))
-            return
-
-        # Run yt-dlp --version command
-        process = await asyncio.create_subprocess_exec(
-            ytdlp_path,
-            '--version',
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await process.communicate()
+        status_msg = await ctx.send(embed=music_bot.create_embed("Bot Version", "Checking versions...", color=0x3498db))
         
-        if process.returncode == 0:
-            version = stdout.decode().strip()
-            await ctx.send(embed=music_bot.create_embed("yt-dlp Version", f"Version: {version}", color=0x3498db))
-        else:
-            error = stderr.decode().strip()
-            await ctx.send(embed=music_bot.create_embed("Error", f"Failed to get yt-dlp version: {error}", color=0xe74c3c))
+        # Get yt-dlp version directly from the module
+        try:
+            version = yt_dlp.version.__version__
+        except Exception:
+            version = "Unknown"
+
+        # Update message with yt-dlp version
+        embed = music_bot.create_embed("Bot Version", f"yt-dlp: {version}", color=0x3498db)
+        await status_msg.edit(embed=embed)
+            
+        # Get current commit hash
+        git_hash_process = await asyncio.create_subprocess_exec(
+            'git',
+            'rev-parse',
+            '--short',
+            'HEAD',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=os.path.dirname(os.path.abspath(__file__))
+        )
+        hash_stdout, _ = await git_hash_process.communicate()
+        
+        # Get commit count up to current commit
+        git_count_process = await asyncio.create_subprocess_exec(
+            'git',
+            'rev-list',
+            '--count',
+            'HEAD',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=os.path.dirname(os.path.abspath(__file__))
+        )
+        count_stdout, _ = await git_count_process.communicate()
+        
+        commit_info = "Unknown"
+        if git_hash_process.returncode == 0 and git_count_process.returncode == 0:
+            commit_hash = hash_stdout.decode().strip()
+            commit_count = count_stdout.decode().strip()
+            commit_info = f"#{commit_count} ({commit_hash})"
+        
+        embed.add_field(name="Current commit", value=commit_info, inline=False)
+        await status_msg.edit(embed=embed)
+            
     except Exception as e:
-        await ctx.send(embed=music_bot.create_embed("Error", f"Error checking yt-dlp version: {str(e)}", color=0xe74c3c))
+        await ctx.send(embed=music_bot.create_embed("Error", f"Error getting version: {str(e)}", color=0xe74c3c))
 
 @bot.command(name='update')
 @commands.is_owner()
