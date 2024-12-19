@@ -24,6 +24,13 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
 # Load config
+if not os.path.exists('config.json'):
+    default_config = {
+        "OWNER_ID": "YOUR_DISCORD_USER_ID",
+        "PREFIX": "!"}
+    with open('config.json', 'w') as f:
+        json.dump(default_config, f, indent=4)
+
 with open('config.json', 'r') as f:
     config = json.load(f)
     OWNER_ID = config['OWNER_ID']
