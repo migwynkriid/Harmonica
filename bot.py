@@ -35,7 +35,7 @@ def ensure_ytdlp():
         if sys.platform.startswith('win'):
             ytdlp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yt-dlp.exe')
             if not os.path.exists(ytdlp_path):
-                print("Downloading yt-dlp.exe...")
+                print("Downloading yt-dlp for Windows...")
                 url = "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp.exe"
                 urllib.request.urlretrieve(url, ytdlp_path)
                 os.chmod(ytdlp_path, 0o755)  # Make executable
@@ -2384,7 +2384,7 @@ async def ytdlp(ctx):
             version = "Unknown"
 
         # Update message with yt-dlp version
-        embed = music_bot.create_embed("Bot Version", f"yt-dlp: {version}", color=0x3498db)
+        embed = music_bot.create_embed("Bot Version", f"yt-dlp: `{version}`", color=0x3498db)
         await status_msg.edit(embed=embed)
             
         # Get current commit hash
@@ -2415,7 +2415,7 @@ async def ytdlp(ctx):
         if git_hash_process.returncode == 0 and git_count_process.returncode == 0:
             commit_hash = hash_stdout.decode().strip()
             commit_count = count_stdout.decode().strip()
-            commit_info = f"#{commit_count} ({commit_hash})"
+            commit_info = f"#{commit_count} (`{commit_hash}`)"
         
         embed.add_field(name="Current commit", value=commit_info, inline=False)
         await status_msg.edit(embed=embed)
@@ -2431,7 +2431,7 @@ async def updateytdlp(ctx):
         return
     """Update the yt-dlp executable"""
     try:
-        status_msg = await ctx.send(embed=discord.Embed(title="Updating yt-dlp", color=0x2ecc71))
+        status_msg = await ctx.send(embed=discord.Embed(title="Updating yt-dlp...", color=0x2ecc71))
         
         ytdlp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yt-dlp.exe' if sys.platform.startswith('win') else 'yt-dlp')
         if os.path.exists(ytdlp_path):
