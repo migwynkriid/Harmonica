@@ -2431,7 +2431,7 @@ async def updateytdlp(ctx):
         return
     """Update the yt-dlp executable"""
     try:
-        await ctx.send(embed=discord.Embed(title="yt-dlp", description="Updating...", color=0x2ecc71))
+        status_msg = await ctx.send(embed=discord.Embed(title="Updating yt-dlp", color=0x2ecc71))
         
         ytdlp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yt-dlp.exe' if sys.platform.startswith('win') else 'yt-dlp')
         if os.path.exists(ytdlp_path):
@@ -2446,8 +2446,8 @@ async def updateytdlp(ctx):
         except Exception:
             version = "Unknown"
         
-        embed = discord.Embed(title="yt-dlp Update", description=f"Yt-dlp is updated to version `{version}`\nPlease restart the bot using {ctx.prefix}restart", color=0x3498db)
-        await ctx.send(embed=embed)
+        embed = discord.Embed(title="Finished updating!", description=f"Yt-dlp is updated to version `{version}`\nPlease restart the bot using `{ctx.prefix}restart`", color=0x2ecc71)
+        await status_msg.edit(embed=embed)
     except Exception as e:
         await ctx.send(embed=discord.Embed(title="Error", description=f"Error updating yt-dlp: {str(e)}", color=0xe74c3c))
 
