@@ -23,7 +23,6 @@ import subprocess
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
-# Load config
 if not os.path.exists('config.json'):
     default_config = {
         "OWNER_ID": "YOUR_DISCORD_USER_ID",
@@ -36,7 +35,6 @@ with open('config.json', 'r') as f:
     OWNER_ID = config['OWNER_ID']
     PREFIX = config['PREFIX']
 
-# Function to download yt-dlp based on platform
 def ensure_ytdlp():
     try:
         if sys.platform.startswith('win'):
@@ -45,38 +43,33 @@ def ensure_ytdlp():
                 print("Downloading yt-dlp for Windows...")
                 url = "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp.exe"
                 urllib.request.urlretrieve(url, ytdlp_path)
-                os.chmod(ytdlp_path, 0o755)  # Make executable
+                os.chmod(ytdlp_path, 0o755)
                 print("yt-dlp.exe downloaded successfully")
             return ytdlp_path
-        elif sys.platform.startswith('darwin'):  # macOS
+        elif sys.platform.startswith('darwin'):
             ytdlp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yt-dlp')
             if not os.path.exists(ytdlp_path):
                 print("Downloading yt-dlp for macOS...")
                 url = "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp_macos"
                 urllib.request.urlretrieve(url, ytdlp_path)
-                os.chmod(ytdlp_path, 0o755)  # Make executable
+                os.chmod(ytdlp_path, 0o755)
                 print("yt-dlp downloaded successfully")
             return ytdlp_path
-        else:  # Linux
+        else:
             ytdlp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yt-dlp')
             if not os.path.exists(ytdlp_path):
-                print("Downloading yt-dlp for Linux...")
-                
-                # Get machine architecture
+                print("Downloading yt-dlp for Linux...")   
                 import platform
                 machine = platform.machine().lower()
-                
-                # Select appropriate URL based on architecture
                 if machine in ['aarch64', 'arm64']:
                     url = "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp_linux_aarch64"
                 elif machine == 'armv7l':
                     url = "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp_linux_armv7l"
-                else:  # x86_64, amd64, etc.
+                else:
                     url = "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp_linux"
-                
                 print(f"Detected architecture: {machine}, downloading appropriate version...")
                 urllib.request.urlretrieve(url, ytdlp_path)
-                os.chmod(ytdlp_path, 0o755)  # Make executable
+                os.chmod(ytdlp_path, 0o755)
                 print("yt-dlp downloaded successfully")
             return ytdlp_path
     except Exception as e:
@@ -102,7 +95,6 @@ def install_ffmpeg_windows():
 
 def install_ffmpeg_macos():
     try:
-        # First try with Homebrew
         print("FFmpeg not found. Attempting to install FFmpeg using Homebrew...")
         try:
             subprocess.run(['brew', 'install', 'ffmpeg'], check=True)
@@ -110,8 +102,6 @@ def install_ffmpeg_macos():
             return True
         except subprocess.CalledProcessError:
             print("Homebrew installation failed. Trying MacPorts...")
-            
-            # If Homebrew fails, try MacPorts
             try:
                 subprocess.run(['sudo', 'port', 'install', 'ffmpeg'], check=True)
                 print("FFmpeg installed successfully using MacPorts. Please restart the bot for changes to take effect.")
@@ -133,95 +123,73 @@ def install_ffmpeg_linux():
         print(f"Error installing FFmpeg: {e}")
         return False
 
-# Function to get appropriate ffmpeg path based on platform
 def get_ffmpeg_path():
     if sys.platform.startswith('win'):
-        # First check in root directory
         local_ffmpeg = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ffmpeg.exe')
         if os.path.exists(local_ffmpeg):
             return local_ffmpeg
         
-        # Then check in PATH
         if check_ffmpeg_in_path():
             return 'ffmpeg'
         
-        # If not found anywhere, try to install it
         if install_ffmpeg_windows():
             return 'ffmpeg'
         else:
             print("WARNING: FFmpeg not found and installation failed. Please install FFmpeg manually.")
-            return 'ffmpeg'  # Return ffmpeg anyway, it might be available after restart
-    elif sys.platform.startswith('darwin'):  # macOS
-        # First check in PATH
+            return 'ffmpeg'
+
+    elif sys.platform.startswith('darwin'):
         if check_ffmpeg_in_path():
             return 'ffmpeg'
         
-        # If not found, try to install it
         if install_ffmpeg_macos():
             return 'ffmpeg'
         else:
             print("WARNING: FFmpeg not found and installation failed. Please install FFmpeg manually using 'brew install ffmpeg' or 'sudo port install ffmpeg'")
-            return 'ffmpeg'  # Return ffmpeg anyway, it might be available after restart
-    else:  # Linux
-        # First check in PATH
+            return 'ffmpeg'
+    else:
         if check_ffmpeg_in_path():
             return 'ffmpeg'
         
-        # If not found, try to install it
         if install_ffmpeg_linux():
             return 'ffmpeg'
         else:
             print("WARNING: FFmpeg not found and installation failed. Please install FFmpeg manually using 'sudo apt install ffmpeg'")
-            return 'ffmpeg'  # Return ffmpeg anyway, it might be available after restart
+            return 'ffmpeg'
 
-# Function to get yt-dlp path, prioritizing local over global
 def get_ytdlp_path():
     local_path = os.path.join(os.getcwd(), 'yt-dlp')
     if os.path.exists(local_path):
         return local_path
-    return 'yt-dlp'  # Fallback to global yt-dlp
+    return 'yt-dlp'
 
-# Download and set up yt-dlp
 YTDLP_PATH = ensure_ytdlp()
 FFMPEG_PATH = get_ffmpeg_path()
 
-# Set up logging to capture all output
 file_handler = logging.FileHandler('log.txt', encoding='utf-8')
 console_handler = logging.StreamHandler(sys.stdout)
 
-# Configure root logger to capture all logs
 logging.basicConfig(
-    level=logging.DEBUG,  # Capture all levels of logs
+    level=logging.DEBUG, 
     format='%(asctime)s [%(levelname)s] %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     handlers=[file_handler, console_handler]
 )
 
-# Set logging level for specific libraries
-logging.getLogger('discord').setLevel(logging.DEBUG)  # Capture all discord logs
-logging.getLogger('yt-dlp').setLevel(logging.DEBUG)    # Capture all yt-dlp logs
+logging.getLogger('discord').setLevel(logging.DEBUG)
+logging.getLogger('yt-dlp').setLevel(logging.DEBUG)
+logging.getLogger('discord.player').setLevel(logging.DEBUG)
 
-# Optionally suppress specific loggers if needed
-logging.getLogger('discord.player').setLevel(logging.WARNING)  # Suppress player logs if desired
-
-# Configure logging to suppress the ffmpeg process termination message
-logging.getLogger('discord.player').setLevel(logging.WARNING)
-
-# Force UTF-8 globally
 if sys.platform.startswith('win'):
     sys.stdout.reconfigure(encoding='utf-8')
     sys.stderr.reconfigure(encoding='utf-8')
 
-# Load environment variables
 load_dotenv()
 
-# Load Spotify credentials
 load_dotenv(dotenv_path=".spotifyenv")
 
-# Create a log buffer using deque with max length
 log_buffer = deque(maxlen=100)
 
-# Override print to store logs
 original_print = print
 def custom_print(*args, **kwargs):
     output = " ".join(map(str, args))
@@ -232,11 +200,9 @@ def custom_print(*args, **kwargs):
 
 print = custom_print
 
-# Constants
 DOWNLOADS_DIR = os.path.join(os.getcwd(), 'downloads')
 OWNER_ID = config['OWNER_ID']
 
-# Create downloads directory if it doesn't exist
 if not os.path.exists(DOWNLOADS_DIR):
     os.makedirs(DOWNLOADS_DIR)
 
@@ -251,7 +217,6 @@ def clear_downloads_folder():
             except Exception as e:
                 print(f'Error deleting {file_path}: {e}')
 
-# Bot configuration
 intents = discord.Intents.default()
 intents.message_content = True
 intents.messages = True
@@ -263,13 +228,11 @@ bot = commands.Bot(
     help_command=None
 )
 
-# Initialize Spotipy client
 sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
     client_id=os.getenv('SPOTIPY_CLIENT_ID'),
     client_secret=os.getenv('SPOTIPY_CLIENT_SECRET')
 ))
 
-# Function to extract Spotify track details
 async def get_spotify_track_details(spotify_url):
     try:
         if 'track/' in spotify_url:
@@ -278,7 +241,6 @@ async def get_spotify_track_details(spotify_url):
             artist_name = track_info['artists'][0]['name']
             track_name = track_info['name']
             return f"{artist_name} - {track_name}"
-        # Add handling for album and playlist if needed
     except Exception as e:
         print(f"Error retrieving Spotify track details: {str(e)}")
         return None
@@ -305,12 +267,9 @@ async def get_spotify_playlist_details(spotify_url):
         print(f"Error retrieving Spotify playlist details: {str(e)}")
         return []
 
-# Global error handler for command errors
 @bot.event
 async def on_command_error(ctx, error):
-    # Log the error to the console
     print(f"Error in command {ctx.command}: {str(error)}")
-    # Send error message to the Discord chat
     await ctx.send(
         embed=music_bot.create_embed(
             "Error",
@@ -319,37 +278,30 @@ async def on_command_error(ctx, error):
         )
     )
 
-# Add error handler for CommandNotFound
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
-        return  # Silently ignore command not found errors
-    # For other errors, print them to the console
+        return
     print(f"Error: {str(error)}")
 
-# Add voice state update handler
 @bot.event
 async def on_voice_state_update(member, before, after):
     global music_bot
     if not music_bot or not music_bot.voice_client:
         return
 
-    # Get the voice channel the bot is in
     bot_voice_channel = music_bot.voice_client.channel
     if not bot_voice_channel:
         return
 
-    # Count members in the channel (excluding bots)
     members_in_channel = sum(1 for m in bot_voice_channel.members if not m.bot)
 
-    # If no human members in the channel, disconnect the bot
     if members_in_channel == 0:
         print(f"No users in voice channel {bot_voice_channel.name}, disconnecting bot")
         await music_bot.leave_voice_channel()
-        
-# YouTube DL options
+
 YTDL_OPTIONS = {
-    'format': 'bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio/best/bestaudio*',  # More flexible format selection with fallbacks
+    'format': 'bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio/best/bestaudio*',
     'outtmpl': '%(id)s.%(ext)s',
     'extract_audio': True,
     'concurrent_fragments': 4,
@@ -366,13 +318,12 @@ YTDL_OPTIONS = {
     'verbose': True,
     'logger': logging.getLogger('yt-dlp'),
     'ignoreerrors': True,
-    'ffmpeg_location': FFMPEG_PATH,  # Use platform-specific ffmpeg path
+    'ffmpeg_location': FFMPEG_PATH,
     'yt_dlp_filename': get_ytdlp_path()
 }
 
-# FFmpeg options (simplified, only used for streaming)
 FFMPEG_OPTIONS = {
-    'executable': FFMPEG_PATH,  # Use platform-specific ffmpeg path
+    'executable': FFMPEG_PATH,
     'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
 }
 
@@ -394,7 +345,6 @@ class CancelButton(discord.ui.View):
                     pass
                 self.bot.current_process = None
             
-            # Clean up the current file if it exists
             if self.current_file and os.path.exists(self.current_file):
                 try:
                     os.remove(self.current_file)
@@ -427,7 +377,6 @@ class DownloadProgress:
         
     async def progress_hook(self, d):
         if d['status'] == 'downloading':
-            # Only update once per second to avoid rate limits
             current_time = time.time()
             if current_time - self.last_update < 1:
                 return
@@ -443,16 +392,12 @@ class DownloadProgress:
                 
                 percentage = (downloaded / total) * 100
                 progress_bar = self.create_progress_bar(percentage)
-                
-                # Format speed in MB/s
                 speed_mb = speed / 1024 / 1024 if speed else 0
                 
-                # Create status message
                 status = f"Downloading: {self.title}\n"
                 status += f"\n{progress_bar} {percentage:.1f}%\n"
                 status += f"Speed: {speed_mb:.1f} MB/s"
                 
-                # Update embed
                 embed = discord.Embed(
                     title="Downloading",
                     description=status,
@@ -467,48 +412,38 @@ class DownloadProgress:
 class MusicBot:
     def __init__(self):
         """Initialize the music bot"""
-        # Queue and playback related
-        self.queue = []  # Queue of songs to play
-        self.current_song = None  # Currently playing song
-        self.is_playing = False  # Flag to track if bot is currently playing
-        self.voice_client = None  # Voice client instance
-        self.loop_mode = False  # Flag to track if loop mode is enabled
-        self.waiting_for_song = False  # Flag to track if waiting for a song to be ready
-        
-        # Async related
-        self.queue_lock = asyncio.Lock()  # Lock for queue operations
-        self.download_queue = asyncio.Queue()  # Queue for background downloads
-        self.currently_downloading = False  # Flag to track if currently downloading
-        self.command_queue = asyncio.Queue()  # Queue for play commands
-        self.command_processor_task = None  # Task for processing commands
-        self.download_lock = asyncio.Lock()  # Lock for download synchronization
-        self.bot_loop = None  # Store bot's event loop
-        
-        # Message tracking
-        self.queued_messages = {}  # Store messages for each queued song
-        self.current_command_msg = None  # Store the current command message
-        self.current_command_author = None  # Store the current command author
-        self.status_messages = {}  # Track status messages
-        self.now_playing_message = None  # Track Now Playing message
-        
-        # File system related
-        self.downloads_dir = os.path.join(os.getcwd(), 'downloads')  # Directory for downloaded files
+        self.queue = []
+        self.current_song = None
+        self.is_playing = False
+        self.voice_client = None
+        self.loop_mode = False
+        self.waiting_for_song = False
+        self.queue_lock = asyncio.Lock()
+        self.download_queue = asyncio.Queue()
+        self.currently_downloading = False
+        self.command_queue = asyncio.Queue()
+        self.command_processor_task = None
+        self.download_lock = asyncio.Lock()
+        self.bot_loop = None
+        self.queued_messages = {}
+        self.current_command_msg = None
+        self.current_command_author = None
+        self.status_messages = {}
+        self.now_playing_message = None
+        self.downloads_dir = os.path.join(os.getcwd(), 'downloads')
         self.cookie_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt')
         
-        # Create downloads directory if it doesn't exist
         if not os.path.exists(self.downloads_dir):
             os.makedirs(self.downloads_dir)
 
-        # Activity tracking
         self.last_activity = time.time()
-        self.inactivity_timeout = 900  # 15 minutes in seconds
+        self.inactivity_timeout = 900
         self._inactivity_task = None
         self.last_update = 0
         self._last_progress = -1
         self.last_known_ctx = None
         self.bot = None
 
-        # Initialize Spotify client
         load_dotenv('.spotifyenv')
         client_id = os.getenv('SPOTIPY_CLIENT_ID')
         client_secret = os.getenv('SPOTIPY_CLIENT_SECRET')
