@@ -28,3 +28,4 @@ spotifyplaylist.txt
 .cache
 .DS_Store
 .windsurfrules
+scripts/__pycache__
