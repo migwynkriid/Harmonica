@@ -8,7 +8,9 @@ async def load_commands(bot):
             extension_name = f'{commands_dir}.{filename[:-3]}'
             try:
                 await bot.load_extension(extension_name)
-                print(f'Successfully loaded extension: {extension_name}')
+                # Get the command name from the filename without .py
+                command_name = filename[:-3]
+                print(f'Loaded: {bot.command_prefix}{command_name}')
             except Exception as e:
-                print(f'Failed to load extension {extension_name}: {str(e)}')
+                print(f'Failed to load {filename}: {str(e)}')
     print('-' * 40)
