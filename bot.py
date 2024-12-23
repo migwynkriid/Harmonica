@@ -25,6 +25,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 from scripts.ytdlp import ensure_ytdlp, get_ytdlp_path
 from scripts.ffmpeg import check_ffmpeg_in_path, install_ffmpeg_windows, install_ffmpeg_macos, install_ffmpeg_linux, get_ffmpeg_path
 from scripts.cleardownloads import clear_downloads_folder
+from scripts.restart import restart_bot
 
 if not os.path.exists('config.json'):
     default_config = {
@@ -1625,19 +1626,6 @@ class MusicBot:
             print(f"Error updating activity: {str(e)}")
 
 music_bot = None
-
-def restart_bot():
-    """Restart the bot by starting a new process and terminating the current one"""
-    try:
-        python = sys.executable
-        script_path = os.path.abspath(__file__)
-        cwd = os.getcwd()
-        import subprocess
-        subprocess.Popen([python, script_path], cwd=cwd)
-        os._exit(0)
-    except Exception as e:
-        print(f"Error during restart: {str(e)}")
-        os._exit(1)
 
 @bot.event
 async def on_ready():
