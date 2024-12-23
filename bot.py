@@ -27,6 +27,7 @@ from scripts.ffmpeg import check_ffmpeg_in_path, install_ffmpeg_windows, install
 from scripts.cleardownloads import clear_downloads_folder
 from scripts.restart import restart_bot
 from scripts.load_commands import load_commands
+from scripts.load_scripts import load_scripts
 from scripts.activity import update_activity
 
 if not os.path.exists('config.json'):
@@ -1638,6 +1639,8 @@ async def on_ready():
     print(f"Command Prefix: {PREFIX}")
     print(f"------------------")
     
+    # Load scripts and commands
+    load_scripts()
     await load_commands(bot)
     
     if not music_bot:
