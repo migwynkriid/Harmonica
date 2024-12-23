@@ -1937,57 +1937,6 @@ async def nowplaying(ctx):
 
     await ctx.send(embed=embed)
 
-@bot.command(name='version')
-@commands.is_owner()
-async def ytdlp(ctx):
-    if ctx.author.id != OWNER_ID:
-        await ctx.send(embed=discord.Embed(title="Error", description="This command is only available to the bot owner.", color=0xe74c3c))
-        return
-    """Check the version of the locally installed yt-dlp"""
-    try:
-        status_msg = await ctx.send(embed=music_bot.create_embed("Bot Version", "Checking versions...", color=0x3498db))
-        try:
-            version = yt_dlp.version.__version__
-        except Exception:
-            version = "Unknown"
-
-        embed = music_bot.create_embed("Bot Version", f"yt-dlp: `{version}`", color=0x3498db)
-        await status_msg.edit(embed=embed)
-            
-        git_hash_process = await asyncio.create_subprocess_exec(
-            'git',
-            'rev-parse',
-            '--short',
-            'HEAD',
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=os.path.dirname(os.path.abspath(__file__))
-        )
-        hash_stdout, _ = await git_hash_process.communicate()
-        
-        git_count_process = await asyncio.create_subprocess_exec(
-            'git',
-            'rev-list',
-            '--count',
-            'HEAD',
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=os.path.dirname(os.path.abspath(__file__))
-        )
-        count_stdout, _ = await git_count_process.communicate()
-        
-        commit_info = "Unknown"
-        if git_hash_process.returncode == 0 and git_count_process.returncode == 0:
-            commit_hash = hash_stdout.decode().strip()
-            commit_count = count_stdout.decode().strip()
-            commit_info = f"#{commit_count} (`{commit_hash}`)"
-        
-        embed.add_field(name="Current commit", value=commit_info, inline=False)
-        await status_msg.edit(embed=embed)
-            
-    except Exception as e:
-        await ctx.send(embed=music_bot.create_embed("Error", f"Error getting version: {str(e)}", color=0xe74c3c))
-
 @bot.command(name='update')
 @commands.is_owner()
 async def updateytdlp(ctx):
@@ -2018,5 +1967,6 @@ bot.remove_command('help')
 
 async def load_extensions():
     await bot.load_extension('commands.help')
+    await bot.load_extension('commands.version')
 
 bot.run(os.getenv('DISCORD_TOKEN'))
