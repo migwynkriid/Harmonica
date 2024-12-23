@@ -606,7 +606,9 @@ class MusicBot:
                         
                         try:
                             await ctx.send("⚠️ Internal error detected!. Automatically restarting bot...")
-                            await restart(ctx)
+                            restart_cog = self.bot.get_cog('Restart')
+                            if restart_cog:
+                                await restart_cog.restart_cmd(ctx)
                         except Exception as e:
                             print(f"Error during automatic restart in play_next: {str(e)}")
                         return
@@ -698,7 +700,9 @@ class MusicBot:
                     if ctx:
                         await ctx.send("⚠️ Voice connection lost. Automatically restarting bot...")
                     
-                    await restart(ctx)
+                    restart_cog = self.bot.get_cog('Restart')
+                    if restart_cog:
+                        await restart_cog.restart_cmd(ctx)
                 except Exception as e:
                     print(f"Error during automatic restart in process_queue: {str(e)}")
                 return
@@ -1863,25 +1867,6 @@ async def loop(ctx):
     color = 0x2ecc71 if music_bot.loop_mode else 0xe74c3c
     
     await ctx.send(embed=music_bot.create_embed(f"Loop Mode {status.title()}", f"[🎵 {music_bot.current_song['title']}]({music_bot.current_song['url']}) will {'now' if music_bot.loop_mode else 'no longer'} be looped", color=color))
-
-@bot.command(name='restart')
-@commands.is_owner()
-async def restart(ctx):
-    """Restart the bot (Owner only)"""
-    if ctx.author.id != OWNER_ID:
-        await ctx.send(embed=discord.Embed(title="Error", description="Only the bot owner can use this command!", color=0xe74c3c))
-        return
-
-    await ctx.send(embed=discord.Embed(title="Restarting", description="Bot is restarting...", color=0xf1c40f))
-    
-    try:
-        clear_downloads_folder()
-        if music_bot and music_bot.voice_client:
-            await music_bot.voice_client.disconnect()        
-        await bot.close()
-        restart_bot()
-    except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"Failed to restart: {str(e)}", color=0xe74c3c))
 
 @bot.command(name='max')
 async def max(ctx):
