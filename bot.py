@@ -1843,18 +1843,6 @@ async def queue(ctx):
     )
     await ctx.send(embed=embed)
 
-@bot.command(name='log')
-@commands.is_owner()
-async def log(ctx):
-    """Clear the log file - Owner only command"""
-    if ctx.author.id != OWNER_ID:
-        await ctx.send(embed=discord.Embed(title="Error", description="This command is only available to the bot owner.", color=0xe74c3c))
-        return
-    try:
-        await ctx.send(file=discord.File('log.txt'))
-    except Exception as e:
-        await ctx.send(f"Error uploading log file: {str(e)}")
-
 @bot.command(name='leave')
 async def leave(ctx):
     """Leave the voice channel"""
