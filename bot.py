@@ -26,6 +26,7 @@ from scripts.ytdlp import ensure_ytdlp, get_ytdlp_path
 from scripts.ffmpeg import check_ffmpeg_in_path, install_ffmpeg_windows, install_ffmpeg_macos, install_ffmpeg_linux, get_ffmpeg_path
 from scripts.cleardownloads import clear_downloads_folder
 from scripts.restart import restart_bot
+from scripts.load_commands import load_commands
 
 if not os.path.exists('config.json'):
     default_config = {
@@ -1644,8 +1645,9 @@ async def on_ready():
     print(f"Loaded configuration:")
     print(f"Owner ID: {OWNER_ID}")
     print(f"Command Prefix: {PREFIX}")
+    print(f"------------------")
     
-    await load_extensions()
+    await load_commands(bot)
     
     if not music_bot:
         music_bot = MusicBot()
@@ -1921,11 +1923,5 @@ async def nowplaying(ctx):
     await ctx.send(embed=embed)
 
 bot.remove_command('help')
-
-async def load_extensions():
-    await bot.load_extension('commands.help')
-    await bot.load_extension('commands.version')
-    await bot.load_extension('commands.logclear')
-    await bot.load_extension('commands.update')
 
 bot.run(os.getenv('DISCORD_TOKEN'))
