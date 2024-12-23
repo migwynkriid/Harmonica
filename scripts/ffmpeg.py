@@ -51,7 +51,7 @@ def install_ffmpeg_linux():
 
 def get_ffmpeg_path():
     if sys.platform.startswith('win'):
-        local_ffmpeg = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ffmpeg.exe')
+        local_ffmpeg = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'ffmpeg.exe')
         if os.path.exists(local_ffmpeg):
             return local_ffmpeg
         

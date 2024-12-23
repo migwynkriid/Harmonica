@@ -24,6 +24,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from scripts.ytdlp import ensure_ytdlp, get_ytdlp_path
 from scripts.ffmpeg import check_ffmpeg_in_path, install_ffmpeg_windows, install_ffmpeg_macos, install_ffmpeg_linux, get_ffmpeg_path
+from scripts.cleardownloads import clear_downloads_folder
 
 if not os.path.exists('config.json'):
     default_config = {
@@ -79,17 +80,6 @@ OWNER_ID = config['OWNER_ID']
 
 if not os.path.exists(DOWNLOADS_DIR):
     os.makedirs(DOWNLOADS_DIR)
-
-def clear_downloads_folder():
-    """Clear all files in the downloads folder"""
-    if os.path.exists(DOWNLOADS_DIR):
-        for file in os.listdir(DOWNLOADS_DIR):
-            file_path = os.path.join(DOWNLOADS_DIR, file)
-            try:
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)
-            except Exception as e:
-                print(f'Error deleting {file_path}: {e}')
 
 intents = discord.Intents.default()
 intents.message_content = True
