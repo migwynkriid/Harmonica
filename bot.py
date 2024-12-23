@@ -27,6 +27,7 @@ from scripts.ffmpeg import check_ffmpeg_in_path, install_ffmpeg_windows, install
 from scripts.cleardownloads import clear_downloads_folder
 from scripts.restart import restart_bot
 from scripts.load_commands import load_commands
+from scripts.activity import update_activity
 
 if not os.path.exists('config.json'):
     default_config = {
@@ -1615,21 +1616,7 @@ class MusicBot:
 
     async def update_activity(self):
         """Update the bot's activity status"""
-        try:
-            if self.bot:
-                if self.current_song and self.is_playing:
-                    activity = discord.Activity(
-                        type=discord.ActivityType.playing,
-                        name=f"🎵 {self.current_song['title']}"
-                    )
-                else:
-                    activity = discord.Activity(
-                        type=discord.ActivityType.playing,
-                        name="nothing! use !play "
-                    )
-                await self.bot.change_presence(activity=activity)
-        except Exception as e:
-            print(f"Error updating activity: {str(e)}")
+        await update_activity(self.bot, self.current_song, self.is_playing)
 
 music_bot = None
 
