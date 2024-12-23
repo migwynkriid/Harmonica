@@ -758,16 +758,17 @@ class MusicBot:
                                 thumbnail_url=current_song_info.get('thumbnail')
                             )
                             await current_message.edit(embed=finished_embed)
-                            self.is_playing = False
-                            self.waiting_for_song = False
-                            self.current_song = None
-                            self.now_playing_message = None
-                            activity = discord.Game(name="nothing! use !play ")
-                            await self.bot.change_presence(activity=activity)
-                            await self.process_queue()
+                        
+                        self.is_playing = False
+                        self.waiting_for_song = False
+                        self.current_song = None
+                        self.now_playing_message = None
+                        await self.bot.change_presence(activity=discord.Game(name="nothing! use !play "))
+                        await self.process_queue()
                     except Exception as e:
                         print(f"Error updating finished message: {str(e)}")
-                    asyncio.run_coroutine_threadsafe(update_now_playing(), self.bot_loop)
+                
+                asyncio.run_coroutine_threadsafe(update_now_playing(), self.bot_loop)
 
             self.voice_client.play(audio_source, after=after_playing)
 
