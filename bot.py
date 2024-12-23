@@ -1643,7 +1643,9 @@ async def on_ready():
     print(f"Loaded configuration:")
     print(f"Owner ID: {OWNER_ID}")
     print(f"Command Prefix: {PREFIX}")
-
+    
+    await load_extensions()
+    
     if not music_bot:
         music_bot = MusicBot()
         await music_bot.setup(bot)
@@ -2014,5 +2016,7 @@ async def updateytdlp(ctx):
 
 bot.remove_command('help')
 
-await bot.load_extension('commands.help')
+async def load_extensions():
+    await bot.load_extension('commands.help')
+
 bot.run(os.getenv('DISCORD_TOKEN'))
