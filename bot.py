@@ -21,7 +21,7 @@ import logging
 import urllib.request
 import subprocess
 import spotipy
-from scripts.updatescheduler import check_updates
+from scripts.updatescheduler import check_updates, update_checker
 from scripts.voice import join_voice_channel, leave_voice_channel
 from scripts.inactivity import start_inactivity_checker, check_inactivity
 from scripts.messages import update_or_send_message
@@ -1441,6 +1441,7 @@ async def on_ready():
     # Load scripts and commands
     load_scripts()
     await load_commands(bot)
+    update_checker.start(bot)
     
     if not music_bot:
         music_bot = MusicBot()

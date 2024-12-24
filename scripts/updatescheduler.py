@@ -1,6 +1,6 @@
 import asyncio
 import discord
-from discord.ext import tasks
+from discord.ext import tasks, commands
 import subprocess
 import os
 from datetime import datetime
@@ -49,7 +49,7 @@ async def check_updates(bot):
         )
         await owner.send(embed=error_embed)
 
-@tasks.loop(hours=24)
+@tasks.loop(hours=1)
 async def update_checker(bot):
     await check_updates(bot)
 
@@ -59,3 +59,4 @@ async def startup_check(bot):
 def setup(bot):
     update_checker.start(bot)
     bot.loop.create_task(startup_check(bot))
+    bot.add_cog(UpdateScheduler(bot))
