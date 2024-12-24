@@ -752,12 +752,6 @@ class MusicBot:
             if not self.is_playing:
                 await self.process_queue()
 
-    def sanitize_filename(self, filename):
-        """Sanitize filename to handle special characters"""
-        filename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore').decode('ASCII')
-        filename = re.sub(r'[^\w\-\.]', '_', filename)
-        return filename
-
     async def update_or_send_message(self, ctx, embed, view=None, force_new=False):
         """Update existing message or send a new one if none exists or if it's a new command"""
         try:
