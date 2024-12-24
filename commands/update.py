@@ -25,9 +25,21 @@ async def updateytdlp(ctx):
     if ctx.author.id != OWNER_ID:
         await ctx.send(embed=discord.Embed(title="Error", description="This command is only available to the bot owner.", color=0xe74c3c))
         return
-    """Update the yt-dlp executable"""
+    """Update required packages and yt-dlp executable"""
     try:
-        status_msg = await ctx.send(embed=discord.Embed(title="Updating yt-dlp...", color=0x2ecc71))
+        status_msg = await ctx.send(embed=discord.Embed(title="Updating bot...", description="Step 1/2: Installing required packages...", color=0x2ecc71))
+        
+        # Install packages from requirements.txt first
+        requirements_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'requirements.txt')
+        try:
+            subprocess.run([sys.executable, "-m", "pip", "install", "-r", requirements_path, "--break-system-packages"], check=True, capture_output=True, text=True)
+            packages_updated = True
+        except subprocess.CalledProcessError as e:
+            packages_updated = False
+            error_msg = e.stderr
+
+        # Update status to show yt-dlp update step
+        await status_msg.edit(embed=discord.Embed(title="Updating bot...", description="Step 2/2: Updating yt-dlp...", color=0x2ecc71))
         
         ytdlp_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'yt-dlp.exe' if sys.platform.startswith('win') else 'yt-dlp')
         if os.path.exists(ytdlp_path):
@@ -43,7 +55,16 @@ async def updateytdlp(ctx):
         except Exception:
             version = "Unknown"
         
-        embed = discord.Embed(title="Finished updating!", description=f"Yt-dlp is updated to version `{version}`\nPlease restart the bot using `{ctx.prefix}restart`", color=0x2ecc71)
+        # Create final status message
+        description = ""
+        if packages_updated:
+            description += "✅ Required packages installed successfully\n"
+        else:
+            description += f"❌ Failed to install packages: {error_msg}\n"
+        description += f"✅ yt-dlp updated to version `{version}`\n"
+        description += f"\nPlease restart the bot using `{ctx.prefix}restart`"
+        
+        embed = discord.Embed(title="Update Complete!", description=description, color=0x2ecc71)
         await status_msg.edit(embed=embed)
     except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"Error updating yt-dlp: {str(e)}", color=0xe74c3c))
+        await ctx.send(embed=discord.Embed(title="Error", description=f"Error during update: {str(e)}", color=0xe74c3c))
