@@ -21,6 +21,7 @@ import logging
 import urllib.request
 import subprocess
 import spotipy
+from scripts.update_or_send_message import update_or_send_message
 from spotipy.oauth2 import SpotifyClientCredentials
 from scripts.ytdlp import ensure_ytdlp, get_ytdlp_path
 from scripts.ffmpeg import check_ffmpeg_in_path, install_ffmpeg_windows, install_ffmpeg_macos, install_ffmpeg_linux, get_ffmpeg_path
@@ -1550,26 +1551,6 @@ class MusicBot:
         if thumbnail_url:
             embed.set_thumbnail(url=thumbnail_url)
         return embed
-
-    async def update_or_send_message(self, ctx, embed, view=None, force_new=False):
-        """Update existing message or send a new one if none exists or if it's a new command"""
-        try:
-            if (force_new or 
-                not self.current_command_msg or 
-                ctx.author.id != self.current_command_author or 
-                ctx.channel.id != self.current_command_msg.channel.id):
-                
-                self.current_command_msg = await ctx.send(embed=embed, view=view)
-                self.current_command_author = ctx.author.id
-            else:
-                await self.current_command_msg.edit(embed=embed, view=view)
-            
-            return self.current_command_msg
-        except Exception as e:
-            print(f"Error updating message: {str(e)}")
-            self.current_command_msg = await ctx.send(embed=embed, view=view)
-            self.current_command_author = ctx.author_id
-            return self.current_command_msg
 
     async def update_activity(self):
         """Update the bot's activity status"""
