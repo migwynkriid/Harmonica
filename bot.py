@@ -25,7 +25,7 @@ from scripts.voice import join_voice_channel, leave_voice_channel
 from scripts.inactivity import start_inactivity_checker, check_inactivity
 from scripts.messages import update_or_send_message
 from spotipy.oauth2 import SpotifyClientCredentials
-from scripts.ytdlp import ensure_ytdlp, get_ytdlp_path
+from scripts.ytdlp import ensure_ytdlp, get_ytdlp_path, ytdlp_version
 from scripts.ffmpeg import check_ffmpeg_in_path, install_ffmpeg_windows, install_ffmpeg_macos, install_ffmpeg_linux, get_ffmpeg_path
 from scripts.cleardownloads import clear_downloads_folder
 from scripts.restart import restart_bot
@@ -1324,33 +1324,6 @@ class MusicBot:
             print(error_msg)
             error_embed = self.create_embed("Error", error_msg, color=0xff0000)
             await ctx.send(embed=error_embed)
-
-    async def ytdlp_version(ctx):
-        """Check the version of the locally installed yt-dlp"""
-        try:
-            ytdlp_path = get_ytdlp_path()
-            if not ytdlp_path:
-                await ctx.send(embed=self.create_embed("Error", "yt-dlp executable not found", color=0xe74c3c))
-                return
-
-            process = await asyncio.create_subprocess_exec(
-                ytdlp_path,
-                '--version',
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await process.communicate()
-            
-            if process.returncode == 0:
-                version = stdout.decode().strip()
-                embed = self.create_embed("yt-dlp Version", f"yt-dlp: {version}", color=0x3498db)
-                embed.add_field(name="Version Code", value="22", inline=False)
-                await ctx.send(embed=embed)
-            else:
-                error = stderr.decode().strip()
-                await ctx.send(embed=self.create_embed("Error", f"Failed to get yt-dlp version: {error}", color=0xe74c3c))
-        except Exception as e:
-            await ctx.send(embed=self.create_embed("Error", f"Error checking yt-dlp version: {str(e)}", color=0xe74c3c))
 
     async def after_playing_coro(self, error, ctx):
         """Coroutine called after a song finishes"""
