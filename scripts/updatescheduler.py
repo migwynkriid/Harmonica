@@ -20,7 +20,7 @@ async def check_updates(bot):
     
     try:
         result = subprocess.run(
-            ['pip', 'install', '--upgrade', '--dry-run', '-r', 'requirements.txt'],
+            ['pip', 'install', '--upgrade', '--dry-run','--pre', '-r', 'requirements.txt'],
             capture_output=True,
             text=True
         )
