@@ -97,11 +97,6 @@ bot = commands.Bot(
     help_command=None
 )
 
-sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
-    client_id=os.getenv('SPOTIPY_CLIENT_ID'),
-    client_secret=os.getenv('SPOTIPY_CLIENT_SECRET')
-))
-
 @bot.event
 async def on_command_error(ctx, error):
     print(f"Error in command {ctx.command}: {str(error)}")
