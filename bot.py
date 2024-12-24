@@ -21,6 +21,7 @@ import logging
 import urllib.request
 import subprocess
 import spotipy
+from scripts.updatescheduler import check_updates
 from scripts.voice import join_voice_channel, leave_voice_channel
 from scripts.inactivity import start_inactivity_checker, check_inactivity
 from scripts.messages import update_or_send_message
@@ -97,7 +98,8 @@ intents.voice_states = True
 bot = commands.Bot(
     command_prefix=PREFIX,
     intents=intents,
-    help_command=None
+    help_command=None,
+    owner_id=int(config['OWNER_ID'])
 )
 
 @bot.event
