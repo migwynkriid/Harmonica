@@ -4,4 +4,4 @@ python-dotenv>=1.0.0
 requests>=2.31.0
 pytz>=2024.2
 spotipy==2.23.0
-yt-dlp
+yt-dlp 
