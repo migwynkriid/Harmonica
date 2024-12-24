@@ -158,13 +158,6 @@ FFMPEG_OPTIONS = {
     'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
 }
 
-class CancelButton(discord.ui.View):
-    def __init__(self, bot_instance):
-        super().__init__(timeout=None)
-        self.bot = bot_instance
-        self.cancelled = False
-        self.current_file = None
-
 class DownloadProgress:
     def __init__(self, status_msg, view):
         self.status_msg = status_msg
