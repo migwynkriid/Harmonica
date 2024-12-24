@@ -165,35 +165,6 @@ class CancelButton(discord.ui.View):
         self.cancelled = False
         self.current_file = None
 
-    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger)
-    async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        try:
-            self.cancelled = True
-            if self.bot.current_process and hasattr(self.bot.current_process, 'terminate'):
-                try:
-                    self.bot.current_process.terminate()
-                except:
-                    pass
-                self.bot.current_process = None
-            
-            if self.current_file and os.path.exists(self.current_file):
-                try:
-                    os.remove(self.current_file)
-                    print(f"Cleaned up cancelled file: {self.current_file}")
-                except Exception as e:
-                    print(f"Error cleaning up file: {str(e)}")
-
-            await interaction.response.edit_message(
-                embed=discord.Embed(
-                    title="Cancelled",
-                    description="Download process cancelled by user.",
-                    color=0xe74c3c
-                ),
-                view=None
-            )
-        except Exception as e:
-            print(f"Error in cancel button: {str(e)}")
-
 class DownloadProgress:
     def __init__(self, status_msg, view):
         self.status_msg = status_msg
