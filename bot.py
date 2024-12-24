@@ -21,6 +21,7 @@ import logging
 import urllib.request
 import subprocess
 import spotipy
+from scripts.inactivity import start_inactivity_checker, check_inactivity
 from scripts.update_or_send_message import update_or_send_message
 from spotipy.oauth2 import SpotifyClientCredentials
 from scripts.ytdlp import ensure_ytdlp, get_ytdlp_path
@@ -232,7 +233,7 @@ class MusicBot:
             os.makedirs(self.downloads_dir)
 
         self.last_activity = time.time()
-        self.inactivity_timeout = 900
+        self.inactivity_timeout = 60
         self._inactivity_task = None
         self.last_update = 0
         self._last_progress = -1
@@ -267,7 +268,7 @@ class MusicBot:
         self.bot = bot_instance
         self.bot_loop = asyncio.get_event_loop()
         await self.start_command_processor()
-        await self.start_inactivity_checker()
+        await start_inactivity_checker(self)
         asyncio.create_task(self.process_download_queue())
         print("Command processor started")
 
@@ -393,31 +394,6 @@ class MusicBot:
                 print(f"Error in download queue processor: {str(e)}")
                 await asyncio.sleep(1)
 
-    async def start_inactivity_checker(self):
-        """Start the inactivity checker"""
-        try:
-            await self.check_inactivity()
-            self._inactivity_task = self.bot_loop.create_task(self.check_inactivity())
-        except Exception as e:
-            print(f"Error starting inactivity checker: {str(e)}")
-
-    async def check_inactivity(self):
-        """Check for inactivity and leave voice if inactive too long"""
-        while True:
-            try:
-                await asyncio.sleep(60)
-                
-                if self.voice_client and self.voice_client.is_connected():
-                    if self.voice_client.is_playing():
-                        self.last_activity = time.time()
-                    elif time.time() - self.last_activity > self.inactivity_timeout:
-                        print(f"Leaving voice channel due to {self.inactivity_timeout} seconds of inactivity")
-                        await self.leave_voice_channel()
-                        self.clear_queue()
-            except Exception as e:
-                print(f"Error in inactivity checker: {str(e)}")
-                await asyncio.sleep(60)
-
     def clear_queue(self):
         """Clear both download and playback queues"""
         try:
@@ -432,24 +408,10 @@ class MusicBot:
                     break
             
             for _ in range(items_removed):
-                try:
-                    self.download_queue.task_done()
-                except ValueError:
-                    break
-            
-            if self.current_process:
-                try:
-                    self.current_process.kill()
-                except:
-                    pass
-                self.current_process = None
-
-            if self.voice_client and self.voice_client.is_playing():
-                self.voice_client.stop()
-                time.sleep(0.5)
-
+                self.download_queue.task_done()
+                
         except Exception as e:
-            print(f"Error clearing queue: {str(e)}")
+            print(f"Error clearing queue: {e}")
 
     async def stop(self, ctx):
         """Stop playing and clear the queue"""
