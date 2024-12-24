@@ -21,6 +21,7 @@ import logging
 import urllib.request
 import subprocess
 import spotipy
+from scripts.voice import join_voice_channel, leave_voice_channel
 from scripts.inactivity import start_inactivity_checker, check_inactivity
 from scripts.messages import update_or_send_message
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -431,46 +432,6 @@ class MusicBot:
         except Exception as e:
             print(f"Error in stop command: {str(e)}")
             await ctx.send(embed=self.create_embed("Error", "Failed to stop playback", color=0xe74c3c))
-
-    async def join_voice_channel(self, ctx):
-        """Join the user's voice channel"""
-        if not ctx.author.voice:
-            await ctx.send(embed=self.create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c))
-            return False
-
-        try:
-            channel = ctx.author.voice.channel
-            if self.voice_client:
-                try:
-                    if self.voice_client.is_connected():
-                        await self.voice_client.disconnect(force=True)
-                except:
-                    pass
-                self.voice_client = None
-
-            self.voice_client = await channel.connect(self_deaf=True)
-            self.last_activity = time.time()
-            return self.voice_client.is_connected()
-
-        except Exception as e:
-            print(f"Error joining voice channel: {str(e)}")
-            await ctx.send(embed=self.create_embed("Error", "Failed to join voice channel!", color=0xe74c3c))
-            self.voice_client = None
-            return False
-
-    async def leave_voice_channel(self):
-        """Leave voice channel and cleanup"""
-        try:
-            if self.voice_client:
-                if self.voice_client.is_playing():
-                    self.voice_client.stop()
-                if self.voice_client.is_connected():
-                    await self.voice_client.disconnect(force=True)
-        except Exception as e:
-            print(f"Error leaving voice channel: {str(e)}")
-        finally:
-            self.voice_client = None
-            self.current_song = None
 
     async def play_next(self, ctx):
         """Play the next song in the queue"""
