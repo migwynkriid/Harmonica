@@ -31,7 +31,7 @@ async def updateytdlp(ctx):
         # Install packages from requirements.txt
         requirements_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'requirements.txt')
         try:
-            subprocess.run([sys.executable, "-m", "pip", "install", "--pre", "-r", requirements_path, "--break-system-packages"], check=True, capture_output=True, text=True)
+            subprocess.run([sys.executable, "-m", "pip", "install", "-U", "--pre", "-r", requirements_path, "--break-system-packages"], check=True, capture_output=True, text=True)
             packages_updated = True
         except subprocess.CalledProcessError as e:
             packages_updated = False
