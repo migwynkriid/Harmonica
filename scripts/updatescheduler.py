@@ -3,6 +3,7 @@ import discord
 from discord.ext import tasks, commands
 import subprocess
 import os
+import sys
 from datetime import datetime
 import pytz
 
@@ -20,7 +21,7 @@ async def check_updates(bot):
     
     try:
         result = subprocess.run(
-            ['pip', 'install', '--upgrade', '--dry-run','--pre', '-r', 'requirements.txt'],
+            [sys.executable, '-m', 'pip', 'install', '--upgrade', '--dry-run', '--pre', '-r', 'requirements.txt', '--break-system-packages'],
             capture_output=True,
             text=True
         )
