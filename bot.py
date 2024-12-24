@@ -22,7 +22,7 @@ import urllib.request
 import subprocess
 import spotipy
 from scripts.inactivity import start_inactivity_checker, check_inactivity
-from scripts.update_or_send_message import update_or_send_message
+from scripts.messages import update_or_send_message
 from spotipy.oauth2 import SpotifyClientCredentials
 from scripts.ytdlp import ensure_ytdlp, get_ytdlp_path
 from scripts.ffmpeg import check_ffmpeg_in_path, install_ffmpeg_windows, install_ffmpeg_macos, install_ffmpeg_linux, get_ffmpeg_path
