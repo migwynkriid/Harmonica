@@ -30,4 +30,6 @@ spotifyplaylist.txt
 .windsurfrules
 scripts/__pycache__
 commands/__pycache__
+scripts/__pycache__/*
+commands/__pycache__/*
 __pycache__
