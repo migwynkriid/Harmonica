@@ -20,7 +20,7 @@ async def check_inactivity(bot_instance):
                     bot_instance.last_activity = time.time()
                 elif time.time() - bot_instance.last_activity > bot_instance.inactivity_timeout:
                     print(f"Leaving voice channel due to {bot_instance.inactivity_timeout} seconds of inactivity")
-                    await bot_instance.leave_voice_channel()
+                    await bot_instance.voice_client.disconnect()
                     bot_instance.clear_queue()
         except Exception as e:
             print(f"Error in inactivity checker: {str(e)}")

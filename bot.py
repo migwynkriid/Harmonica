@@ -25,7 +25,7 @@ from scripts.voice import join_voice_channel, leave_voice_channel
 from scripts.inactivity import start_inactivity_checker, check_inactivity
 from scripts.messages import update_or_send_message
 from spotipy.oauth2 import SpotifyClientCredentials
-from scripts.ytdlp import ensure_ytdlp, get_ytdlp_path, ytdlp_version
+from scripts.ytdlp import get_ytdlp_path, ytdlp_version
 from scripts.ffmpeg import check_ffmpeg_in_path, install_ffmpeg_windows, install_ffmpeg_macos, install_ffmpeg_linux, get_ffmpeg_path
 from scripts.cleardownloads import clear_downloads_folder
 from scripts.restart import restart_bot
@@ -46,7 +46,7 @@ with open('config.json', 'r') as f:
     OWNER_ID = config['OWNER_ID']
     PREFIX = config['PREFIX']
 
-YTDLP_PATH = ensure_ytdlp()
+YTDLP_PATH = get_ytdlp_path()
 FFMPEG_PATH = get_ffmpeg_path()
 
 file_handler = logging.FileHandler('log.txt', encoding='utf-8')
