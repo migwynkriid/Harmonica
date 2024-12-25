@@ -153,6 +153,13 @@ async def on_voice_state_update(member, before, after):
         if music_bot and music_bot.voice_client and music_bot.voice_client.is_connected():
             if music_bot.voice_client.is_playing() or music_bot.queue:
                 music_bot.voice_client.stop()
+                # Delete queued messages
+                for msg in music_bot.queued_messages.values():
+                    try:
+                        await msg.delete()
+                    except:
+                        pass
+                music_bot.queued_messages.clear()
                 music_bot.queue.clear()
                 music_bot.current_song = None
                 music_bot.is_playing = False
