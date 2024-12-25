@@ -54,15 +54,33 @@ file_handler = logging.FileHandler('log.txt', encoding='utf-8')
 console_handler = logging.StreamHandler(sys.stdout)
 
 logging.basicConfig(
-    level=logging.DEBUG, 
+    level=logging.INFO, 
     format='%(asctime)s [%(levelname)s] %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     handlers=[file_handler, console_handler]
 )
 
-logging.getLogger('discord').setLevel(logging.DEBUG)
-logging.getLogger('yt-dlp').setLevel(logging.DEBUG)
-logging.getLogger('discord.player').setLevel(logging.DEBUG)
+logging.getLogger('discord').setLevel(logging.INFO)
+logging.getLogger('yt-dlp').setLevel(logging.INFO)
+logging.getLogger('discord.player').setLevel(logging.INFO)
+logging.getLogger('discord.client').setLevel(logging.INFO)
+logging.getLogger('discord.voice_client').setLevel(logging.INFO)
+logging.getLogger('discord.gateway').setLevel(logging.INFO)
+logging.getLogger('discord.http').setLevel(logging.INFO)
+logging.getLogger('discord.state').setLevel(logging.INFO)
+logging.getLogger('discord.interactions').setLevel(logging.INFO)
+logging.getLogger('discord.webhook').setLevel(logging.INFO)
+logging.getLogger('discord.ext.commands').setLevel(logging.INFO)
+logging.getLogger('discord.ext.tasks').setLevel(logging.INFO)
+logging.getLogger('discord.ext.voice_client').setLevel(logging.INFO)
+logging.getLogger('discord.ext.commands.bot').setLevel(logging.INFO)
+logging.getLogger('discord.ext.commands.core').setLevel(logging.INFO)
+logging.getLogger('discord.ext.commands.errors').setLevel(logging.INFO)
+logging.getLogger('discord.ext.commands.cog').setLevel(logging.INFO)
+logging.getLogger('discord.ext.tasks.loop').setLevel(logging.INFO)
+logging.getLogger('discord.ext').setLevel(logging.INFO)
+logging.getLogger('discord.utils').setLevel(logging.INFO)
+logging.getLogger('discord.intents').setLevel(logging.INFO)
 
 if sys.platform.startswith('win'):
     sys.stdout.reconfigure(encoding='utf-8')
@@ -160,7 +178,7 @@ YTDL_OPTIONS = {
 
 FFMPEG_OPTIONS = {
     'executable': FFMPEG_PATH,
-    'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+    'options': '-loglevel warning -vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
 }
 
 class DownloadProgress:
