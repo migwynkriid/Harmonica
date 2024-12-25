@@ -28,6 +28,14 @@ async def updateytdlp(ctx):
     try:
         status_msg = await ctx.send(embed=discord.Embed(title="Updating bot...", description="Installing required packages...", color=0x2ecc71))
         
+        # Git pull from repository
+        try:
+            subprocess.run(["git", "pull", "https://github.com/migwynkriid/Harmonica-DiscordBot-Ytdlp"], check=True, capture_output=True, text=True)
+            git_updated = True
+        except subprocess.CalledProcessError as e:
+            git_updated = False
+            git_error = e.stderr
+        
         # Install packages from requirements.txt
         requirements_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'requirements.txt')
         try:
@@ -39,6 +47,10 @@ async def updateytdlp(ctx):
         
         # Create final status message
         description = ""
+        if git_updated:
+            description += "✅ Git repository updated successfully\n"
+        else:
+            description += f"❌ Failed to update git repository: {git_error}\n"
         if packages_updated:
             description += "✅ Required packages installed successfully\n"
         else:
