@@ -341,7 +341,7 @@ class MusicBot:
         self.last_activity = time.time()
         processing_embed = self.create_embed(
             "Processing",
-            f"Processing request: {query}",
+            f"Searching for {query}",
             color=0x3498db
         )
         status_msg = await self.update_or_send_message(ctx, processing_embed)
@@ -1024,7 +1024,7 @@ class MusicBot:
             if status_msg:
                 await status_msg.edit(embed=self.create_embed(
                     "Processing",
-                    f"Searching for: {search_query}",
+                    f"Searching for {search_query}",
                     color=0x1DB954
                 ))
 
@@ -1313,7 +1313,7 @@ class MusicBot:
 
             processing_embed = self.create_embed(
                 "Processing",
-                f"Processing your request...",
+                f"Searching for {query}",
                 color=0x3498db
             )
             status_msg = await ctx.send(embed=processing_embed)
@@ -1505,7 +1505,7 @@ async def play(ctx, *, query=None):
 
         processing_embed = music_bot.create_embed(
             "Processing",
-            f"Processing your request...",
+            f"Searching for {query}",
             color=0x3498db
         )
         status_msg = await ctx.send(embed=processing_embed)
