@@ -662,12 +662,6 @@ class MusicBot:
 
             self.voice_client.play(audio_source, after=after_playing)
 
-        except Exception as e:
-            print(f"Error in process_queue: {str(e)}")
-            if ctx:
-                error_embed = self.create_embed("Error", f"Error playing song: {str(e)}", color=0xff0000)
-                await ctx.send(embed=error_embed)
-
         finally:
             self.waiting_for_song = False
             if not self.is_playing:
@@ -1289,8 +1283,7 @@ class MusicBot:
 
     async def play(self, ctx, *, query=None):
         """Play a song in the voice channel"""
-        try:
-            if not query:
+        if not query:
                 usage_embed = self.create_embed(
                     "Usage",
                     "Usage: !play YouTube Link/Youtube Search/Spotify Link",
@@ -1299,30 +1292,30 @@ class MusicBot:
                 await ctx.send(embed=usage_embed)
                 return
 
-            if not ctx.author.voice:
+        if not ctx.author.voice:
                 embed = self.create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c)
                 await ctx.send(embed=embed)
                 return
 
-            if not ctx.guild.voice_client:
+        if not ctx.guild.voice_client:
                 await ctx.author.voice.channel.connect()
-            elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
+        elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
                 await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
 
-            music_bot.voice_client = ctx.guild.voice_client
+        music_bot.voice_client = ctx.guild.voice_client
 
-            processing_embed = self.create_embed(
+        processing_embed = self.create_embed(
                 "Processing",
                 f"Searching for {query}",
                 color=0x3498db
             )
-            status_msg = await ctx.send(embed=processing_embed)
+        status_msg = await ctx.send(embed=processing_embed)
 
-            if 'open.spotify.com' in query:
+        if 'open.spotify.com' in query:
                 result = await self.handle_spotify_url(query, ctx, status_msg)
                 if not result:
                     return
-            else:
+        else:
                 async with self.queue_lock:
                     result = await self.download_song(query, status_msg=status_msg, ctx=ctx)
                     if not result:
@@ -1351,12 +1344,6 @@ class MusicBot:
                             )
                             queue_msg = await ctx.send(embed=queue_embed)
                             self.queued_messages[result['url']] = queue_msg
-
-        except Exception as e:
-            error_msg = f"Error playing song: {str(e)}"
-            print(error_msg)
-            error_embed = self.create_embed("Error", error_msg, color=0xff0000)
-            await ctx.send(embed=error_embed)
 
     async def after_playing_coro(self, error, ctx):
         """Coroutine called after a song finishes"""
@@ -1481,8 +1468,8 @@ async def on_ready():
 @bot.command(name='play')
 async def play(ctx, *, query=None):
     """Play a song in the voice channel"""
-    try:
-        if not query:
+    
+    if not query:
             usage_embed = music_bot.create_embed(
                 "Usage",
                 "Usage: !play YouTube Link/Youtube Search/Spotify Link",
@@ -1491,30 +1478,30 @@ async def play(ctx, *, query=None):
             await ctx.send(embed=usage_embed)
             return
 
-        if not ctx.author.voice:
+    if not ctx.author.voice:
             embed = music_bot.create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c)
             await ctx.send(embed=embed)
             return
 
-        if not ctx.guild.voice_client:
+    if not ctx.guild.voice_client:
             await ctx.author.voice.channel.connect()
-        elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
+    elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
             await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
 
-        music_bot.voice_client = ctx.guild.voice_client
+    music_bot.voice_client = ctx.guild.voice_client
 
-        processing_embed = music_bot.create_embed(
+    processing_embed = music_bot.create_embed(
             "Processing",
             f"Searching for {query}",
             color=0x3498db
         )
-        status_msg = await ctx.send(embed=processing_embed)
+    status_msg = await ctx.send(embed=processing_embed)
 
-        if 'open.spotify.com' in query:
+    if 'open.spotify.com' in query:
             result = await music_bot.handle_spotify_url(query, ctx, status_msg)
             if not result:
                 return
-        else:
+    else:
             async with music_bot.queue_lock:
                 result = await music_bot.download_song(query, status_msg=status_msg, ctx=ctx)
                 if not result:
@@ -1543,12 +1530,6 @@ async def play(ctx, *, query=None):
                         )
                         queue_msg = await ctx.send(embed=queue_embed)
                         music_bot.queued_messages[result['url']] = queue_msg
-
-    except Exception as e:
-        error_msg = f"Error playing song: {str(e)}"
-        print(error_msg)
-        error_embed = music_bot.create_embed("Error", error_msg, color=0xff0000)
-        await ctx.send(embed=error_embed)
 
 @bot.command(name='pause')
 async def pause(ctx):
