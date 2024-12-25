@@ -150,9 +150,14 @@ async def on_voice_state_update(member, before, after):
     members_in_channel = sum(1 for m in bot_voice_channel.members if not m.bot)
 
     if members_in_channel == 0:
-        print(f"No users in voice channel {bot_voice_channel.name}, disconnecting bot")
         if music_bot and music_bot.voice_client and music_bot.voice_client.is_connected():
+            if music_bot.voice_client.is_playing() or music_bot.queue:
+                music_bot.voice_client.stop()
+                music_bot.queue.clear()
+                music_bot.current_song = None
+                music_bot.is_playing = False
             await music_bot.voice_client.disconnect()
+        print(f"No users in voice channel {bot_voice_channel.name}, disconnecting bot")
 
 YTDL_OPTIONS = {
     'format': 'bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio/best/bestaudio*',
