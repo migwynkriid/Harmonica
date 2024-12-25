@@ -127,7 +127,8 @@ async def on_command_error(ctx, error):
         embed=music_bot.create_embed(
             "Error",
             f"Error: {str(error)}",
-            color=0xe74c3c
+            color=0xe74c3c,
+            ctx=ctx
         )
     )
 
@@ -325,7 +326,7 @@ class MusicBot:
                     await self._handle_play_command(ctx, query)
                 except Exception as e:
                     print(f"Error processing command: {e}")
-                    error_embed = self.create_embed("Error", f"Failed to process command: {str(e)}", color=0xe74c3c)
+                    error_embed = self.create_embed("Error", f"Failed to process command: {str(e)}", color=0xe74c3c, ctx=ctx)
                     await self.update_or_send_message(ctx, error_embed)
                 finally:
                     self.command_queue.task_done()
@@ -342,7 +343,8 @@ class MusicBot:
         processing_embed = self.create_embed(
             "Processing",
             f"Searching for {query}",
-            color=0x3498db
+            color=0x3498db,
+            ctx=ctx
         )
         status_msg = await self.update_or_send_message(ctx, processing_embed)
 
@@ -374,7 +376,7 @@ class MusicBot:
                         
                         if not result:
                             if not status_msg:
-                                error_embed = self.create_embed("Error", "Failed to download song", color=0xe74c3c)
+                                error_embed = self.create_embed("Error", "Failed to download song", color=0xe74c3c, ctx=ctx)
                                 await self.update_or_send_message(ctx, error_embed)
                             continue
 
@@ -395,7 +397,8 @@ class MusicBot:
                                 playlist_embed = self.create_embed(
                                     "Adding Playlist",
                                     f"Adding {len(result['entries'])} songs to queue...",
-                                    color=0x3498db
+                                    color=0x3498db,
+                                    ctx=ctx
                                 )
                                 await status_msg.edit(embed=playlist_embed)
 
@@ -406,7 +409,8 @@ class MusicBot:
                                     "Added to Queue", 
                                     f"[🎵 {result['title']}]({result['url']})",
                                     color=0x3498db,
-                                    thumbnail_url=result.get('thumbnail')
+                                    thumbnail_url=result.get('thumbnail'),
+                                    ctx=ctx
                                 )
                                 queue_msg = await ctx.send(embed=queue_embed)
                                 self.queued_messages[result['url']] = queue_msg
@@ -417,7 +421,7 @@ class MusicBot:
                 except Exception as e:
                     print(f"Error processing download: {str(e)}")
                     if not status_msg:
-                        error_embed = self.create_embed("Error", f"Error processing: {str(e)}", color=0xe74c3c)
+                        error_embed = self.create_embed("Error", f"Error processing: {str(e)}", color=0xe74c3c, ctx=ctx)
                         await self.update_or_send_message(ctx, error_embed)
                 
                 finally:
@@ -460,11 +464,11 @@ class MusicBot:
             self.current_song = None
             await self.bot.change_presence(activity=discord.Game(name="nothing! use !play "))
             
-            await ctx.send(embed=self.create_embed("Stopped", "Music stopped and queue cleared", color=0xe74c3c))
+            await ctx.send(embed=self.create_embed("Stopped", "Music stopped and queue cleared", color=0xe74c3c, ctx=ctx))
 
         except Exception as e:
             print(f"Error in stop command: {str(e)}")
-            await ctx.send(embed=self.create_embed("Error", "Failed to stop playback", color=0xe74c3c))
+            await ctx.send(embed=self.create_embed("Error", "Failed to stop playback", color=0xe74c3c, ctx=ctx))
 
     async def play_next(self, ctx):
         """Play the next song in the queue"""
@@ -504,7 +508,8 @@ class MusicBot:
                                 "Finished Playing",
                                 f"[🎵 {previous_song['title']}]({previous_song['url']})",
                                 color=0x808080,  # Gray color for finished
-                                thumbnail_url=previous_song.get('thumbnail')
+                                thumbnail_url=previous_song.get('thumbnail'),
+                                ctx=ctx
                             )
                             await self.now_playing_message.edit(embed=finished_embed)
                         except Exception as e:
@@ -514,7 +519,8 @@ class MusicBot:
                         "Now Playing",
                         f"[🎵 {self.current_song['title']}]({self.current_song['url']})",
                         color=0x00ff00,
-                        thumbnail_url=self.current_song.get('thumbnail')
+                        thumbnail_url=self.current_song.get('thumbnail'),
+                        ctx=ctx
                     )
                     self.now_playing_message = await ctx.send(embed=now_playing_embed)
                     
@@ -607,7 +613,8 @@ class MusicBot:
                 "Now Playing",
                 f"[🎵 {song['title']}]({song['url']})",
                 color=0x00ff00,
-                thumbnail_url=song.get('thumbnail')
+                thumbnail_url=song.get('thumbnail'),
+                ctx=ctx
             )
             self.now_playing_message = await ctx.send(embed=now_playing_embed)
             
@@ -645,7 +652,8 @@ class MusicBot:
                                 "Finished Playing",
                                 f"[{current_song_info['title']}]({current_song_info['url']})",
                                 color=0x808080,
-                                thumbnail_url=current_song_info.get('thumbnail')
+                                thumbnail_url=current_song_info.get('thumbnail'),
+                                ctx=ctx
                             )
                             await current_message.edit(embed=finished_embed)
                         
@@ -730,7 +738,8 @@ class MusicBot:
                             processing_embed = self.create_embed(
                                 "Processing",
                                 f"Downloading...\n{progress_bar}\nFile size: {total_size}",
-                                color=0x3498db
+                                color=0x3498db,
+                                ctx=status_msg.channel
                             )
                             await status_msg.edit(embed=processing_embed)
                         except discord.NotFound:
@@ -765,7 +774,8 @@ class MusicBot:
                                 embed=self.create_embed(
                                     "Error",
                                     "Could not retrieve details from Spotify URL.",
-                                    color=0xe74c3c
+                                    color=0xe74c3c,
+                                    ctx=status_msg.channel
                                 )
                             )
                         return None
@@ -819,7 +829,8 @@ class MusicBot:
                             embed=self.create_embed(
                                 "Error",
                                 f"Failed to process radio stream: {str(e)}",
-                                color=0xe74c3c
+                                color=0xe74c3c,
+                                ctx=status_msg.channel
                             )
                         )
                     return None
@@ -898,7 +909,8 @@ class MusicBot:
                             "Adding Playlist",
                             f"[🎵 {playlist_title}]({playlist_url})\nDownloading first song...",
                             color=0x3498db,
-                            thumbnail_url=video_thumbnail
+                            thumbnail_url=video_thumbnail,
+                            ctx=ctx
                         )
                         await status_msg.edit(embed=playlist_embed)
 
@@ -975,7 +987,7 @@ class MusicBot:
         except Exception as e:
             print(f"Error downloading song: {str(e)}")
             if status_msg:
-                error_embed = self.create_embed("Error", f"Error downloading song: {str(e)}", color=0xff0000)
+                error_embed = self.create_embed("Error", f"Error downloading song: {str(e)}", color=0xff0000, ctx=status_msg.channel)
                 await status_msg.edit(embed=error_embed)
             raise
 
@@ -1001,7 +1013,7 @@ class MusicBot:
         except Exception as e:
             print(f"Error handling Spotify URL: {str(e)}")
             if status_msg:
-                error_embed = self.create_embed("Error", f"Failed to process Spotify content: {str(e)}", color=0xe74c3c)
+                error_embed = self.create_embed("Error", f"Failed to process Spotify content: {str(e)}", color=0xe74c3c, ctx=status_msg.channel)
                 await status_msg.edit(embed=error_embed)
             return None
 
@@ -1019,7 +1031,8 @@ class MusicBot:
                 await status_msg.edit(embed=self.create_embed(
                     "Processing",
                     f"Searching for {search_query}",
-                    color=0x1DB954
+                    color=0x1DB954,
+                    ctx=ctx
                 ))
 
             return await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
@@ -1040,7 +1053,8 @@ class MusicBot:
                     "Processing Album",
                     f"Processing album: {album['name']}\nTotal tracks: {album['total_tracks']}",
                     color=0x1DB954,
-                    thumbnail_url=album['images'][0]['url'] if album['images'] else None
+                    thumbnail_url=album['images'][0]['url'] if album['images'] else None,
+                    ctx=ctx
                 ))
             tracks = []
             results = self.sp.album_tracks(album_id)
@@ -1085,7 +1099,8 @@ class MusicBot:
                     "Processing Playlist",
                     f"Processing playlist: {playlist['name']}\nTotal tracks: {playlist['tracks']['total']}",
                     color=0x1DB954,
-                    thumbnail_url=playlist['images'][0]['url'] if playlist['images'] else None
+                    thumbnail_url=playlist['images'][0]['url'] if playlist['images'] else None,
+                    ctx=ctx
                 ))
 
             tracks = []
@@ -1152,7 +1167,8 @@ class MusicBot:
                         await status_msg.edit(embed=self.create_embed(
                             "Processing",
                             f"Processing {source_name}\nProgress: {processed}/{total_tracks} tracks",
-                            color=0x1DB954
+                            color=0x1DB954,
+                            ctx=ctx
                         ))
                     except:
                         pass
@@ -1161,7 +1177,8 @@ class MusicBot:
                 final_embed = self.create_embed(
                     "Complete",
                     f"Finished processing {source_name}\nTotal tracks added: {processed}",
-                    color=0x1DB954
+                    color=0x1DB954,
+                    ctx=ctx
                 )
                 try:
                     await status_msg.edit(embed=final_embed)
@@ -1192,7 +1209,8 @@ class MusicBot:
                     playlist_embed = self.create_embed(
                         "Processing Playlist",
                         f"Extracted {total_videos} links. Starting downloads...",
-                        color=0x3498db
+                        color=0x3498db,
+                        ctx=ctx
                     )
                     await status_msg.edit(embed=playlist_embed)
 
@@ -1220,7 +1238,8 @@ class MusicBot:
                 error_embed = self.create_embed(
                     "Error",
                     f"Failed to process playlist: {str(e)}",
-                    color=0xe74c3c
+                    color=0xe74c3c,
+                    ctx=status_msg.channel
                 )
                 await status_msg.edit(embed=error_embed)
             return False
@@ -1242,7 +1261,8 @@ class MusicBot:
                 final_embed = self.create_embed(
                     "Playlist Complete",
                     f"All songs have been downloaded and queued",
-                    color=0x00ff00
+                    color=0x00ff00,
+                    ctx=status_msg.channel
                 )
                 try:
                     await status_msg.edit(embed=final_embed)
@@ -1270,7 +1290,8 @@ class MusicBot:
                 final_embed = self.create_embed(
                     "Playlist Complete",
                     f"All songs have been downloaded and queued",
-                    color=0x00ff00
+                    color=0x00ff00,
+                    ctx=status_msg.channel
                 )
                 try:
                     await status_msg.edit(embed=final_embed)
@@ -1287,13 +1308,14 @@ class MusicBot:
                 usage_embed = self.create_embed(
                     "Usage",
                     "Usage: !play YouTube Link/Youtube Search/Spotify Link",
-                    color=0xe74c3c
+                    color=0xe74c3c,
+                    ctx=ctx
                 )
                 await ctx.send(embed=usage_embed)
                 return
 
         if not ctx.author.voice:
-                embed = self.create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c)
+                embed = self.create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c, ctx=ctx)
                 await ctx.send(embed=embed)
                 return
 
@@ -1307,7 +1329,8 @@ class MusicBot:
         processing_embed = self.create_embed(
                 "Processing",
                 f"Searching for {query}",
-                color=0x3498db
+                color=0x3498db,
+                ctx=ctx
             )
         status_msg = await ctx.send(embed=processing_embed)
 
@@ -1340,7 +1363,8 @@ class MusicBot:
                                 "Added to Queue",
                                 f"[🎵 {result['title']}]({result['url']})\nPosition in queue: {queue_pos}",
                                 color=0x3498db,
-                                thumbnail_url=result.get('thumbnail')
+                                thumbnail_url=result.get('thumbnail'),
+                                ctx=ctx
                             )
                             queue_msg = await ctx.send(embed=queue_embed)
                             self.queued_messages[result['url']] = queue_msg
@@ -1379,7 +1403,8 @@ class MusicBot:
                         "Finished Playing",
                         f"[{self.current_song['title']}]({self.current_song['url']})",
                         color=0x808080,
-                        thumbnail_url=self.current_song.get('thumbnail')
+                        thumbnail_url=self.current_song.get('thumbnail'),
+                        ctx=ctx
                     )
                     await self.now_playing_message.edit(embed=finished_embed)
                 except Exception as e:
@@ -1392,7 +1417,7 @@ class MusicBot:
     async def queue(self, ctx):
         """Display the current queue"""
         if not self.queue and not self.current_song:
-            embed = self.create_embed("Queue Empty", "No songs in queue", color=0xe74c3c)
+            embed = self.create_embed("Queue Empty", "No songs in queue", color=0xe74c3c, ctx=ctx)
             await ctx.send(embed=embed)
             return
             
@@ -1417,19 +1442,26 @@ class MusicBot:
         embed = self.create_embed(
             f"Queue - {total_songs} songs",
             queue_text,
-            color=0x3498db
+            color=0x3498db,
+            ctx=ctx
         )
         await ctx.send(embed=embed)
     
-    def create_embed(self, title, description, color=0x3498db, thumbnail_url=None):
+    def create_embed(self, title, description, color=0x3498db, thumbnail_url=None, ctx=None):
         """Create a Discord embed with consistent styling"""
         embed = discord.Embed(
             title=title,
-            description=description,
-            color=color
+            description=description + "\n\u200b",  # Add blank line with zero-width space
+            color=color,
+            timestamp=datetime.now()  # Use current time when embed is created
         )
         if thumbnail_url:
             embed.set_thumbnail(url=thumbnail_url)
+        if ctx and ctx.author:
+            embed.set_footer(
+                text=f"Requested by {ctx.author.display_name}",  # Added bullet point and made text more compact
+                icon_url=ctx.author.display_avatar.url
+            )
         return embed
 
     async def update_activity(self):
@@ -1473,13 +1505,14 @@ async def play(ctx, *, query=None):
             usage_embed = music_bot.create_embed(
                 "Usage",
                 "Usage: !play YouTube Link/Youtube Search/Spotify Link",
-                color=0xe74c3c
+                color=0xe74c3c,
+                ctx=ctx
             )
             await ctx.send(embed=usage_embed)
             return
 
     if not ctx.author.voice:
-            embed = music_bot.create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c)
+            embed = music_bot.create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c, ctx=ctx)
             await ctx.send(embed=embed)
             return
 
@@ -1493,7 +1526,8 @@ async def play(ctx, *, query=None):
     processing_embed = music_bot.create_embed(
             "Processing",
             f"Searching for {query}",
-            color=0x3498db
+            color=0x3498db,
+            ctx=ctx
         )
     status_msg = await ctx.send(embed=processing_embed)
 
@@ -1526,7 +1560,8 @@ async def play(ctx, *, query=None):
                             "Added to Queue",
                             f"[🎵 {result['title']}]({result['url']})\nPosition in queue: {queue_pos}",
                             color=0x3498db,
-                            thumbnail_url=result.get('thumbnail')
+                            thumbnail_url=result.get('thumbnail'),
+                            ctx=ctx
                         )
                         queue_msg = await ctx.send(embed=queue_embed)
                         music_bot.queued_messages[result['url']] = queue_msg
@@ -1542,7 +1577,8 @@ async def pause(ctx):
                 embed=music_bot.create_embed(
                     "Paused ",
                     f"[🎵 {music_bot.current_song['title']}]({music_bot.current_song['url']})",
-                    color=0xf1c40f
+                    color=0xf1c40f,
+                    ctx=ctx
                 )
             )
         else:
@@ -1550,7 +1586,8 @@ async def pause(ctx):
                 embed=music_bot.create_embed(
                     "Error",
                     "Nothing is playing right now.",
-                    color=0xe74c3c
+                    color=0xe74c3c,
+                    ctx=ctx
                 )
             )
     except Exception as e:
@@ -1559,7 +1596,8 @@ async def pause(ctx):
             embed=music_bot.create_embed(
                 "Error",
                 f"Error: {str(e)}",
-                color=0xe74c3c
+                color=0xe74c3c,
+                ctx=ctx
             )
         )
 
@@ -1574,7 +1612,8 @@ async def resume(ctx):
                 embed=music_bot.create_embed(
                     "Resumed ",
                     f"[🎵 {music_bot.current_song['title']}]({music_bot.current_song['url']})",
-                    color=0x2ecc71
+                    color=0x2ecc71,
+                    ctx=ctx
                 )
             )
         else:
@@ -1582,7 +1621,8 @@ async def resume(ctx):
                 embed=music_bot.create_embed(
                     "Error",
                     "Nothing is paused right now.",
-                    color=0xe74c3c
+                    color=0xe74c3c,
+                    ctx=ctx
                 )
             )
     except Exception as e:
@@ -1591,7 +1631,8 @@ async def resume(ctx):
             embed=music_bot.create_embed(
                 "Error",
                 f"Error: {str(e)}",
-                color=0xe74c3c
+                color=0xe74c3c,
+                ctx=ctx
             )
         )
 
@@ -1602,10 +1643,10 @@ async def stop(ctx):
         music_bot.clear_queue()
         if music_bot.voice_client and music_bot.voice_client.is_connected():
             await music_bot.voice_client.disconnect()
-        await ctx.send(embed=music_bot.create_embed("Stopped", "Music stopped and queue cleared", color=0xe74c3c))
+        await ctx.send(embed=music_bot.create_embed("Stopped", "Music stopped and queue cleared", color=0xe74c3c, ctx=ctx))
 
     except Exception as e:
-        await ctx.send(embed=music_bot.create_embed("Error", f"An error occurred while stopping: {str(e)}", color=0xe74c3c))
+        await ctx.send(embed=music_bot.create_embed("Error", f"An error occurred while stopping: {str(e)}", color=0xe74c3c, ctx=ctx))
 
 @bot.command(name='skip')
 async def skip(ctx):
@@ -1613,15 +1654,15 @@ async def skip(ctx):
     if music_bot.voice_client and (music_bot.voice_client.is_playing() or music_bot.voice_client.is_paused()):
         music_bot.voice_client.stop()
         music_bot.last_activity = time.time()
-        await ctx.send(embed=music_bot.create_embed("Skipped", "Skipped the current song", color=0x3498db))
+        await ctx.send(embed=music_bot.create_embed("Skipped", "Skipped the current song", color=0x3498db, ctx=ctx))
     else:
-        await ctx.send(embed=music_bot.create_embed("Error", "Nothing is playing to skip", color=0xe74c3c))
+        await ctx.send(embed=music_bot.create_embed("Error", "Nothing is playing to skip", color=0xe74c3c, ctx=ctx))
 
 @bot.command(name='queue', aliases=['playing'])
 async def queue(ctx):
     """Show the current queue"""
     if not music_bot.queue and music_bot.download_queue.empty():
-        await ctx.send(embed=music_bot.create_embed("Queue Empty", "No songs in queue", color=0xe74c3c))
+        await ctx.send(embed=music_bot.create_embed("Queue Empty", "No songs in queue", color=0xe74c3c, ctx=ctx))
         return
 
     queue_text = ""
@@ -1645,7 +1686,8 @@ async def queue(ctx):
     embed = music_bot.create_embed(
         f"Music Queue - {len(music_bot.queue)} song(s)",
         queue_text if queue_text else "Queue is empty",
-        color=0x3498db
+        color=0x3498db,
+        ctx=ctx
     )
     await ctx.send(embed=embed)
 
@@ -1654,21 +1696,21 @@ async def leave(ctx):
     """Leave the voice channel"""
     if music_bot and music_bot.voice_client and music_bot.voice_client.is_connected():
         await music_bot.leave_voice_channel()
-        await ctx.send(embed=music_bot.create_embed("Left Channel", "Disconnected from voice channel", color=0x3498db))
+        await ctx.send(embed=music_bot.create_embed("Left Channel", "Disconnected from voice channel", color=0x3498db, ctx=ctx))
     else:
-        await ctx.send(embed=music_bot.create_embed("Error", "I'm not in a voice channel", color=0xe74c3c))
+        await ctx.send(embed=music_bot.create_embed("Error", "I'm not in a voice channel", color=0xe74c3c, ctx=ctx))
 
 @bot.command(name='loop', aliases=['repeat'])
 async def loop(ctx):
     """Toggle loop mode for the current song"""
     if not music_bot.current_song:
-        await ctx.send(embed=music_bot.create_embed("Error", "No song is currently playing!", color=0xe74c3c))
+        await ctx.send(embed=music_bot.create_embed("Error", "No song is currently playing!", color=0xe74c3c, ctx=ctx))
         return
     music_bot.loop_mode = not music_bot.loop_mode
     status = "enabled" if music_bot.loop_mode else "disabled"
     color = 0x2ecc71 if music_bot.loop_mode else 0xe74c3c
     
-    await ctx.send(embed=music_bot.create_embed(f"Loop Mode {status.title()}", f"[🎵 {music_bot.current_song['title']}]({music_bot.current_song['url']}) will {'now' if music_bot.loop_mode else 'no longer'} be looped", color=color))
+    await ctx.send(embed=music_bot.create_embed(f"Loop Mode {status.title()}", f"[🎵 {music_bot.current_song['title']}]({music_bot.current_song['url']}) will {'now' if music_bot.loop_mode else 'no longer'} be looped", color=color, ctx=ctx))
 
 @bot.command(name='max')
 async def max(ctx):
@@ -1676,7 +1718,7 @@ async def max(ctx):
     try:
         await play(ctx, query='https://azuracast.novi-net.net/radio/8010/radiomax.aac')
     except Exception as e:
-        await ctx.send(embed=music_bot.create_embed("Error", f"An error occurred while executing !max: {str(e)}", color=0xe74c3c))
+        await ctx.send(embed=music_bot.create_embed("Error", f"An error occurred while executing !max: {str(e)}", color=0xe74c3c, ctx=ctx))
 
 @bot.command(name='nowplaying', aliases=['np'])
 async def nowplaying(ctx):
@@ -1685,14 +1727,15 @@ async def nowplaying(ctx):
         return
 
     if not music_bot.current_song:
-        await ctx.send("No song is currently playing.")
+        await ctx.send(embed=music_bot.create_embed("Error", "No song is currently playing!", color=0xe74c3c, ctx=ctx))
         return
 
     embed = music_bot.create_embed(
         "Now Playing 🎵",
         f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})",
         color=0x3498db,
-        thumbnail_url=music_bot.current_song.get('thumbnail')
+        thumbnail_url=music_bot.current_song.get('thumbnail'),
+        ctx=ctx
     )
 
     await ctx.send(embed=embed)
