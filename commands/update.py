@@ -28,17 +28,20 @@ async def updateytdlp(ctx):
     try:
         status_msg = await ctx.send(embed=discord.Embed(title="Updating bot...", description="Installing required packages...", color=0x2ecc71))
         
-        # Get current commit hash
+        # Get current commit hash and count
         try:
             current_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+            current_count = subprocess.run(["git", "rev-list", "--count", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
         except subprocess.CalledProcessError:
             current_commit = "unknown"
+            current_count = "?"
         
         # Git pull from repository
         try:
             subprocess.run(["git", "pull", "https://github.com/migwynkriid/Harmonica-DiscordBot-Ytdlp"], check=True, capture_output=True, text=True)
-            # Get new commit hash after pull
+            # Get new commit hash and count after pull
             new_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+            new_count = subprocess.run(["git", "rev-list", "--count", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
             git_updated = True
         except subprocess.CalledProcessError as e:
             git_updated = False
@@ -57,7 +60,7 @@ async def updateytdlp(ctx):
         description = ""
         if git_updated:
             if current_commit != new_commit:
-                description += f"✅ Git repository updated successfully from commit `#{current_commit}` to commit `#{new_commit}`\n"
+                description += f"✅ Git repository updated successfully from commit #{current_count} (`{current_commit}`) to commit #{new_count} (`{new_commit}`)\n"
             else:
                 description += "✅ Git repository is already up to date (no new commits)\n"
         else:
