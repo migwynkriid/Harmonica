@@ -1,7 +1,19 @@
 import discord
 import time
 import asyncio
+import json
+import logging
 from scripts.messages import update_or_send_message
+
+def get_voice_config():
+    """Get voice configuration from config.json"""
+    try:
+        with open('config.json', 'r') as f:
+            config = json.load(f)
+            return config.get('VOICE', {})
+    except Exception as e:
+        logging.error(f"Error reading config.json: {str(e)}")
+        return {"AUTO_LEAVE_EMPTY": True}  # Default values
 
 async def join_voice_channel(bot_instance, ctx):
     """Join the user's voice channel"""
@@ -11,6 +23,15 @@ async def join_voice_channel(bot_instance, ctx):
 
     try:
         channel = ctx.author.voice.channel
+        voice_config = get_voice_config()
+        
+        # Check if the channel is empty (except for the bot) when AUTO_LEAVE_EMPTY is enabled
+        if voice_config.get('AUTO_LEAVE_EMPTY', True):
+            members_in_channel = len([m for m in channel.members if not m.bot])
+            if members_in_channel == 0:
+                await update_or_send_message(ctx, embed=bot_instance.create_embed("Error", "Cannot join an empty voice channel!", color=0xe74c3c))
+                return False
+
         if bot_instance.voice_client:
             try:
                 if bot_instance.voice_client.is_connected():

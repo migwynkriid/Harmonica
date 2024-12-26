@@ -1,4 +1,16 @@
 {
-    "OWNER_ID": 220301180562046977,
-    "PREFIX": "!"
+    "OWNER_ID": 220301180562046977,             
+    "PREFIX": "!",
+    "LOG_LEVEL": "INFO",
+    "VOICE": {
+        "INACTIVITY_TIMEOUT": 120,
+        "AUTO_LEAVE_EMPTY": true,
+        "DEFAULT_VOLUME": 100
+    },
+    "DOWNLOADS": {
+        "AUTO_CLEAR": true
+    },
+    "MESSAGES": {
+        "SHOW_PROGRESS_BAR": true
+    }
 }

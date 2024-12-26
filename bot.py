@@ -38,7 +38,20 @@ from scripts.spotify import get_spotify_album_details, get_spotify_track_details
 if not os.path.exists('config.json'):
     default_config = {
         "OWNER_ID": "YOUR_DISCORD_USER_ID",
-        "PREFIX": "!"}
+        "PREFIX": "!",
+        "LOG_LEVEL": "INFO",
+        "VOICE": {
+            "INACTIVITY_TIMEOUT": 60,
+            "AUTO_LEAVE_EMPTY": True,
+            "DEFAULT_VOLUME": 100
+        },
+        "DOWNLOADS": {
+            "AUTO_CLEAR": True
+        },
+        "MESSAGES": {
+            "SHOW_PROGRESS_BAR": True
+        }
+    }
     with open('config.json', 'w') as f:
         json.dump(default_config, f, indent=4)
 
@@ -46,6 +59,12 @@ with open('config.json', 'r') as f:
     config = json.load(f)
     OWNER_ID = config['OWNER_ID']
     PREFIX = config['PREFIX']
+    LOG_LEVEL = config.get('LOG_LEVEL', 'INFO')
+    INACTIVITY_TIMEOUT = config.get('VOICE', {}).get('INACTIVITY_TIMEOUT', 60)
+    AUTO_LEAVE_EMPTY = config.get('VOICE', {}).get('AUTO_LEAVE_EMPTY', True)
+    DEFAULT_VOLUME = config.get('VOICE', {}).get('DEFAULT_VOLUME', 100)
+    AUTO_CLEAR_DOWNLOADS = config.get('DOWNLOADS', {}).get('AUTO_CLEAR', True)
+    SHOW_PROGRESS_BAR = config.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', True)
 
 YTDLP_PATH = get_ytdlp_path()
 FFMPEG_PATH = get_ffmpeg_path()
@@ -54,33 +73,34 @@ file_handler = logging.FileHandler('log.txt', encoding='utf-8')
 console_handler = logging.StreamHandler(sys.stdout)
 
 logging.basicConfig(
-    level=logging.INFO, 
+    level=getattr(logging, LOG_LEVEL.upper(), logging.INFO), 
     format='%(asctime)s [%(levelname)s] %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     handlers=[file_handler, console_handler]
 )
 
-logging.getLogger('discord').setLevel(logging.INFO)
-logging.getLogger('yt-dlp').setLevel(logging.INFO)
-logging.getLogger('discord.player').setLevel(logging.INFO)
-logging.getLogger('discord.client').setLevel(logging.INFO)
-logging.getLogger('discord.voice_client').setLevel(logging.INFO)
-logging.getLogger('discord.gateway').setLevel(logging.INFO)
-logging.getLogger('discord.http').setLevel(logging.INFO)
-logging.getLogger('discord.state').setLevel(logging.INFO)
-logging.getLogger('discord.interactions').setLevel(logging.INFO)
-logging.getLogger('discord.webhook').setLevel(logging.INFO)
-logging.getLogger('discord.ext.commands').setLevel(logging.INFO)
-logging.getLogger('discord.ext.tasks').setLevel(logging.INFO)
-logging.getLogger('discord.ext.voice_client').setLevel(logging.INFO)
-logging.getLogger('discord.ext.commands.bot').setLevel(logging.INFO)
-logging.getLogger('discord.ext.commands.core').setLevel(logging.INFO)
-logging.getLogger('discord.ext.commands.errors').setLevel(logging.INFO)
-logging.getLogger('discord.ext.commands.cog').setLevel(logging.INFO)
-logging.getLogger('discord.ext.tasks.loop').setLevel(logging.INFO)
-logging.getLogger('discord.ext').setLevel(logging.INFO)
-logging.getLogger('discord.utils').setLevel(logging.INFO)
-logging.getLogger('discord.intents').setLevel(logging.INFO)
+# Set all loggers to use the configured log level
+logging.getLogger('discord').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('yt-dlp').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.player').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.client').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.voice_client').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.gateway').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.http').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.state').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.interactions').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.webhook').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.ext.commands').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.ext.tasks').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.ext.voice_client').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.ext.commands.bot').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.ext.commands.core').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.ext.commands.errors').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.ext.commands.cog').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.ext.tasks.loop').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.ext').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.utils').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+logging.getLogger('discord.intents').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
 
 if sys.platform.startswith('win'):
     sys.stdout.reconfigure(encoding='utf-8')
@@ -148,24 +168,26 @@ async def on_voice_state_update(member, before, after):
     if not bot_voice_channel:
         return
 
-    members_in_channel = sum(1 for m in bot_voice_channel.members if not m.bot)
+    # Only check for empty channel if AUTO_LEAVE_EMPTY is enabled
+    if config.get('VOICE', {}).get('AUTO_LEAVE_EMPTY', True):
+        members_in_channel = sum(1 for m in bot_voice_channel.members if not m.bot)
 
-    if members_in_channel == 0:
-        if music_bot and music_bot.voice_client and music_bot.voice_client.is_connected():
-            if music_bot.voice_client.is_playing() or music_bot.queue:
-                music_bot.voice_client.stop()
-                # Delete queued messages
-                for msg in music_bot.queued_messages.values():
-                    try:
-                        await msg.delete()
-                    except:
-                        pass
-                music_bot.queued_messages.clear()
-                music_bot.queue.clear()
-                music_bot.current_song = None
-                music_bot.is_playing = False
-            await music_bot.voice_client.disconnect()
-        print(f"No users in voice channel {bot_voice_channel.name}, disconnecting bot")
+        if members_in_channel == 0:
+            if music_bot and music_bot.voice_client and music_bot.voice_client.is_connected():
+                if music_bot.voice_client.is_playing() or music_bot.queue:
+                    music_bot.voice_client.stop()
+                    # Delete queued messages
+                    for msg in music_bot.queued_messages.values():
+                        try:
+                            await msg.delete()
+                        except:
+                            pass
+                    music_bot.queued_messages.clear()
+                    music_bot.queue.clear()
+                    music_bot.current_song = None
+                    music_bot.is_playing = False
+                await music_bot.voice_client.disconnect()
+                print(f"No users in voice channel {bot_voice_channel.name}, disconnecting bot")
 
 YTDL_OPTIONS = {
     'format': 'bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio/best/bestaudio*',
@@ -269,7 +291,7 @@ class MusicBot:
             os.makedirs(self.downloads_dir)
 
         self.last_activity = time.time()
-        self.inactivity_timeout = 60
+        self.inactivity_timeout = INACTIVITY_TIMEOUT
         self._inactivity_task = None
         self.last_update = 0
         self._last_progress = -1
@@ -539,6 +561,9 @@ class MusicBot:
                                 self.current_song['file_path'],
                                 **ffmpeg_options
                             )
+                            # Convert DEFAULT_VOLUME from percentage (0-100) to float (0.0-2.0)
+                            default_volume = DEFAULT_VOLUME / 50.0  # This makes 100% = 2.0, 50% = 1.0, etc.
+                            audio_source = discord.PCMVolumeTransformer(audio_source, volume=default_volume)
                             self.voice_client.play(
                                 audio_source,
                                 after=lambda e: asyncio.run_coroutine_threadsafe(
@@ -632,7 +657,9 @@ class MusicBot:
                     **FFMPEG_OPTIONS
                 )
 
-            audio_source = discord.PCMVolumeTransformer(audio_source, volume=0.75)
+            # Convert DEFAULT_VOLUME from percentage (0-100) to float (0.0-2.0)
+            default_volume = DEFAULT_VOLUME / 50.0  # This makes 100% = 2.0, 50% = 1.0, etc.
+            audio_source = discord.PCMVolumeTransformer(audio_source, volume=default_volume)
 
             current_message = self.now_playing_message
             current_song_info = {
@@ -730,15 +757,20 @@ class MusicBot:
                     
                     if percentage % 10 == 0 and percentage != self._last_progress:
                         self._last_progress = percentage
-                        progress_bar = self.create_progress_bar(percentage)
                         
                         total_size = self.format_size(total)
                         
                         try:
                             await status_msg.fetch()
+                            description = "Downloading..."
+                            if SHOW_PROGRESS_BAR:
+                                progress_bar = self.create_progress_bar(percentage)
+                                description += f"\n{progress_bar}"
+                            description += f"\nFile size: {total_size}"
+                            
                             processing_embed = self.create_embed(
                                 "Processing",
-                                f"Downloading...\n{progress_bar}\nFile size: {total_size}",
+                                description,
                                 color=0x3498db,
                                 ctx=status_msg.channel
                             )
@@ -1305,8 +1337,9 @@ class MusicBot:
 
     async def play(self, ctx, *, query=None):
         """Play a song in the voice channel"""
+        
         if not query:
-                usage_embed = self.create_embed(
+                usage_embed = music_bot.create_embed(
                     "Usage",
                     "Usage: !play YouTube Link/Youtube Search/Spotify Link",
                     color=0xe74c3c,
@@ -1316,7 +1349,7 @@ class MusicBot:
                 return
 
         if not ctx.author.voice:
-                embed = self.create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c, ctx=ctx)
+                embed = music_bot.create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c, ctx=ctx)
                 await ctx.send(embed=embed)
                 return
 
@@ -1327,7 +1360,7 @@ class MusicBot:
 
         music_bot.voice_client = ctx.guild.voice_client
 
-        processing_embed = self.create_embed(
+        processing_embed = music_bot.create_embed(
                 "Processing",
                 f"Searching for {query}",
                 color=0x3498db,
@@ -1336,16 +1369,16 @@ class MusicBot:
         status_msg = await ctx.send(embed=processing_embed)
 
         if 'open.spotify.com' in query:
-                result = await self.handle_spotify_url(query, ctx, status_msg)
+                result = await music_bot.handle_spotify_url(query, ctx, status_msg)
                 if not result:
                     return
         else:
-                async with self.queue_lock:
-                    result = await self.download_song(query, status_msg=status_msg, ctx=ctx)
+                async with music_bot.queue_lock:
+                    result = await music_bot.download_song(query, status_msg=status_msg, ctx=ctx)
                     if not result:
                         return
 
-                    self.queue.append({
+                    music_bot.queue.append({
                         'title': result['title'],
                         'url': result['url'],
                         'file_path': result['file_path'],
@@ -1355,12 +1388,12 @@ class MusicBot:
                         'is_from_playlist': result.get('is_from_playlist', False)
                     })
 
-                    if not self.is_playing and not self.waiting_for_song:
-                        await self.process_queue()
+                    if not music_bot.is_playing and not music_bot.waiting_for_song:
+                        await music_bot.process_queue()
                     else:
                         if not result.get('is_from_playlist'):
-                            queue_pos = len(self.queue)
-                            queue_embed = self.create_embed(
+                            queue_pos = len(music_bot.queue)
+                            queue_embed = music_bot.create_embed(
                                 "Added to Queue",
                                 f"[🎵 {result['title']}]({result['url']})\nPosition in queue: {queue_pos}",
                                 color=0x3498db,
@@ -1368,7 +1401,7 @@ class MusicBot:
                                 ctx=ctx
                             )
                             queue_msg = await ctx.send(embed=queue_embed)
-                            self.queued_messages[result['url']] = queue_msg
+                            music_bot.queued_messages[result['url']] = queue_msg
 
     async def after_playing_coro(self, error, ctx):
         """Coroutine called after a song finishes"""
