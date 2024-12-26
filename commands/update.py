@@ -57,7 +57,7 @@ async def updateytdlp(ctx):
         description = ""
         if git_updated:
             if current_commit != new_commit:
-                description += f"✅ Git repository updated successfully from Commit #{current_commit} to Commit #{new_commit}\n"
+                description += f"✅ Git repository updated successfully from commit `#{current_commit}` to commit `#{new_commit}`\n"
             else:
                 description += "✅ Git repository is already up to date (no new commits)\n"
         else:
