@@ -232,10 +232,11 @@ class DownloadProgress:
                 embed = discord.Embed(
                     title="Downloading",
                     description=status,
-                    color=0xf1c40f
+                    color=0xf1c40f,
+                    timestamp=datetime.now()
                 )
                 
-                asyncio.create_task(self.status_msg.edit(embed=embed))
+                await self.status_msg.edit(embed=embed)
                 
             except Exception as e:
                 print(f"Error updating progress: {str(e)}")
@@ -1457,9 +1458,9 @@ class MusicBot:
         )
         if thumbnail_url:
             embed.set_thumbnail(url=thumbnail_url)
-        if ctx and ctx.author:
+        if ctx and hasattr(ctx, 'author') and ctx.author:
             embed.set_footer(
-                text=f"Requested by {ctx.author.display_name}",  # Added bullet point and made text more compact
+                text=f"Requested by {ctx.author.display_name}",
                 icon_url=ctx.author.display_avatar.url
             )
         return embed
