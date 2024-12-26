@@ -28,9 +28,17 @@ async def updateytdlp(ctx):
     try:
         status_msg = await ctx.send(embed=discord.Embed(title="Updating bot...", description="Installing required packages...", color=0x2ecc71))
         
+        # Get current commit hash
+        try:
+            current_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+        except subprocess.CalledProcessError:
+            current_commit = "unknown"
+        
         # Git pull from repository
         try:
             subprocess.run(["git", "pull", "https://github.com/migwynkriid/Harmonica-DiscordBot-Ytdlp"], check=True, capture_output=True, text=True)
+            # Get new commit hash after pull
+            new_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
             git_updated = True
         except subprocess.CalledProcessError as e:
             git_updated = False
@@ -48,7 +56,10 @@ async def updateytdlp(ctx):
         # Create final status message
         description = ""
         if git_updated:
-            description += "✅ Git repository updated successfully\n"
+            if current_commit != new_commit:
+                description += f"✅ Git repository updated successfully from Commit #{current_commit} to Commit #{new_commit}\n"
+            else:
+                description += "✅ Git repository is already up to date (no new commits)\n"
         else:
             description += f"❌ Failed to update git repository: {git_error}\n"
         if packages_updated:
