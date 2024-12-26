@@ -1479,15 +1479,14 @@ async def on_ready():
     clear_downloads_folder()
     
     await bot.change_presence(activity=discord.Game(name="nothing! use !play "))
-    print(f"------------------")
+    print(f"----------------------------------------")
     print(f"Logged in as {bot.user.name}")
     print(f"Bot ID: {bot.user.id}")
     print(f"Bot Invite URL: {discord.utils.oauth_url(bot.user.id)}")
-    print(f"------------------")
+    print(f"----------------------------------------")
     print(f"Loaded configuration:")
     print(f"Owner ID: {OWNER_ID}")
     print(f"Command Prefix: {PREFIX}")
-    print(f"------------------")
     
     # Load scripts and commands
     load_scripts()
