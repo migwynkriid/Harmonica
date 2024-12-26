@@ -5,7 +5,7 @@
     "VOICE": {
         "INACTIVITY_TIMEOUT": 120,
         "AUTO_LEAVE_EMPTY": true,
-        "DEFAULT_VOLUME": 100
+        "DEFAULT_VOLUME": 75
     },
     "DOWNLOADS": {
         "AUTO_CLEAR": true
