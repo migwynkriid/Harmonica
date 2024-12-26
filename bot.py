@@ -728,7 +728,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
     def is_radio_stream(self, url):
         """Check if the URL is a radio stream"""
-        stream_extensions = ['.mp3', '.aac', '.m4a', '.ogg', '.opus']
+        stream_extensions = ['.mp3', '.aac', '.m4a', '.flac', '.wav', '.ogg', '.opus', '.wma']
         return any(url.lower().endswith(ext) for ext in stream_extensions)
 
     def is_playlist_url(self, url):
