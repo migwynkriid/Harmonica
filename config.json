@@ -1,16 +1,16 @@
 {
-    "OWNER_ID": 220301180562046977, /// Your Discord ID
-    "PREFIX": "!",                  /// Prefix
-    "LOG_LEVEL": "INFO",            /// Log level, Valid options: "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
+    "OWNER_ID": 220301180562046977,
+    "PREFIX": "!",
+    "LOG_LEVEL": "INFO",
     "VOICE": {
-        "INACTIVITY_TIMEOUT": 120,  /// Inactivity timeout in seconds, leaves the voice channel after the determined time
-        "AUTO_LEAVE_EMPTY": true,   /// Auto-leave behavior, leaves the voice channel if the channel is empty, valid options: true, false
-        "DEFAULT_VOLUME": 100      /// Default volume, valid options: 0-100
+        "INACTIVITY_TIMEOUT": 120,
+        "AUTO_LEAVE_EMPTY": true,
+        "DEFAULT_VOLUME": 100
     },
     "DOWNLOADS": {
-        "AUTO_CLEAR": true         /// Auto-clear behavior, clears the downloads folder on startup, valid options: true, false
+        "AUTO_CLEAR": true
     },
     "MESSAGES": {
-        "SHOW_PROGRESS_BAR": true  /// Show progress bar on downloading process,valid options: true, false
+        "SHOW_PROGRESS_BAR": true
     }
 }
