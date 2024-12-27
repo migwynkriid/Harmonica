@@ -181,7 +181,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.current_song = None
         self.is_playing = False
         self.voice_client = None
-        self.loop_mode = False
         self.waiting_for_song = False
         self.queue_lock = asyncio.Lock()
         self.download_queue = asyncio.Queue()

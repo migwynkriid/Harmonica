@@ -12,20 +12,11 @@ class AfterPlayingHandler:
             print(f"Queue length: {len(self.queue)}")
         if not self.download_queue.empty():
             print(f"Download queue size: {self.download_queue.qsize()}")
-        
-        if self.loop_mode and self.current_song:
-            looped_song = self.current_song.copy()
-            looped_song['has_played'] = True
-            self.queue.insert(0, looped_song)
-            print("Loop mode: Added current song back to queue")
-        
         if not self.currently_downloading and not self.download_queue.empty():
-            print("More songs in download queue, continuing processing...")
-        
+            print("More songs in download queue, continuing processing...")    
         if len(self.queue) == 0 and not self.download_queue.empty():
             print("Waiting for next song to finish downloading...")
             await asyncio.sleep(1)
-            
         if len(self.queue) > 0 or not self.download_queue.empty():
             await self.play_next(ctx)
         else:
