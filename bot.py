@@ -1327,16 +1327,6 @@ async def stop(ctx):
     except Exception as e:
         await ctx.send(embed=music_bot.create_embed("Error", f"An error occurred while stopping: {str(e)}", color=0xe74c3c, ctx=ctx))
 
-@bot.command(name='skip')
-async def skip(ctx):
-    """Skip the current song"""
-    if music_bot.voice_client and (music_bot.voice_client.is_playing() or music_bot.voice_client.is_paused()):
-        music_bot.voice_client.stop()
-        music_bot.last_activity = time.time()
-        await ctx.send(embed=music_bot.create_embed("Skipped", "Skipped the current song", color=0x3498db, ctx=ctx))
-    else:
-        await ctx.send(embed=music_bot.create_embed("Error", "Nothing is playing to skip", color=0xe74c3c, ctx=ctx))
-
 bot.remove_command('help')
 
 bot.run(os.getenv('DISCORD_TOKEN'))
