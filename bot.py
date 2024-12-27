@@ -1370,27 +1370,6 @@ async def queue(ctx):
     )
     await ctx.send(embed=embed)
 
-@bot.command(name='leave')
-async def leave(ctx):
-    """Leave the voice channel"""
-    if music_bot and music_bot.voice_client and music_bot.voice_client.is_connected():
-        await music_bot.leave_voice_channel()
-        await ctx.send(embed=music_bot.create_embed("Left Channel", "Disconnected from voice channel", color=0x3498db, ctx=ctx))
-    else:
-        await ctx.send(embed=music_bot.create_embed("Error", "I'm not in a voice channel", color=0xe74c3c, ctx=ctx))
-
-@bot.command(name='loop', aliases=['repeat'])
-async def loop(ctx):
-    """Toggle loop mode for the current song"""
-    if not music_bot.current_song:
-        await ctx.send(embed=music_bot.create_embed("Error", "No song is currently playing!", color=0xe74c3c, ctx=ctx))
-        return
-    music_bot.loop_mode = not music_bot.loop_mode
-    status = "enabled" if music_bot.loop_mode else "disabled"
-    color = 0x2ecc71 if music_bot.loop_mode else 0xe74c3c
-    
-    await ctx.send(embed=music_bot.create_embed(f"Loop Mode {status.title()}", f"[🎵 {music_bot.current_song['title']}]({music_bot.current_song['url']}) will {'now' if music_bot.loop_mode else 'no longer'} be looped", color=color, ctx=ctx))
-
 bot.remove_command('help')
 
 bot.run(os.getenv('DISCORD_TOKEN'))
