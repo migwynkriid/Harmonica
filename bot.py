@@ -25,6 +25,7 @@ from scripts.url_identifier import is_url, is_playlist_url, is_radio_stream
 from scripts.handle_playlist import PlaylistHandler
 from scripts.after_playing_coro import AfterPlayingHandler
 from scripts.handle_spotify import SpotifyHandler
+from scripts.config import load_config
 from scripts.updatescheduler import check_updates, update_checker
 from scripts.voice import join_voice_channel, leave_voice_channel
 from scripts.inactivity import start_inactivity_checker, check_inactivity
@@ -39,36 +40,16 @@ from scripts.load_scripts import load_scripts
 from scripts.activity import update_activity
 from scripts.spotify import get_spotify_album_details, get_spotify_track_details, get_spotify_playlist_details
 
-if not os.path.exists('config.json'):
-    default_config = {
-        "OWNER_ID": "YOUR_DISCORD_USER_ID",
-        "PREFIX": "!",
-        "LOG_LEVEL": "INFO",
-        "VOICE": {
-            "INACTIVITY_TIMEOUT": 60,
-            "AUTO_LEAVE_EMPTY": True,
-            "DEFAULT_VOLUME": 100
-        },
-        "DOWNLOADS": {
-            "AUTO_CLEAR": True
-        },
-        "MESSAGES": {
-            "SHOW_PROGRESS_BAR": True
-        }
-    }
-    with open('config.json', 'w') as f:
-        json.dump(default_config, f, indent=4)
-
-with open('config.json', 'r') as f:
-    config = json.load(f)
-    OWNER_ID = config['OWNER_ID']
-    PREFIX = config['PREFIX']
-    LOG_LEVEL = config.get('LOG_LEVEL', 'INFO')
-    INACTIVITY_TIMEOUT = config.get('VOICE', {}).get('INACTIVITY_TIMEOUT', 60)
-    AUTO_LEAVE_EMPTY = config.get('VOICE', {}).get('AUTO_LEAVE_EMPTY', True)
-    DEFAULT_VOLUME = config.get('VOICE', {}).get('DEFAULT_VOLUME', 100)
-    AUTO_CLEAR_DOWNLOADS = config.get('DOWNLOADS', {}).get('AUTO_CLEAR', True)
-    SHOW_PROGRESS_BAR = config.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', True)
+# Load configuration
+config_vars = load_config()
+OWNER_ID = config_vars['OWNER_ID']
+PREFIX = config_vars['PREFIX']
+LOG_LEVEL = config_vars['LOG_LEVEL']
+INACTIVITY_TIMEOUT = config_vars['INACTIVITY_TIMEOUT']
+AUTO_LEAVE_EMPTY = config_vars['AUTO_LEAVE_EMPTY']
+DEFAULT_VOLUME = config_vars['DEFAULT_VOLUME']
+AUTO_CLEAR_DOWNLOADS = config_vars['AUTO_CLEAR_DOWNLOADS']
+SHOW_PROGRESS_BAR = config_vars['SHOW_PROGRESS_BAR']
 
 YTDLP_PATH = get_ytdlp_path()
 FFMPEG_PATH = get_ffmpeg_path()
@@ -127,7 +108,7 @@ def custom_print(*args, **kwargs):
 print = custom_print
 
 DOWNLOADS_DIR = os.path.join(os.getcwd(), 'downloads')
-OWNER_ID = config['OWNER_ID']
+OWNER_ID = OWNER_ID
 
 if not os.path.exists(DOWNLOADS_DIR):
     os.makedirs(DOWNLOADS_DIR)
@@ -141,7 +122,7 @@ bot = commands.Bot(
     command_prefix=PREFIX,
     intents=intents,
     help_command=None,
-    owner_id=int(config['OWNER_ID'])
+    owner_id=int(OWNER_ID)
 )
 
 @bot.event
@@ -173,7 +154,7 @@ async def on_voice_state_update(member, before, after):
         return
 
     # Only check for empty channel if AUTO_LEAVE_EMPTY is enabled
-    if config.get('VOICE', {}).get('AUTO_LEAVE_EMPTY', True):
+    if AUTO_LEAVE_EMPTY:
         members_in_channel = sum(1 for m in bot_voice_channel.members if not m.bot)
 
         if members_in_channel == 0:
