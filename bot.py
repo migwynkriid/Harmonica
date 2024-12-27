@@ -1399,26 +1399,6 @@ async def max(ctx):
     except Exception as e:
         await ctx.send(embed=music_bot.create_embed("Error", f"An error occurred while executing !max: {str(e)}", color=0xe74c3c, ctx=ctx))
 
-@bot.command(name='nowplaying', aliases=['np'])
-async def nowplaying(ctx):
-    """Show the currently playing song"""
-    if not music_bot:
-        return
-
-    if not music_bot.current_song:
-        await ctx.send(embed=music_bot.create_embed("Error", "No song is currently playing!", color=0xe74c3c, ctx=ctx))
-        return
-
-    embed = music_bot.create_embed(
-        "Now Playing 🎵",
-        f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})",
-        color=0x3498db,
-        thumbnail_url=music_bot.current_song.get('thumbnail'),
-        ctx=ctx
-    )
-
-    await ctx.send(embed=embed)
-
 bot.remove_command('help')
 
 bot.run(os.getenv('DISCORD_TOKEN'))
