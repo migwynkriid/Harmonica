@@ -1,7 +1,5 @@
 import os
 import discord
-from discord.ext import commands, tasks
-from dotenv import load_dotenv
 import yt_dlp
 import asyncio
 import re
@@ -10,17 +8,19 @@ import sys
 import locale
 import time
 import shutil
-from pathlib import Path
-from discord.ext import tasks
 import json
-from collections import deque
-from datetime import datetime
-from pytz import timezone
 import pytz
 import logging
 import urllib.request
 import subprocess
 import spotipy
+from discord.ext import commands, tasks
+from dotenv import load_dotenv
+from pathlib import Path
+from discord.ext import tasks
+from collections import deque
+from datetime import datetime
+from pytz import timezone
 from scripts.url_identifier import is_url, is_playlist_url, is_radio_stream
 from scripts.handle_playlist import PlaylistHandler
 from scripts.after_playing_coro import AfterPlayingHandler
