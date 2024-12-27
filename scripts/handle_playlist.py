@@ -3,31 +3,8 @@ import discord
 import yt_dlp
 import os
 import json
-
-# Load config
-with open('config.json', 'r') as f:
-    config = json.load(f)
-
-YTDL_OPTIONS = {
-    'format': 'bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio/best/bestaudio*',
-    'outtmpl': '%(id)s.%(ext)s',
-    'extract_audio': True,
-    'audio_format': 'mp3',
-    'audio_quality': '96K',
-    'no_warnings': True,
-    'quiet': True,
-    'no_color': True,
-    'progress_hooks': [],
-    'cookiefile': 'cookies.txt',
-    'ignoreerrors': True,
-    'no_check_certificate': True,
-    'source_address': '0.0.0.0',
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'mp3',
-        'preferredquality': '96',
-    }],
-}
+from pathlib import Path
+from scripts.config import load_config
 
 class PlaylistHandler:
     async def _process_playlist_downloads(self, entries, ctx, status_msg=None):

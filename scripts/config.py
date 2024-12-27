@@ -1,8 +1,7 @@
-"""
-Configuration management for the Discord Music Bot.
-"""
 import os
 import json
+from scripts.logging import get_ytdlp_logger
+from scripts.paths import get_ytdlp_path, get_ffmpeg_path
 
 def load_config():
     """Load or create the configuration file."""
@@ -41,3 +40,33 @@ def load_config():
             'AUTO_CLEAR_DOWNLOADS': config.get('DOWNLOADS', {}).get('AUTO_CLEAR', True),
             'SHOW_PROGRESS_BAR': config.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', True)
         }
+        
+# Get paths
+FFMPEG_PATH = get_ffmpeg_path()
+YTDLP_PATH = get_ytdlp_path()
+
+YTDL_OPTIONS = {
+    'format': 'bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio/best/bestaudio*',
+    'outtmpl': '%(id)s.%(ext)s',
+    'extract_audio': True,
+    'concurrent_fragments': 4,
+    'abort_on_unavailable_fragments': True,
+    'nopostoverwrites': True,
+    'windowsfilenames': True,
+    'restrictfilenames': True,
+    'noplaylist': True,
+    'quiet': True,
+    'no_warnings': True,
+    'logger': get_ytdlp_logger(),
+    'extract_flat': False,
+    'force_generic_extractor': False,
+    'verbose': True,
+    'source_address': '0.0.0.0',
+    'ffmpeg_location': FFMPEG_PATH,
+    'yt_dlp_filename': YTDLP_PATH
+}
+
+FFMPEG_OPTIONS = {
+    'executable': FFMPEG_PATH,
+    'options': '-loglevel warning -vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+}

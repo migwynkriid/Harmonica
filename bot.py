@@ -25,7 +25,7 @@ from scripts.url_identifier import is_url, is_playlist_url, is_radio_stream
 from scripts.handle_playlist import PlaylistHandler
 from scripts.after_playing_coro import AfterPlayingHandler
 from scripts.handle_spotify import SpotifyHandler
-from scripts.config import load_config
+from scripts.config import load_config, YTDL_OPTIONS, FFMPEG_OPTIONS
 from scripts.logging import setup_logging, get_ytdlp_logger
 from scripts.updatescheduler import check_updates, update_checker
 from scripts.voice import join_voice_channel, leave_voice_channel
@@ -61,15 +61,14 @@ setup_logging(LOG_LEVEL)
 YTDLP_PATH = get_ytdlp_path()
 FFMPEG_PATH = get_ffmpeg_path()
 
-DOWNLOADS_DIR = os.path.join(os.getcwd(), 'downloads')
+DOWNLOADS_DIR = Path(__file__).parent / 'downloads'
 OWNER_ID = OWNER_ID
 
-if not os.path.exists(DOWNLOADS_DIR):
-    os.makedirs(DOWNLOADS_DIR)
+if not DOWNLOADS_DIR.exists():
+    DOWNLOADS_DIR.mkdir()
 
 intents = discord.Intents.default()
 intents.message_content = True
-intents.messages = True
 intents.voice_states = True
 
 bot = commands.Bot(
@@ -127,32 +126,6 @@ async def on_voice_state_update(member, before, after):
                     music_bot.is_playing = False
                 await music_bot.voice_client.disconnect()
                 print(f"No users in voice channel {bot_voice_channel.name}, disconnecting bot")
-
-YTDL_OPTIONS = {
-    'format': 'bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio/best/bestaudio*',
-    'outtmpl': '%(id)s.%(ext)s',
-    'extract_audio': True,
-    'concurrent_fragments': 4,
-    'abort_on_unavailable_fragments': True,
-    'nopostoverwrites': True,
-    'windowsfilenames': True,
-    'restrictfilenames': True,
-    'noplaylist': True,
-    'quiet': True,
-    'no_warnings': True,
-    'logger': get_ytdlp_logger(),
-    'extract_flat': False,
-    'force_generic_extractor': False,
-    'verbose': True,
-    'source_address': '0.0.0.0',
-    'ffmpeg_location': FFMPEG_PATH,
-    'yt_dlp_filename': get_ytdlp_path()
-}
-
-FFMPEG_OPTIONS = {
-    'executable': FFMPEG_PATH,
-    'options': '-loglevel warning -vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-}
 
 class DownloadProgress:
     def __init__(self, status_msg, view):
@@ -222,11 +195,11 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.current_command_author = None
         self.status_messages = {}
         self.now_playing_message = None
-        self.downloads_dir = os.path.join(os.getcwd(), 'downloads')
-        self.cookie_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt')
+        self.downloads_dir = Path(__file__).parent / 'downloads'
+        self.cookie_file = Path(__file__).parent / 'cookies.txt'
         
-        if not os.path.exists(self.downloads_dir):
-            os.makedirs(self.downloads_dir)
+        if not self.downloads_dir.exists():
+            self.downloads_dir.mkdir()
 
         self.last_activity = time.time()
         self.inactivity_timeout = INACTIVITY_TIMEOUT
@@ -793,8 +766,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         )
                     return None
 
-            if not os.path.exists(self.downloads_dir):
-                os.makedirs(self.downloads_dir)
+            if not self.downloads_dir.exists():
+                self.downloads_dir.mkdir()
 
             if not is_url(query):
                 query = f"ytsearch1:{query}"
@@ -802,7 +775,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             ydl_opts = {
                 **YTDL_OPTIONS,
                 'outtmpl': os.path.join(self.downloads_dir, '%(id)s.%(ext)s'),
-                'cookiefile': self.cookie_file if os.path.exists(self.cookie_file) else None,
+                'cookiefile': self.cookie_file if self.cookie_file.exists() else None,
                 'progress_hooks': [lambda d: asyncio.run_coroutine_threadsafe(
                     self.progress_hook(d, status_msg), 
                     self.bot_loop
