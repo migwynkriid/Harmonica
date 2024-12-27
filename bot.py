@@ -21,6 +21,7 @@ import logging
 import urllib.request
 import subprocess
 import spotipy
+from scripts.url_identifier import is_url, is_playlist_url, is_radio_stream
 from scripts.handle_playlist import PlaylistHandler
 from scripts.after_playing_coro import AfterPlayingHandler
 from scripts.handle_spotify import SpotifyHandler
@@ -726,15 +727,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             self.current_command_author = ctx.author_id
             return self.current_command_msg
 
-    def is_radio_stream(self, url):
-        """Check if the URL is a radio stream"""
-        stream_extensions = ['.mp3', '.aac', '.m4a', '.flac', '.wav', '.ogg', '.opus', '.wma']
-        return any(url.lower().endswith(ext) for ext in stream_extensions)
-
-    def is_playlist_url(self, url):
-        """Check if the URL is a YouTube playlist"""
-        return 'youtube.com/playlist' in url.lower()
-
     def create_progress_bar(self, percentage, length=10):
         """Create a progress bar with the given percentage"""
         filled = int(length * (percentage / 100))
@@ -786,16 +778,12 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             except Exception as e:
                 print(f"Error in progress hook: {str(e)}")
 
-    def is_url(self, query):
-        """Check if the query is a URL"""
-        return query.startswith(('http://', 'https://', 'www.'))
-
     async def download_song(self, query, status_msg=None, ctx=None):
         """Download a song from YouTube, Spotify, or handle radio stream"""
         try:
             self._last_progress = -1
 
-            if self.is_playlist_url(query):
+            if is_playlist_url(query):
                 ctx = ctx or status_msg.channel if status_msg else None
                 await self._handle_playlist(query, ctx, status_msg)
                 return None
@@ -844,7 +832,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                     print(f"Added to queue: {song_info['title']}")
                     return first_song
 
-            if self.is_radio_stream(query):
+            if is_radio_stream(query):
                 print("Radio stream detected")
                 try:
                     stream_name = query.split('/')[-1].split('.')[0]
@@ -874,8 +862,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             if not os.path.exists(self.downloads_dir):
                 os.makedirs(self.downloads_dir)
 
-            if not self.is_url(query):
-                query = f"ytsearch:{query}"
+            if not is_url(query):
+                query = f"ytsearch1:{query}"
 
             ydl_opts = {
                 **YTDL_OPTIONS,
@@ -891,7 +879,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(query, download=False))
                 
-                if info.get('_type') == 'playlist' and not self.is_playlist_url(query):
+                if info.get('_type') == 'playlist' and not is_playlist_url(query):
                     if not info.get('entries'):
                         raise Exception("No search results found")
                     info = info['entries'][0]
@@ -927,7 +915,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         'is_from_playlist': False,
                         'ctx': status_msg.channel if status_msg else None
                     }
-                elif info.get('_type') == 'playlist' and self.is_playlist_url(query):
+                elif info.get('_type') == 'playlist' and is_playlist_url(query):
                     if not info.get('entries'):
                         raise Exception("Playlist is empty")
 
@@ -1017,7 +1005,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         'url': f"https://youtube.com/watch?v={video_info['id']}",
                         'file_path': file_path,
                         'thumbnail': video_info.get('thumbnail'),
-                        'is_from_playlist': self.is_playlist_url(query)
+                        'is_from_playlist': is_playlist_url(query)
                     }
 
         except Exception as e:
