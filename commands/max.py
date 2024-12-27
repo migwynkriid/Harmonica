@@ -8,13 +8,27 @@ class MaxCog(commands.Cog):
 
     @commands.command(name='max')
     async def max(self, ctx):
-        """Simulate !play with RadioMax URL"""
-        from __main__ import music_bot, play
+        """Play Radio Max stream"""
+        from __main__ import music_bot
         
         try:
-            await play(ctx, query='https://azuracast.novi-net.net/radio/8010/radiomax.aac')
+            play_cog = self.bot.get_cog('PlayCog')
+            if play_cog:
+                await play_cog.play(ctx, query='https://azuracast.novi-net.net/radio/8010/radiomax.aac')
+            else:
+                await ctx.send(embed=music_bot.create_embed(
+                    "Error",
+                    "Could not find the play command. Please make sure the bot is properly set up.",
+                    color=0xe74c3c,
+                    ctx=ctx
+                ))
         except Exception as e:
-            await ctx.send(embed=music_bot.create_embed("Error", f"An error occurred while executing !max: {str(e)}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=music_bot.create_embed(
+                "Error", 
+                f"An error occurred while playing Radio Max: {str(e)}", 
+                color=0xe74c3c, 
+                ctx=ctx
+            ))
 
 async def setup(bot):
     await bot.add_cog(MaxCog(bot))
