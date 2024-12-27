@@ -1315,18 +1315,6 @@ async def resume(ctx):
             )
         )
 
-@bot.command(name='stop')
-async def stop(ctx):
-    """Stop playback, clear queue, and leave the voice channel"""
-    try:
-        music_bot.clear_queue()
-        if music_bot.voice_client and music_bot.voice_client.is_connected():
-            await music_bot.voice_client.disconnect()
-        await ctx.send(embed=music_bot.create_embed("Stopped", "Music stopped and queue cleared", color=0xe74c3c, ctx=ctx))
-
-    except Exception as e:
-        await ctx.send(embed=music_bot.create_embed("Error", f"An error occurred while stopping: {str(e)}", color=0xe74c3c, ctx=ctx))
-
 bot.remove_command('help')
 
 bot.run(os.getenv('DISCORD_TOKEN'))
