@@ -1391,14 +1391,6 @@ async def loop(ctx):
     
     await ctx.send(embed=music_bot.create_embed(f"Loop Mode {status.title()}", f"[🎵 {music_bot.current_song['title']}]({music_bot.current_song['url']}) will {'now' if music_bot.loop_mode else 'no longer'} be looped", color=color, ctx=ctx))
 
-@bot.command(name='max')
-async def max(ctx):
-    """Simulate !play with RadioMax URL"""
-    try:
-        await play(ctx, query='https://azuracast.novi-net.net/radio/8010/radiomax.aac')
-    except Exception as e:
-        await ctx.send(embed=music_bot.create_embed("Error", f"An error occurred while executing !max: {str(e)}", color=0xe74c3c, ctx=ctx))
-
 bot.remove_command('help')
 
 bot.run(os.getenv('DISCORD_TOKEN'))
