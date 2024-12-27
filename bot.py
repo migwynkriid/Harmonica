@@ -26,6 +26,7 @@ from scripts.handle_playlist import PlaylistHandler
 from scripts.after_playing_coro import AfterPlayingHandler
 from scripts.handle_spotify import SpotifyHandler
 from scripts.config import load_config
+from scripts.logging import setup_logging, get_ytdlp_logger
 from scripts.updatescheduler import check_updates, update_checker
 from scripts.voice import join_voice_channel, leave_voice_channel
 from scripts.inactivity import start_inactivity_checker, check_inactivity
@@ -40,6 +41,9 @@ from scripts.load_scripts import load_scripts
 from scripts.activity import update_activity
 from scripts.spotify import get_spotify_album_details, get_spotify_track_details, get_spotify_playlist_details
 
+# Load environment variables
+load_dotenv()
+
 # Load configuration
 config_vars = load_config()
 OWNER_ID = config_vars['OWNER_ID']
@@ -51,61 +55,11 @@ DEFAULT_VOLUME = config_vars['DEFAULT_VOLUME']
 AUTO_CLEAR_DOWNLOADS = config_vars['AUTO_CLEAR_DOWNLOADS']
 SHOW_PROGRESS_BAR = config_vars['SHOW_PROGRESS_BAR']
 
+# Set up logging
+setup_logging(LOG_LEVEL)
+
 YTDLP_PATH = get_ytdlp_path()
 FFMPEG_PATH = get_ffmpeg_path()
-
-file_handler = logging.FileHandler('log.txt', encoding='utf-8')
-console_handler = logging.StreamHandler(sys.stdout)
-
-logging.basicConfig(
-    level=getattr(logging, LOG_LEVEL.upper(), logging.INFO), 
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    handlers=[file_handler, console_handler]
-)
-
-# Set all loggers to use the configured log level
-logging.getLogger('discord').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('yt-dlp').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.player').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.client').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.voice_client').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.gateway').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.http').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.state').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.interactions').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.webhook').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.ext.commands').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.ext.tasks').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.ext.voice_client').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.ext.commands.bot').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.ext.commands.core').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.ext.commands.errors').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.ext.commands.cog').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.ext.tasks.loop').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.ext').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.utils').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-logging.getLogger('discord.intents').setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-
-if sys.platform.startswith('win'):
-    sys.stdout.reconfigure(encoding='utf-8')
-    sys.stderr.reconfigure(encoding='utf-8')
-
-load_dotenv()
-
-load_dotenv(dotenv_path=".spotifyenv")
-
-log_buffer = deque(maxlen=100)
-
-original_print = print
-def custom_print(*args, **kwargs):
-    output = " ".join(map(str, args))
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    log_entry = f"[{timestamp}] {output}"
-    log_buffer.append(log_entry)
-    original_print(*args, **kwargs)
-
-print = custom_print
 
 DOWNLOADS_DIR = os.path.join(os.getcwd(), 'downloads')
 OWNER_ID = OWNER_ID
@@ -184,14 +138,13 @@ YTDL_OPTIONS = {
     'windowsfilenames': True,
     'restrictfilenames': True,
     'noplaylist': True,
-    'nocheckcertificate': True,
-    'default_search': 'ytsearch',
-    'source_address': '0.0.0.0',
+    'quiet': True,
+    'no_warnings': True,
+    'logger': get_ytdlp_logger(),
     'extract_flat': False,
     'force_generic_extractor': False,
     'verbose': True,
-    'logger': logging.getLogger('yt-dlp'),
-    'ignoreerrors': True,
+    'source_address': '0.0.0.0',
     'ffmpeg_location': FFMPEG_PATH,
     'yt_dlp_filename': get_ytdlp_path()
 }
@@ -283,7 +236,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.last_known_ctx = None
         self.bot = None
 
-        load_dotenv('.spotifyenv')
+        load_dotenv(dotenv_path=".spotifyenv")
         client_id = os.getenv('SPOTIPY_CLIENT_ID')
         client_secret = os.getenv('SPOTIPY_CLIENT_SECRET')
         
