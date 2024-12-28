@@ -5,6 +5,7 @@ import os
 import json
 from pathlib import Path
 from scripts.config import load_config
+from scripts.messages import update_or_send_message, create_embed
 
 class PlaylistHandler:
     async def _process_playlist_downloads(self, entries, ctx, status_msg=None):
@@ -21,7 +22,7 @@ class PlaylistHandler:
                                 await self.play_next(ctx)
 
             if status_msg:
-                final_embed = self.create_embed(
+                final_embed = create_embed(
                     "Playlist Complete",
                     f"All songs have been downloaded and queued",
                     color=0x00ff00,
@@ -53,7 +54,7 @@ class PlaylistHandler:
                 total_videos = len(info['entries'])
 
                 if status_msg:
-                    playlist_embed = self.create_embed(
+                    playlist_embed = create_embed(
                         "Processing Playlist",
                         f"Extracted {total_videos} links. Starting downloads...",
                         color=0x3498db,
@@ -82,7 +83,7 @@ class PlaylistHandler:
         except Exception as e:
             print(f"Error processing playlist: {str(e)}")
             if status_msg:
-                error_embed = self.create_embed(
+                error_embed = create_embed(
                     "Error",
                     f"Failed to process playlist: {str(e)}",
                     color=0xe74c3c,
@@ -105,7 +106,7 @@ class PlaylistHandler:
                                 await self.play_next(ctx)
 
             if status_msg:
-                final_embed = self.create_embed(
+                final_embed = create_embed(
                     "Playlist Complete",
                     f"All songs have been downloaded and queued",
                     color=0x00ff00,

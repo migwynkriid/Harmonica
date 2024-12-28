@@ -1,5 +1,6 @@
 import asyncio
 import discord
+from scripts.messages import update_or_send_message, create_embed
 
 class AfterPlayingHandler:
     async def after_playing_coro(self, error, ctx):
@@ -23,7 +24,7 @@ class AfterPlayingHandler:
             print("All songs finished, updating activity...")
             if self.now_playing_message:
                 try:
-                    finished_embed = self.create_embed(
+                    finished_embed = create_embed(
                         "Finished Playing",
                         f"[{self.current_song['title']}]({self.current_song['url']})",
                         color=0x808080,
