@@ -384,25 +384,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         except Exception as e:
             print(f"Error clearing queue: {e}")
 
-    async def stop(self, ctx):
-        """Stop playing and clear the queue"""
-        try:
-            if self.voice_client:
-                if self.voice_client.is_playing():
-                    self.voice_client.stop()
-                    await asyncio.sleep(0.5)
-                await self.voice_client.disconnect()
-
-            self.clear_queue()
-            self.current_song = None
-            await self.bot.change_presence(activity=discord.Game(name="nothing! use !play "))
-            
-            await ctx.send(embed=self.create_embed("Stopped", "Music stopped and queue cleared", color=0xe74c3c, ctx=ctx))
-
-        except Exception as e:
-            print(f"Error in stop command: {str(e)}")
-            await ctx.send(embed=self.create_embed("Error", "Failed to stop playback", color=0xe74c3c, ctx=ctx))
-
     async def play_next(self, ctx):
         """Play the next song in the queue"""
         if len(self.queue) > 0:
@@ -612,26 +593,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             self.waiting_for_song = False
             if not self.is_playing:
                 await self.process_queue()
-
-    async def update_or_send_message(self, ctx, embed, view=None, force_new=False):
-        """Update existing message or send a new one if none exists or if it's a new command"""
-        try:
-            if (force_new or 
-                not self.current_command_msg or 
-                ctx.author.id != self.current_command_author or 
-                ctx.channel.id != self.current_command_msg.channel.id):
-                
-                self.current_command_msg = await ctx.send(embed=embed, view=view)
-                self.current_command_author = ctx.author.id
-            else:
-                await self.current_command_msg.edit(embed=embed, view=view)
-            
-            return self.current_command_msg
-        except Exception as e:
-            print(f"Error updating message: {str(e)}")
-            self.current_command_msg = await ctx.send(embed=embed, view=view)
-            self.current_command_author = ctx.author_id
-            return self.current_command_msg
 
     def create_progress_bar(self, percentage, length=10):
         """Create a progress bar with the given percentage"""
@@ -920,38 +881,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 error_embed = self.create_embed("Error", f"Error downloading song: {str(e)}", color=0xff0000, ctx=status_msg.channel)
                 await status_msg.edit(embed=error_embed)
             raise
-
-    async def queue(self, ctx):
-        """Display the current queue"""
-        if not self.queue and music_bot.download_queue.empty():
-            await ctx.send(embed=music_bot.create_embed("Queue Empty", "No songs in queue", color=0xe74c3c, ctx=ctx))
-            return
-            
-        queue_text = ""
-        position = 1
-
-        if self.current_song:
-            queue_text += "**Now Playing:**\n"
-            queue_text += f"🎵 [{self.current_song['title']}]({self.current_song['url']})\n\n"
-
-        if self.queue:
-            queue_text += "**Up Next:**\n"
-            for song in self.queue:
-                queue_text += f"`{position}.` [{song['title']}]({song['url']})\n"
-                position += 1
-
-        if not self.download_queue.empty():
-            queue_text += "\n**Downloading:**\n"
-            downloading_count = self.download_queue.qsize()
-            queue_text += f"🔄 {downloading_count} song(s) in download queue\n"
-
-        embed = music_bot.create_embed(
-            f"Music Queue - {len(self.queue)} song(s)",
-            queue_text if queue_text else "Queue is empty",
-            color=0x3498db,
-            ctx=ctx
-        )
-        await ctx.send(embed=embed)
     
     def create_embed(self, title, description, color=0x3498db, thumbnail_url=None, ctx=None):
         """Create a Discord embed with consistent styling"""
