@@ -3,7 +3,7 @@ import time
 import asyncio
 import json
 import logging
-from scripts.messages import update_or_send_message
+from scripts.messages import update_or_send_message, create_embed
 
 def get_voice_config():
     """Get voice configuration from config.json"""
@@ -18,7 +18,7 @@ def get_voice_config():
 async def join_voice_channel(bot_instance, ctx):
     """Join the user's voice channel"""
     if not ctx.author.voice:
-        await update_or_send_message(ctx, embed=bot_instance.create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c))
+        await update_or_send_message(ctx, embed=create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c))
         return False
 
     try:
@@ -29,7 +29,7 @@ async def join_voice_channel(bot_instance, ctx):
         if voice_config.get('AUTO_LEAVE_EMPTY', True):
             members_in_channel = len([m for m in channel.members if not m.bot])
             if members_in_channel == 0:
-                await update_or_send_message(ctx, embed=bot_instance.create_embed("Error", "Cannot join an empty voice channel!", color=0xe74c3c))
+                await update_or_send_message(ctx, embed=create_embed("Error", "Cannot join an empty voice channel!", color=0xe74c3c))
                 return False
 
         if bot_instance.voice_client:
@@ -46,7 +46,7 @@ async def join_voice_channel(bot_instance, ctx):
 
     except Exception as e:
         print(f"Error joining voice channel: {str(e)}")
-        await update_or_send_message(ctx, embed=bot_instance.create_embed("Error", "Failed to join voice channel!", color=0xe74c3c))
+        await update_or_send_message(ctx, embed=create_embed("Error", "Failed to join voice channel!", color=0xe74c3c))
         bot_instance.voice_client = None
         return False
 

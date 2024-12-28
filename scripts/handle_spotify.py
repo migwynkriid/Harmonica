@@ -5,6 +5,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import os
 from dotenv import load_dotenv
+from scripts.messages import create_embed
 
 class SpotifyHandler:
     async def handle_spotify_url(self, url, ctx, status_msg=None):
@@ -29,7 +30,7 @@ class SpotifyHandler:
         except Exception as e:
             print(f"Error handling Spotify URL: {str(e)}")
             if status_msg:
-                error_embed = self.create_embed("Error", f"Failed to process Spotify content: {str(e)}", color=0xe74c3c, ctx=status_msg.channel)
+                error_embed = create_embed("Error", f"Failed to process Spotify content: {str(e)}", color=0xe74c3c, ctx=status_msg.channel)
                 await status_msg.edit(embed=error_embed)
             return None
 
@@ -44,7 +45,7 @@ class SpotifyHandler:
             search_query = f"{track['name']} {artists}"
 
             if status_msg:
-                await status_msg.edit(embed=self.create_embed(
+                await status_msg.edit(embed=create_embed(
                     "Processing",
                     f"Searching for {search_query}",
                     color=0x1DB954,
@@ -73,7 +74,7 @@ class SpotifyHandler:
         except Exception as e:
             print(f"Error handling Spotify track: {str(e)}")
             if status_msg:
-                await status_msg.edit(embed=self.create_embed(
+                await status_msg.edit(embed=create_embed(
                     "Error",
                     f"Failed to process Spotify track: {str(e)}",
                     color=0xe74c3c,
@@ -89,7 +90,7 @@ class SpotifyHandler:
                 raise ValueError("Could not find album on Spotify")
 
             if status_msg:
-                await status_msg.edit(embed=self.create_embed(
+                await status_msg.edit(embed=create_embed(
                     "Processing Album",
                     f"Processing album: {album['name']}\nTotal tracks: {album['total_tracks']}",
                     color=0x1DB954,
@@ -135,7 +136,7 @@ class SpotifyHandler:
                 raise ValueError("Could not find playlist on Spotify")
 
             if status_msg:
-                await status_msg.edit(embed=self.create_embed(
+                await status_msg.edit(embed=create_embed(
                     "Processing Playlist",
                     f"Processing playlist: {playlist['name']}\nTotal tracks: {playlist['tracks']['total']}",
                     color=0x1DB954,
@@ -204,7 +205,7 @@ class SpotifyHandler:
                 processed += 1
                 if status_msg and processed % 5 == 0:
                     try:
-                        await status_msg.edit(embed=self.create_embed(
+                        await status_msg.edit(embed=create_embed(
                             "Processing",
                             f"Processing {source_name}\nProgress: {processed}/{total_tracks} tracks",
                             color=0x1DB954,
@@ -214,7 +215,7 @@ class SpotifyHandler:
                         pass
 
             if status_msg:
-                final_embed = self.create_embed(
+                final_embed = create_embed(
                     "Complete",
                     f"Finished processing {source_name}\nTotal tracks added: {processed}",
                     color=0x1DB954,

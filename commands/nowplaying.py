@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import sys
 import os
+from scripts.messages import create_embed
 
 # Add the parent directory to sys.path to allow importing from bot
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -24,10 +25,10 @@ class NowPlayingCog(commands.Cog):
             return
 
         if not music_bot.current_song:
-            await ctx.send(embed=music_bot.create_embed("Error", "No song is currently playing!", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", "No song is currently playing!", color=0xe74c3c, ctx=ctx))
             return
 
-        embed = music_bot.create_embed(
+        embed = create_embed(
             "Now Playing 🎵",
             f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})",
             color=0x3498db,

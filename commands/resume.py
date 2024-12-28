@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 import time
+from scripts.messages import create_embed
 
 class ResumeCog(commands.Cog):
     def __init__(self, bot):
@@ -17,7 +18,7 @@ class ResumeCog(commands.Cog):
                 music_bot.voice_client.resume()
                 music_bot.last_activity = time.time()
                 await ctx.send(
-                    embed=music_bot.create_embed(
+                    embed=create_embed(
                         "Resumed ",
                         f"[🎵 {music_bot.current_song['title']}]({music_bot.current_song['url']})",
                         color=0x2ecc71,
@@ -26,7 +27,7 @@ class ResumeCog(commands.Cog):
                 )
             else:
                 await ctx.send(
-                    embed=music_bot.create_embed(
+                    embed=create_embed(
                         "Error",
                         "Nothing is paused right now.",
                         color=0xe74c3c,
@@ -36,7 +37,7 @@ class ResumeCog(commands.Cog):
         except Exception as e:
             print(f"Error in resume command: {str(e)}")
             await ctx.send(
-                embed=music_bot.create_embed(
+                embed=create_embed(
                     "Error",
                     f"Error: {str(e)}",
                     color=0xe74c3c,

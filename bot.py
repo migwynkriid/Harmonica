@@ -30,7 +30,7 @@ from scripts.logging import setup_logging, get_ytdlp_logger
 from scripts.updatescheduler import check_updates, update_checker
 from scripts.voice import join_voice_channel, leave_voice_channel
 from scripts.inactivity import start_inactivity_checker, check_inactivity
-from scripts.messages import update_or_send_message
+from scripts.messages import update_or_send_message, create_embed
 from spotipy.oauth2 import SpotifyClientCredentials
 from scripts.ytdlp import get_ytdlp_path, ytdlp_version
 from scripts.ffmpeg import check_ffmpeg_in_path, install_ffmpeg_windows, install_ffmpeg_macos, install_ffmpeg_linux, get_ffmpeg_path
@@ -82,7 +82,7 @@ bot = commands.Bot(
 async def on_command_error(ctx, error):
     print(f"Error in command {ctx.command}: {str(error)}")
     await ctx.send(
-        embed=music_bot.create_embed(
+        embed=create_embed(
             "Error",
             f"Error: {str(error)}",
             color=0xe74c3c,
@@ -259,7 +259,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     await self._handle_play_command(ctx, query)
                 except Exception as e:
                     print(f"Error processing command: {e}")
-                    error_embed = self.create_embed("Error", f"Failed to process command: {str(e)}", color=0xe74c3c, ctx=ctx)
+                    error_embed = create_embed("Error", f"Failed to process command: {str(e)}", color=0xe74c3c, ctx=ctx)
                     await self.update_or_send_message(ctx, error_embed)
                 finally:
                     self.command_queue.task_done()
@@ -273,7 +273,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             raise Exception("Could not join voice channel")
 
         self.last_activity = time.time()
-        processing_embed = self.create_embed(
+        processing_embed = create_embed(
             "Processing",
             f"Searching for {query}",
             color=0x3498db,
@@ -309,7 +309,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         
                         if not result:
                             if not status_msg:
-                                error_embed = self.create_embed("Error", "Failed to download song", color=0xe74c3c, ctx=ctx)
+                                error_embed = create_embed("Error", "Failed to download song", color=0xe74c3c, ctx=ctx)
                                 await self.update_or_send_message(ctx, error_embed)
                             continue
 
@@ -327,7 +327,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 print(f"Note: Could not delete processing message: {e}")
                         else:
                             if status_msg:
-                                playlist_embed = self.create_embed(
+                                playlist_embed = create_embed(
                                     "Adding Playlist",
                                     f"Adding {len(result['entries'])} songs to queue...",
                                     color=0x3498db,
@@ -338,7 +338,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         if self.voice_client and self.voice_client.is_playing():
                             self.queue.append(result)
                             if not result.get('is_from_playlist'):
-                                queue_embed = self.create_embed(
+                                queue_embed = create_embed(
                                     "Added to Queue", 
                                     f"[🎵 {result['title']}]({result['url']})",
                                     color=0x3498db,
@@ -354,7 +354,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 except Exception as e:
                     print(f"Error processing download: {str(e)}")
                     if not status_msg:
-                        error_embed = self.create_embed("Error", f"Error processing: {str(e)}", color=0xe74c3c, ctx=ctx)
+                        error_embed = create_embed("Error", f"Error processing: {str(e)}", color=0xe74c3c, ctx=ctx)
                         await self.update_or_send_message(ctx, error_embed)
                 
                 finally:
@@ -418,7 +418,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 else:
                     if self.now_playing_message:
                         try:
-                            finished_embed = self.create_embed(
+                            finished_embed = create_embed(
                                 "Finished Playing",
                                 f"[🎵 {previous_song['title']}]({previous_song['url']})",
                                 color=0x808080,  # Gray color for finished
@@ -429,7 +429,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         except Exception as e:
                             print(f"Error updating previous now playing message: {str(e)}")
 
-                    now_playing_embed = self.create_embed(
+                    now_playing_embed = create_embed(
                         "Now Playing",
                         f"[🎵 {self.current_song['title']}]({self.current_song['url']})",
                         color=0x00ff00,
@@ -526,7 +526,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             self.current_song = song
             self.is_playing = True
             
-            now_playing_embed = self.create_embed(
+            now_playing_embed = create_embed(
                 "Now Playing",
                 f"[🎵 {song['title']}]({song['url']})",
                 color=0x00ff00,
@@ -567,7 +567,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 async def update_now_playing():
                     try:
                         if current_message:
-                            finished_embed = self.create_embed(
+                            finished_embed = create_embed(
                                 "Finished Playing",
                                 f"[{current_song_info['title']}]({current_song_info['url']})",
                                 color=0x808080,
@@ -630,7 +630,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 description += f"\n{progress_bar}"
                             description += f"\nFile size: {total_size}"
                             
-                            processing_embed = self.create_embed(
+                            processing_embed = create_embed(
                                 "Processing",
                                 description,
                                 color=0x3498db,
@@ -662,7 +662,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     else:
                         if status_msg:
                             await status_msg.edit(
-                                embed=self.create_embed(
+                                embed=create_embed(
                                     "Error",
                                     "Could not retrieve details from Spotify URL.",
                                     color=0xe74c3c,
@@ -717,7 +717,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     print(f"Error processing radio stream: {str(e)}")
                     if status_msg:
                         await status_msg.edit(
-                            embed=self.create_embed(
+                            embed=create_embed(
                                 "Error",
                                 f"Failed to process radio stream: {str(e)}",
                                 color=0xe74c3c,
@@ -772,7 +772,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             if message_exists:
                                 await status_msg.delete()
                         except Exception as e:
-                            print(f"Note: Could not delete processing message: {str(e)}")
+                            print(f"Note: Could not delete processing message: {e}")
                     
                     return {
                         'title': video_info['title'],
@@ -796,7 +796,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     total_videos = len(info['entries'])
 
                     if status_msg:
-                        playlist_embed = self.create_embed(
+                        playlist_embed = create_embed(
                             "Adding Playlist",
                             f"[🎵 {playlist_title}]({playlist_url})\nDownloading first song...",
                             color=0x3498db,
@@ -865,7 +865,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             if message_exists:
                                 await status_msg.delete()
                         except Exception as e:
-                            print(f"Note: Could not delete processing message: {str(e)}")
+                            print(f"Note: Could not delete processing message: {e}")
                     
                     return {
                         'title': video_info['title'],
@@ -878,26 +878,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         except Exception as e:
             print(f"Error downloading song: {str(e)}")
             if status_msg:
-                error_embed = self.create_embed("Error", f"Error downloading song: {str(e)}", color=0xff0000, ctx=status_msg.channel)
+                error_embed = create_embed("Error", f"Error downloading song: {str(e)}", color=0xff0000, ctx=status_msg.channel)
                 await status_msg.edit(embed=error_embed)
             raise
-    
-    def create_embed(self, title, description, color=0x3498db, thumbnail_url=None, ctx=None):
-        """Create a Discord embed with consistent styling"""
-        embed = discord.Embed(
-            title=title,
-            description=description + "\n\u200b",  # Add blank line with zero-width space
-            color=color,
-            timestamp=datetime.now()  # Use current time when embed is created
-        )
-        if thumbnail_url:
-            embed.set_thumbnail(url=thumbnail_url)
-        if ctx and hasattr(ctx, 'author') and ctx.author:
-            embed.set_footer(
-                text=f"Requested by {ctx.author.display_name}",
-                icon_url=ctx.author.display_avatar.url
-            )
-        return embed
 
     async def update_activity(self):
         """Update the bot's activity status"""

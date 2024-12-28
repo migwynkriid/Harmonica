@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from scripts.messages import create_embed
 
 class QueueCog(commands.Cog):
     def __init__(self, bot):
@@ -12,7 +13,7 @@ class QueueCog(commands.Cog):
         from __main__ import music_bot
         
         if not music_bot.queue and music_bot.download_queue.empty():
-            await ctx.send(embed=music_bot.create_embed("Queue Empty", "No songs in queue", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Queue Empty", "No songs in queue", color=0xe74c3c, ctx=ctx))
             return
 
         queue_text = ""
@@ -33,7 +34,7 @@ class QueueCog(commands.Cog):
             downloading_count = music_bot.download_queue.qsize()
             queue_text += f" {downloading_count} song(s) in download queue\n"
 
-        embed = music_bot.create_embed(
+        embed = create_embed(
             f"Music Queue - {len(music_bot.queue)} song(s)",
             queue_text if queue_text else "Queue is empty",
             color=0x3498db,

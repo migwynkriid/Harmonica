@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 import time
+from scripts.messages import create_embed
 
 class PlayCog(commands.Cog):
     def __init__(self, bot):
@@ -13,7 +14,7 @@ class PlayCog(commands.Cog):
         from __main__ import music_bot
         
         if not query:
-            usage_embed = music_bot.create_embed(
+            usage_embed = create_embed(
                 "Usage",
                 "Usage: !play YouTube Link/Youtube Search/Spotify Link",
                 color=0xe74c3c,
@@ -23,7 +24,7 @@ class PlayCog(commands.Cog):
             return
 
         if not ctx.author.voice:
-            embed = music_bot.create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c, ctx=ctx)
+            embed = create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c, ctx=ctx)
             await ctx.send(embed=embed)
             return
 
@@ -34,7 +35,7 @@ class PlayCog(commands.Cog):
 
         music_bot.voice_client = ctx.guild.voice_client
 
-        processing_embed = music_bot.create_embed(
+        processing_embed = create_embed(
             "Processing",
             f"Searching for {query}",
             color=0x3498db,
@@ -67,7 +68,7 @@ class PlayCog(commands.Cog):
                 else:
                     if not result.get('is_from_playlist'):
                         queue_pos = len(music_bot.queue)
-                        queue_embed = music_bot.create_embed(
+                        queue_embed = create_embed(
                             "Added to Queue",
                             f"[🎵 {result['title']}]({result['url']})\nPosition in queue: {queue_pos}",
                             color=0x3498db,

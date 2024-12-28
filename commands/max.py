@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from scripts.messages import create_embed
 
 class MaxCog(commands.Cog):
     def __init__(self, bot):
@@ -16,14 +17,14 @@ class MaxCog(commands.Cog):
             if play_cog:
                 await play_cog.play(ctx, query='https://azuracast.novi-net.net/radio/8010/radiomax.aac')
             else:
-                await ctx.send(embed=music_bot.create_embed(
+                await ctx.send(embed=create_embed(
                     "Error",
                     "Could not find the play command. Please make sure the bot is properly set up.",
                     color=0xe74c3c,
                     ctx=ctx
                 ))
         except Exception as e:
-            await ctx.send(embed=music_bot.create_embed(
+            await ctx.send(embed=create_embed(
                 "Error", 
                 f"An error occurred while playing Radio Max: {str(e)}", 
                 color=0xe74c3c, 
