@@ -21,6 +21,7 @@ from discord.ext import tasks
 from collections import deque
 from datetime import datetime
 from pytz import timezone
+from scripts.clear_queue import clear_queue
 from scripts.format_size import format_size
 from scripts.duration import get_audio_duration
 from scripts.url_identifier import is_url, is_playlist_url, is_radio_stream
@@ -368,25 +369,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             except Exception as e:
                 print(f"Error in download queue processor: {str(e)}")
                 await asyncio.sleep(1)
-
-    def clear_queue(self):
-        """Clear both download and playback queues"""
-        try:
-            self.queue.clear()
-            
-            items_removed = 0
-            while not self.download_queue.empty():
-                try:
-                    self.download_queue.get_nowait()
-                    items_removed += 1
-                except asyncio.QueueEmpty:
-                    break
-            
-            for _ in range(items_removed):
-                self.download_queue.task_done()
-                
-        except Exception as e:
-            print(f"Error clearing queue: {e}")
 
     async def play_next(self, ctx):
         """Play the next song in the queue"""

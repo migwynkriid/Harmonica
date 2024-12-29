@@ -1,5 +1,6 @@
 import asyncio
 import time
+from scripts.clear_queue import clear_queue
 
 async def start_inactivity_checker(bot_instance):
     """Start the inactivity checker"""
@@ -21,7 +22,7 @@ async def check_inactivity(bot_instance):
                 elif time.time() - bot_instance.last_activity > bot_instance.inactivity_timeout:
                     print(f"Leaving voice channel due to {bot_instance.inactivity_timeout} seconds of inactivity")
                     await bot_instance.voice_client.disconnect()
-                    bot_instance.clear_queue()
+                    clear_queue()
         except Exception as e:
             print(f"Error in inactivity checker: {str(e)}")
             await asyncio.sleep(60)
