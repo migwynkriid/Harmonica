@@ -21,6 +21,7 @@ from discord.ext import tasks
 from collections import deque
 from datetime import datetime
 from pytz import timezone
+from scripts.duration import get_audio_duration
 from scripts.url_identifier import is_url, is_playlist_url, is_radio_stream
 from scripts.handle_playlist import PlaylistHandler
 from scripts.after_playing_coro import AfterPlayingHandler
@@ -531,7 +532,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             
             # Get and store the actual duration using ffprobe
             if not song.get('is_stream'):
-                duration = self.get_audio_duration(song['file_path'])
+                duration = get_audio_duration(song['file_path'])
                 self.current_song['duration'] = duration
             
             now_playing_embed = create_embed(
@@ -653,20 +654,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             except Exception as e:
                 print(f"Error in progress hook: {str(e)}")
 
-    def get_audio_duration(self, file_path):
-        """Get audio file duration using ffprobe"""
-        try:
-            result = subprocess.run(
-                ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', file_path],
-                capture_output=True,
-                text=True
-            )
-            data = json.loads(result.stdout)
-            duration = float(data['format']['duration'])
-            return duration
-        except Exception as e:
-            print(f"Error getting audio duration: {e}")
-            return 0
 
     async def download_song(self, query, status_msg=None, ctx=None):
         """Download a song from YouTube, Spotify, or handle radio stream"""

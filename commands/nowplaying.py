@@ -4,6 +4,7 @@ import sys
 import os
 import time
 from scripts.messages import create_embed
+from scripts.duration import get_audio_duration
 
 # Add the parent directory to sys.path to allow importing from bot
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
