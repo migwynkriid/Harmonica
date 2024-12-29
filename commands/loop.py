@@ -21,9 +21,22 @@ class Loop(commands.Cog):
         self.loop_enabled = not self.loop_enabled
         
         if self.loop_enabled and music_bot.current_song:
-            # Add current song to queue the specified number of times
+            # Find the position of the current song in the queue (if it exists)
+            current_song_url = music_bot.current_song['url']
+            current_song_position = -1
+            for i, song in enumerate(music_bot.queue):
+                if song['url'] == current_song_url:
+                    current_song_position = i
+                    break
+            
+            # If current song is not in queue, position will be at start
+            insert_position = current_song_position + 1 if current_song_position != -1 else 0
+            
+            # Insert the looped song right after the current position
             for _ in range(count):
-                music_bot.queue.append(music_bot.current_song)
+                music_bot.queue.insert(insert_position, music_bot.current_song)
+                insert_position += 1  # Increment position for next insertion
+            
             # Set up callback for future repeats
             music_bot.after_song_callback = lambda: self.bot.loop.create_task(
                 repeat_song(music_bot, ctx)
