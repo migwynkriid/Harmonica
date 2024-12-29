@@ -25,8 +25,14 @@ class QueueCog(commands.Cog):
 
         if music_bot.queue:
             queue_text += "**Up Next:**\n"
+            shown_songs = set()  # Track which songs we've already shown
+            position = 1
+            
             for song in music_bot.queue:
-                queue_text += f"`{position}.` [{song['title']}]({song['url']})\n"
+                song_title = song['title']
+                if song_title not in shown_songs:
+                    queue_text += f"`{position}.` [{song_title}]({song['url']})\n"
+                    shown_songs.add(song_title)
                 position += 1
 
         if not music_bot.download_queue.empty():
@@ -36,7 +42,7 @@ class QueueCog(commands.Cog):
 
         total_songs = (1 if music_bot.current_song else 0) + len(music_bot.queue)
         embed = create_embed(
-            f"Music Queue - {total_songs} song(s)",
+            f"Waiting in queue",
             queue_text if queue_text else "Queue is empty",
             color=0x3498db,
             ctx=ctx
