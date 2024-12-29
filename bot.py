@@ -21,6 +21,7 @@ from discord.ext import tasks
 from collections import deque
 from datetime import datetime
 from pytz import timezone
+from scripts.format_size import format_size
 from scripts.duration import get_audio_duration
 from scripts.url_identifier import is_url, is_playlist_url, is_radio_stream
 from scripts.handle_playlist import PlaylistHandler
@@ -609,14 +610,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         bar = '█' * filled + '░' * (length - filled)
         return f"[{bar}] {percentage}%"
 
-    def format_size(self, bytes):
-        """Format bytes into human readable size"""
-        for unit in ['B', 'KB', 'MB', 'GB']:
-            if bytes < 1024:
-                return f"{bytes:.2f} {unit}"
-            bytes /= 1024
-        return f"{bytes:.2f} TB"
-
     async def progress_hook(self, d, status_msg):
         """Progress hook for yt-dlp"""
         if d['status'] == 'downloading':
@@ -629,7 +622,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     if percentage % 10 == 0 and percentage != self._last_progress:
                         self._last_progress = percentage
                         
-                        total_size = self.format_size(total)
+                        total_size = format_size(total)
                         
                         try:
                             await status_msg.fetch()
