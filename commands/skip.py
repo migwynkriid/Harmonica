@@ -38,7 +38,10 @@ class SkipCog(commands.Cog):
                     music_bot.queue.pop(0)
 
         music_bot.last_activity = time.time()
-        await ctx.send(embed=create_embed("Skipped", f"Skipped {amount} {'song' if amount == 1 else 'songs'}", color=0x3498db, ctx=ctx))
+        if amount == 1:
+            await ctx.send(embed=create_embed("Skipped", "Skipped song", color=0x3498db, ctx=ctx))
+        else:
+            await ctx.send(embed=create_embed("Skipped", f"Skipped {amount} songs", color=0x3498db, ctx=ctx))
 
 async def setup(bot):
     await bot.add_cog(SkipCog(bot))
