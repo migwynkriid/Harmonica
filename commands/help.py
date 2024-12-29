@@ -20,7 +20,7 @@ class HelpCog(commands.Cog):
         help_embed.add_field(name="!logclear", value="Clear the log file (Owner Only).", inline=False)
         help_embed.add_field(name="!nowplaying", value="Show the currently playing song.", inline=False)
         help_embed.add_field(name="!version", value="Check the version of yt-dlp and commit info. (Owner Only)", inline=False)
-        help_embed.add_field(name="!update", value="Updates the yt-dlp executable. (Owner Only)", inline=False)
+        help_embed.add_field(name="!update", value="Updates the yt-dlp executable and does a git pull (Owner Only)", inline=False)
         await ctx.send(embed=help_embed)
 
 async def setup(bot):

@@ -8,7 +8,6 @@ Recommend to only use it on a SINGLE private Discord server, you have to self ho
 Bot will misbehave if invited to multiple servers, this is a known issue and will be fixed in the future.
 
 Current Issues:
-- [ ] Loop does not work.
 - [ ] Multiple servers does not work.
 
 ![Untitl11ed](https://github.com/user-attachments/assets/1ee417c8-db7c-458c-987d-95dcd909ee47)
