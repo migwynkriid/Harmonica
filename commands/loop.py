@@ -8,7 +8,7 @@ class Loop(commands.Cog):
         self.bot = bot
         self.loop_enabled = False
 
-    @commands.command()
+    @commands.command(aliases=['repeat'])
     async def loop(self, ctx, count: int = 999):
         """Toggle loop mode for the current song. Optionally specify number of times to add the song."""
         from __main__ import music_bot
