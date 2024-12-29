@@ -196,6 +196,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.now_playing_message = None
         self.downloads_dir = Path(__file__).parent / 'downloads'
         self.cookie_file = Path(__file__).parent / 'cookies.txt'
+        self.playback_start_time = None  # Track when the current song started playing
         
         if not self.downloads_dir.exists():
             self.downloads_dir.mkdir()
@@ -430,8 +431,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             print(f"Error updating previous now playing message: {str(e)}")
 
                     now_playing_embed = create_embed(
-                        "Now Playing",
-                        f"[🎵 {self.current_song['title']}]({self.current_song['url']})",
+                        "Now Playing 🎵",
+                        f"[{self.current_song['title']}]({self.current_song['url']})",
                         color=0x00ff00,
                         thumbnail_url=self.current_song.get('thumbnail'),
                         ctx=ctx
@@ -525,10 +526,16 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
             self.current_song = song
             self.is_playing = True
+            self.playback_start_time = time.time()  # Set the start time when song begins playing
+            
+            # Get and store the actual duration using ffprobe
+            if not song.get('is_stream'):
+                duration = self.get_audio_duration(song['file_path'])
+                self.current_song['duration'] = duration
             
             now_playing_embed = create_embed(
-                "Now Playing",
-                f"[🎵 {song['title']}]({song['url']})",
+                "Now Playing 🎵",
+                f"[{song['title']}]({song['url']})",
                 color=0x00ff00,
                 thumbnail_url=song.get('thumbnail'),
                 ctx=ctx
@@ -644,6 +651,21 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             return
             except Exception as e:
                 print(f"Error in progress hook: {str(e)}")
+
+    def get_audio_duration(self, file_path):
+        """Get audio file duration using ffprobe"""
+        try:
+            result = subprocess.run(
+                ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', file_path],
+                capture_output=True,
+                text=True
+            )
+            data = json.loads(result.stdout)
+            duration = float(data['format']['duration'])
+            return duration
+        except Exception as e:
+            print(f"Error getting audio duration: {e}")
+            return 0
 
     async def download_song(self, query, status_msg=None, ctx=None):
         """Download a song from YouTube, Spotify, or handle radio stream"""
