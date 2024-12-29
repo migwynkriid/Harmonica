@@ -57,7 +57,7 @@ class NowPlayingCog(commands.Cog):
         description = f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})\n\n{progress_info}"
 
         embed = create_embed(
-            "Now Playing 🎵",
+            "Now playing 🎵",
             description,
             color=0x3498db,
             thumbnail_url=music_bot.current_song.get('thumbnail'),

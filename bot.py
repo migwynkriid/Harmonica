@@ -421,7 +421,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     if self.now_playing_message:
                         try:
                             finished_embed = create_embed(
-                                "Finished Playing",
+                                "Finished playing",
                                 f"[🎵 {previous_song['title']}]({previous_song['url']})",
                                 color=0x808080,  # Gray color for finished
                                 thumbnail_url=previous_song.get('thumbnail'),
@@ -432,7 +432,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             print(f"Error updating previous now playing message: {str(e)}")
 
                     now_playing_embed = create_embed(
-                        "Now Playing 🎵",
+                        "Now playing 🎵",
                         f"[{self.current_song['title']}]({self.current_song['url']})",
                         color=0x00ff00,
                         thumbnail_url=self.current_song.get('thumbnail'),
@@ -535,7 +535,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 self.current_song['duration'] = duration
             
             now_playing_embed = create_embed(
-                "Now Playing 🎵",
+                "Now playing 🎵",
                 f"[{song['title']}]({song['url']})",
                 color=0x00ff00,
                 thumbnail_url=song.get('thumbnail'),
@@ -576,7 +576,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     try:
                         if current_message:
                             finished_embed = create_embed(
-                                "Finished Playing",
+                                "Finished playing",
                                 f"[{current_song_info['title']}]({current_song_info['url']})",
                                 color=0x808080,
                                 thumbnail_url=current_song_info.get('thumbnail'),

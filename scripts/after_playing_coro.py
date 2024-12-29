@@ -30,7 +30,7 @@ class AfterPlayingHandler:
             if self.now_playing_message:
                 try:
                     finished_embed = create_embed(
-                        "Finished Playing",
+                        "Finished playing",
                         f"[{self.current_song['title']}]({self.current_song['url']})",
                         color=0x808080,
                         thumbnail_url=self.current_song.get('thumbnail'),

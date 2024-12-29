@@ -20,7 +20,7 @@ class QueueCog(commands.Cog):
         position = 1
 
         if music_bot.current_song:
-            queue_text += "**Now Playing:**\n"
+            queue_text += "**Now playing:**\n"
             queue_text += f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})\n\n"
 
         if music_bot.queue:
