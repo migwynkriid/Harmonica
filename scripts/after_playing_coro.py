@@ -9,6 +9,11 @@ class AfterPlayingHandler:
             print(f"Error in playback: {error}")
         
         print("Song finished playing, checking queue...")
+
+        # Check if there's an after_song_callback (for loop mode)
+        if hasattr(self, 'after_song_callback') and self.after_song_callback:
+            await self.after_song_callback()
+        
         if len(self.queue) > 0:
             print(f"Queue length: {len(self.queue)}")
         if not self.download_queue.empty():

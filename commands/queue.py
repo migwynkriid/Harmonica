@@ -12,7 +12,7 @@ class QueueCog(commands.Cog):
         """Show the current queue"""
         from __main__ import music_bot
         
-        if not music_bot.queue and music_bot.download_queue.empty():
+        if not music_bot.current_song and not music_bot.queue and music_bot.download_queue.empty():
             await ctx.send(embed=create_embed("Queue Empty", "No songs in queue", color=0xe74c3c, ctx=ctx))
             return
 
@@ -21,7 +21,7 @@ class QueueCog(commands.Cog):
 
         if music_bot.current_song:
             queue_text += "**Now Playing:**\n"
-            queue_text += f" {music_bot.current_song['title']}]({music_bot.current_song['url']})\n\n"
+            queue_text += f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})\n\n"
 
         if music_bot.queue:
             queue_text += "**Up Next:**\n"
@@ -32,10 +32,11 @@ class QueueCog(commands.Cog):
         if not music_bot.download_queue.empty():
             queue_text += "\n**Downloading:**\n"
             downloading_count = music_bot.download_queue.qsize()
-            queue_text += f" {downloading_count} song(s) in download queue\n"
+            queue_text += f"{downloading_count} song(s) in download queue\n"
 
+        total_songs = (1 if music_bot.current_song else 0) + len(music_bot.queue)
         embed = create_embed(
-            f"Music Queue - {len(music_bot.queue)} song(s)",
+            f"Music Queue - {total_songs} song(s)",
             queue_text if queue_text else "Queue is empty",
             color=0x3498db,
             ctx=ctx
