@@ -75,6 +75,7 @@ bot = commands.Bot(
     command_prefix=PREFIX,
     intents=intents,
     help_command=None,
+    case_insensitive=True,
     owner_id=int(OWNER_ID)
 )
 
