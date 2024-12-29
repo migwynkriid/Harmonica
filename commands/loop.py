@@ -9,7 +9,7 @@ class Loop(commands.Cog):
         self.loop_enabled = False
 
     @commands.command()
-    async def loop(self, ctx, count: int = 100):
+    async def loop(self, ctx, count: int = 999):
         """Toggle loop mode for the current song. Optionally specify number of times to add the song."""
         from __main__ import music_bot
         
@@ -60,6 +60,7 @@ class Loop(commands.Cog):
                 "Loop Mode Disabled 🔁",
                 description,
                 color=0xe74c3c,
+                thumbnail_url=music_bot.current_song.get('thumbnail') if music_bot.current_song else None,
                 ctx=ctx
             )
         
