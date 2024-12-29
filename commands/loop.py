@@ -46,9 +46,19 @@ class Loop(commands.Cog):
         else:
             # Clear the callback when loop is disabled
             music_bot.after_song_callback = None
+            
+            if music_bot.current_song:
+                # Remove all songs from queue that match the current song's URL
+                original_length = len(music_bot.queue)
+                music_bot.queue = [song for song in music_bot.queue if song['url'] != music_bot.current_song['url']]
+                
+                description = f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})"
+            else:
+                description = "No song is currently playing"
+                
             embed = create_embed(
-                "Loop Mode Disabled ⏹",
-                "",
+                "Loop Mode Disabled 🔁",
+                description,
                 color=0xe74c3c,
                 ctx=ctx
             )
