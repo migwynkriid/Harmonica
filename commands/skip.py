@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-import time
 from scripts.messages import create_embed
 
 class SkipCog(commands.Cog):
@@ -27,21 +26,31 @@ class SkipCog(commands.Cog):
             await ctx.send(embed=create_embed("Error", "Skip amount must be at least 1", color=0xe74c3c, ctx=ctx))
             return
 
+        # Store current song info before skipping
+        current_song = music_bot.current_song
+        
         # Stop current song
         music_bot.voice_client.stop()
         
         # Remove additional songs from queue if requested
         if amount > 1:
             songs_to_remove = min(amount - 1, len(music_bot.queue))
-            for _ in range(songs_to_remove):
-                if music_bot.queue:
-                    music_bot.queue.pop(0)
+            if songs_to_remove > 0:
+                del music_bot.queue[:songs_to_remove]
+                await ctx.send(embed=create_embed("Skipped", f"Skipped current song and {songs_to_remove} songs from queue", color=0x3498db, ctx=ctx))
+        else:
+            # If only skipping one song, show the skipped song's info
+            if current_song:
+                skip_embed = create_embed(
+                    "Skipped Song",
+                    f"[{current_song['title']}]({current_song['url']})",
+                    color=0x3498db,
+                    thumbnail_url=current_song.get('thumbnail'),
+                    ctx=ctx
+                )
+                await ctx.send(embed=skip_embed)
 
         music_bot.last_activity = time.time()
-        if amount == 1:
-            await ctx.send(embed=create_embed("Skipped", "Skipped song", color=0x3498db, ctx=ctx))
-        else:
-            await ctx.send(embed=create_embed("Skipped", f"Skipped {amount} songs", color=0x3498db, ctx=ctx))
 
 async def setup(bot):
     await bot.add_cog(SkipCog(bot))
