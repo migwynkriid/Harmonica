@@ -49,7 +49,9 @@ YTDL_OPTIONS = {
     'format': 'bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio/best/bestaudio*',
     'outtmpl': '%(id)s.%(ext)s',
     'extract_audio': True,
-    'concurrent_fragments': 4,
+    'concurrent_fragments': 8,
+    'fragment_retries': 10,
+    'retries': 5,
     'abort_on_unavailable_fragments': True,
     'nopostoverwrites': True,
     'windowsfilenames': True,
@@ -63,7 +65,9 @@ YTDL_OPTIONS = {
     'verbose': True,
     'source_address': '0.0.0.0',
     'ffmpeg_location': FFMPEG_PATH,
-    'yt_dlp_filename': YTDLP_PATH
+    'yt_dlp_filename': YTDLP_PATH,
+    'buffersize': 8192,
+    'http_chunk_size': 1048576
 }
 
 FFMPEG_OPTIONS = {
