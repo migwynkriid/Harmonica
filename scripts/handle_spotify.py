@@ -4,6 +4,7 @@ import re
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import os
+from scripts.play_next import play_next
 from dotenv import load_dotenv
 from scripts.messages import create_embed
 
@@ -65,7 +66,7 @@ class SpotifyHandler:
                 
                 # If not currently playing, start playback
                 if not self.is_playing and not self.voice_client.is_playing():
-                    await self.play_next(ctx)
+                    await play_next(ctx)
                 
                 return song_info
             
@@ -112,7 +113,7 @@ class SpotifyHandler:
                     first_song['is_from_playlist'] = True
                     self.queue.append(first_song)
                     if not self.is_playing and not self.voice_client.is_playing():
-                        await self.play_next(ctx)
+                        await play_next(ctx)
 
             if len(tracks) > 1:
                 asyncio.create_task(self._process_spotify_tracks(
@@ -161,7 +162,7 @@ class SpotifyHandler:
                     first_song['is_from_playlist'] = True
                     self.queue.append(first_song)
                     if not self.is_playing and not self.voice_client.is_playing():
-                        await self.play_next(ctx)
+                        await play_next(ctx)
 
             if len(tracks) > 1:
                 asyncio.create_task(self._process_spotify_tracks(
@@ -197,7 +198,7 @@ class SpotifyHandler:
                         async with self.queue_lock:
                             self.queue.append(song_info)
                             if not self.is_playing and not self.voice_client.is_playing():
-                                await self.play_next(ctx)
+                                await play_next(ctx)
                 except Exception as e:
                     print(f"Error processing track '{track['name']}': {str(e)}")
                     continue

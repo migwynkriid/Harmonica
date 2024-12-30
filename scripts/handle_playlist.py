@@ -4,6 +4,7 @@ import yt_dlp
 import os
 import json
 from pathlib import Path
+from scripts.play_next import play_next
 from scripts.config import load_config
 from scripts.messages import update_or_send_message, create_embed
 
@@ -19,7 +20,7 @@ class PlaylistHandler:
                         async with self.queue_lock:
                             self.queue.append(song_info)
                             if not self.is_playing and not self.voice_client.is_playing():
-                                await self.play_next(ctx)
+                                await play_next(ctx)
 
             if status_msg:
                 final_embed = create_embed(
@@ -73,7 +74,7 @@ class PlaylistHandler:
                         if first_song:
                             self.queue.append(first_song)
                             if not self.is_playing:
-                                await self.play_next(ctx)
+                                await play_next(ctx)
 
                 if len(info['entries']) > 1:
                     asyncio.create_task(self._process_playlist_downloads(info['entries'][1:], ctx, status_msg))
@@ -103,7 +104,7 @@ class PlaylistHandler:
                         async with self.queue_lock:
                             self.queue.append(song_info)
                             if not self.is_playing and not self.voice_client.is_playing():
-                                await self.play_next(ctx)
+                                await play_next(ctx)
 
             if status_msg:
                 final_embed = create_embed(

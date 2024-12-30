@@ -1,5 +1,6 @@
 import asyncio
 import discord
+from scripts.play_next import play_next
 from scripts.messages import update_or_send_message, create_embed
 
 class AfterPlayingHandler:
@@ -24,7 +25,7 @@ class AfterPlayingHandler:
             print("Waiting for next song to finish downloading...")
             await asyncio.sleep(1)
         if len(self.queue) > 0 or not self.download_queue.empty():
-            await self.play_next(ctx)
+            await play_next(ctx)
         else:
             print("All songs finished, updating activity...")
             if self.now_playing_message:

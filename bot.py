@@ -21,6 +21,7 @@ from discord.ext import tasks
 from collections import deque
 from datetime import datetime
 from pytz import timezone
+from scripts.play_next import play_next
 from scripts.process_queue import process_queue
 from scripts.clear_queue import clear_queue
 from scripts.format_size import format_size
@@ -355,7 +356,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 self.queued_messages[result['url']] = queue_msg
                         else:
                             self.queue.append(result)
-                            await self.play_next(ctx)
+                            await play_next(ctx)
 
                 except Exception as e:
                     print(f"Error processing download: {str(e)}")
@@ -370,100 +371,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             except Exception as e:
                 print(f"Error in download queue processor: {str(e)}")
                 await asyncio.sleep(1)
-
-    async def play_next(self, ctx):
-        """Play the next song in the queue"""
-        if len(self.queue) > 0:
-            try:
-                previous_song = self.current_song
-                self.current_song = self.queue.pop(0)
-                self.last_activity = time.time()
-                print(f"Playing next song: {self.current_song['title']}")
-                
-                if not self.current_song.get('is_stream'):
-                    if not os.path.exists(self.current_song['file_path']):
-                        print(f"Error: File not found: {self.current_song['file_path']}")
-                        if len(self.queue) > 0:
-                            await self.play_next(ctx)
-                        return
-
-                if not self.voice_client or not self.voice_client.is_connected():
-                    print("Voice client not connected, attempting to reconnect...")
-                    connected = await self.join_voice_channel(ctx)
-                    if not connected:
-                        print("Failed to reconnect to voice channel")
-                        self.voice_client = None
-                        
-                        try:
-                            await ctx.send("⚠️ Internal error detected!. Automatically restarting bot...")
-                            restart_cog = self.bot.get_cog('Restart')
-                            if restart_cog:
-                                await restart_cog.restart_cmd(ctx)
-                        except Exception as e:
-                            print(f"Error during automatic restart in play_next: {str(e)}")
-                        return
-                else:
-                    if self.now_playing_message:
-                        try:
-                            finished_embed = create_embed(
-                                "Finished playing",
-                                f"[🎵 {previous_song['title']}]({previous_song['url']})",
-                                color=0x808080,  # Gray color for finished
-                                thumbnail_url=previous_song.get('thumbnail'),
-                                ctx=ctx
-                            )
-                            await self.now_playing_message.edit(embed=finished_embed)
-                        except Exception as e:
-                            print(f"Error updating previous now playing message: {str(e)}")
-
-                    now_playing_embed = create_embed(
-                        "Now playing 🎵",
-                        f"[{self.current_song['title']}]({self.current_song['url']})",
-                        color=0x00ff00,
-                        thumbnail_url=self.current_song.get('thumbnail'),
-                        ctx=ctx
-                    )
-                    self.now_playing_message = await ctx.send(embed=now_playing_embed)
-                    
-                    await self.bot.change_presence(activity=discord.Game(name=f"{self.current_song['title']}"))
-                    
-                    self.current_command_msg = None
-                    self.current_command_author = None
-
-                    try:
-                        if self.voice_client and self.voice_client.is_connected():
-                            ffmpeg_options = {
-                                'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-                            }
-                            audio_source = discord.FFmpegPCMAudio(
-                                self.current_song['file_path'],
-                                **ffmpeg_options
-                            )
-                            # Convert DEFAULT_VOLUME from percentage (0-100) to float (0.0-2.0)
-                            default_volume = DEFAULT_VOLUME / 50.0  # This makes 100% = 2.0, 50% = 1.0, etc.
-                            audio_source = discord.PCMVolumeTransformer(audio_source, volume=default_volume)
-                            self.voice_client.play(
-                                audio_source,
-                                after=lambda e: asyncio.run_coroutine_threadsafe(
-                                    self.after_playing_coro(e, ctx), 
-                                    self.bot_loop
-                                )
-                            )
-                    except Exception as e:
-                        print(f"Error starting playback: {str(e)}")
-                        if len(self.queue) > 0:
-                            await self.play_next(ctx)
-            except Exception as e:
-                print(f"Error in play_next: {str(e)}")
-                if len(self.queue) > 0:
-                    await self.play_next(ctx)
-        else:
-            self.current_song = None
-            self.update_activity()
-            await self.bot.change_presence(activity=discord.Game(name="nothing! use !play "))
-            if self.download_queue.empty():
-                if self.voice_client and self.voice_client.is_connected():
-                    await self.voice_client.disconnect()
 
     def create_progress_bar(self, percentage, length=10):
         """Create a progress bar with the given percentage"""
