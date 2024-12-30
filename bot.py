@@ -21,6 +21,7 @@ from discord.ext import tasks
 from collections import deque
 from datetime import datetime
 from pytz import timezone
+from scripts.process_queue import process_queue
 from scripts.clear_queue import clear_queue
 from scripts.format_size import format_size
 from scripts.duration import get_audio_duration
@@ -463,128 +464,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             if self.download_queue.empty():
                 if self.voice_client and self.voice_client.is_connected():
                     await self.voice_client.disconnect()
-
-    async def process_queue(self):
-        """Process the song queue"""
-        if self.waiting_for_song or not self.queue:
-            return
-
-        self.waiting_for_song = True
-
-        try:
-            song = self.queue.pop(0)
-            
-            ctx = song.get('ctx')
-            if not ctx:
-                print("Warning: Missing context in song, using last known context")
-                if hasattr(self, 'last_known_ctx'):
-                    ctx = self.last_known_ctx
-                else:
-                    print("Error: No context available for playback")
-                    self.waiting_for_song = False
-                    if self.queue:
-                        await self.process_queue()
-                    return
-
-            self.last_known_ctx = ctx
-
-            if not self.voice_client or not self.voice_client.is_connected():
-                print("Not connected to voice during process_queue")
-                try:
-                    if ctx:
-                        await ctx.send("⚠️ Voice connection lost. Automatically restarting bot...")
-                    
-                    restart_cog = self.bot.get_cog('Restart')
-                    if restart_cog:
-                        await restart_cog.restart_cmd(ctx)
-                except Exception as e:
-                    print(f"Error during automatic restart in process_queue: {str(e)}")
-                return
-
-            if song['url'] in self.queued_messages:
-                try:
-                    await self.queued_messages[song['url']].delete()
-                except Exception as e:
-                    print(f"Error deleting queue message: {str(e)}")
-                finally:
-                    del self.queued_messages[song['url']]
-
-            self.current_song = song
-            self.is_playing = True
-            self.playback_start_time = time.time()  # Set the start time when song begins playing
-            
-            # Get and store the actual duration using ffprobe
-            if not song.get('is_stream'):
-                duration = get_audio_duration(song['file_path'])
-                self.current_song['duration'] = duration
-            
-            now_playing_embed = create_embed(
-                "Now playing 🎵",
-                f"[{song['title']}]({song['url']})",
-                color=0x00ff00,
-                thumbnail_url=song.get('thumbnail'),
-                ctx=ctx
-            )
-            self.now_playing_message = await ctx.send(embed=now_playing_embed)
-            
-            await self.bot.change_presence(activity=discord.Game(name=f"{song['title']}"))
-            
-            if song.get('is_stream'):
-                audio_source = discord.FFmpegPCMAudio(
-                    song['file_path'],
-                    **FFMPEG_OPTIONS
-                )
-            else:
-                audio_source = discord.FFmpegPCMAudio(
-                    song['file_path'],
-                    **FFMPEG_OPTIONS
-                )
-
-            # Convert DEFAULT_VOLUME from percentage (0-100) to float (0.0-2.0)
-            default_volume = DEFAULT_VOLUME / 50.0  # This makes 100% = 2.0, 50% = 1.0, etc.
-            audio_source = discord.PCMVolumeTransformer(audio_source, volume=default_volume)
-
-            current_message = self.now_playing_message
-            current_song_info = {
-                'title': song['title'],
-                'url': song['url'],
-                'thumbnail': song.get('thumbnail')
-            }
-
-            def after_playing(error):
-                """Callback after song finishes"""
-                if error:
-                    print(f"Error in playback: {error}")
-                
-                async def update_now_playing():
-                    try:
-                        if current_message:
-                            finished_embed = create_embed(
-                                "Finished playing",
-                                f"[{current_song_info['title']}]({current_song_info['url']})",
-                                color=0x808080,
-                                thumbnail_url=current_song_info.get('thumbnail'),
-                                ctx=ctx
-                            )
-                            await current_message.edit(embed=finished_embed)
-                        
-                        self.is_playing = False
-                        self.waiting_for_song = False
-                        self.current_song = None
-                        self.now_playing_message = None
-                        await self.bot.change_presence(activity=discord.Game(name="nothing! use !play "))
-                        await self.process_queue()
-                    except Exception as e:
-                        print(f"Error updating finished message: {str(e)}")
-                
-                asyncio.run_coroutine_threadsafe(update_now_playing(), self.bot_loop)
-
-            self.voice_client.play(audio_source, after=after_playing)
-
-        finally:
-            self.waiting_for_song = False
-            if not self.is_playing:
-                await self.process_queue()
 
     def create_progress_bar(self, percentage, length=10):
         """Create a progress bar with the given percentage"""

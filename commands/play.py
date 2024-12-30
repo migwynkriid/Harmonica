@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import time
 from scripts.messages import create_embed
+from scripts.process_queue import process_queue
 
 class PlayCog(commands.Cog):
     def __init__(self, bot):
@@ -64,7 +65,7 @@ class PlayCog(commands.Cog):
                 })
 
                 if not music_bot.is_playing and not music_bot.waiting_for_song:
-                    await music_bot.process_queue()
+                    await process_queue(music_bot)
                 else:
                     if not result.get('is_from_playlist'):
                         queue_pos = len(music_bot.queue)
