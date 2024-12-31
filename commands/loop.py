@@ -49,7 +49,7 @@ class Loop(commands.Cog):
             
             # Create description based on whether count was explicitly provided
             count_was_provided = len(ctx.message.content.split()) > 1
-            title = f"Loop enabled "
+            title = f"Looping enabled :repeat: "
             description = f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})"
             if count_was_provided:
                 description += f"\nWill be added {count} time{'s' if count > 1 else ''}"
@@ -74,7 +74,7 @@ class Loop(commands.Cog):
             description = f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})"
             
             embed = create_embed(
-                "Loop Mode Disabled ",
+                "Looping disabled :repeat: ",
                 description,
                 color=0xe74c3c,
                 thumbnail_url=music_bot.current_song.get('thumbnail'),
