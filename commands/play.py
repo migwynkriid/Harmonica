@@ -72,8 +72,13 @@ class PlayCog(commands.Cog):
                         # Check if current song is looped from the Loop cog
                         loop_cog = self.bot.get_cog('Loop')
                         description = f"[🎵 {result['title']}]({result['url']})"
-                        if not loop_cog or result['url'] not in loop_cog.looped_songs:
-                            description += f"\nPosition in queue: {queue_pos}"
+                        
+                        # Only show position if current song is not looping
+                        if music_bot.current_song:
+                            current_song_url = music_bot.current_song['url']
+                            is_current_looping = loop_cog and current_song_url in loop_cog.looped_songs
+                            if not is_current_looping:
+                                description += f"\nPosition in queue: {queue_pos}"
                             
                         queue_embed = create_embed(
                             "Added to Queue",

@@ -21,19 +21,32 @@ class QueueCog(commands.Cog):
 
         if music_bot.current_song:
             queue_text += "**Now playing:**\n"
-            queue_text += f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})\n\n"
+            loop_cog = self.bot.get_cog('Loop')
+            is_looping = loop_cog and music_bot.current_song['url'] in loop_cog.looped_songs
+            queue_text += f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})"
+            if is_looping:
+                queue_text += " (Looping)"
+            queue_text += "\n\n"
 
         if music_bot.queue:
+            loop_cog = self.bot.get_cog('Loop')
+            current_song_url = music_bot.current_song['url'] if music_bot.current_song else None
+            is_looping = loop_cog and current_song_url in loop_cog.looped_songs
+            
             queue_text += "**Up Next:**\n"
             shown_songs = set()  # Track which songs we've already shown
             position = 1
             
             for song in music_bot.queue:
+                # Skip showing the looped song in queue
+                if is_looping and song['url'] == current_song_url:
+                    continue
+                    
                 song_title = song['title']
                 if song_title not in shown_songs:
                     queue_text += f"`{position}.` [{song_title}]({song['url']})\n"
                     shown_songs.add(song_title)
-                position += 1
+                    position += 1
 
         if not music_bot.download_queue.empty():
             queue_text += "\n**Downloading:**\n"
