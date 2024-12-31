@@ -6,7 +6,7 @@ from scripts.messages import create_embed
 class Loop(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.loop_enabled = False
+        self.looped_songs = set()
 
     @commands.command(aliases=['repeat'])
     async def loop(self, ctx, count: int = 999):
@@ -18,11 +18,16 @@ class Loop(commands.Cog):
             await ctx.send("Loop count must be a positive number!")
             return
             
-        self.loop_enabled = not self.loop_enabled
+        if not music_bot.current_song:
+            await ctx.send("No song is currently playing!")
+            return
+
+        current_song_url = music_bot.current_song['url']
+        is_song_looped = current_song_url in self.looped_songs
         
-        if self.loop_enabled and music_bot.current_song:
+        if not is_song_looped:
+            self.looped_songs.add(current_song_url)
             # Find the position of the current song in the queue (if it exists)
-            current_song_url = music_bot.current_song['url']
             current_song_position = -1
             for i, song in enumerate(music_bot.queue):
                 if song['url'] == current_song_url:
@@ -44,7 +49,7 @@ class Loop(commands.Cog):
             
             # Create description based on whether count was explicitly provided
             count_was_provided = len(ctx.message.content.split()) > 1
-            title = f"Loop enabled 🔁"
+            title = f"Loop enabled "
             description = f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})"
             if count_was_provided:
                 description += f"\nWill be added {count} time{'s' if count > 1 else ''}"
@@ -57,23 +62,22 @@ class Loop(commands.Cog):
                 ctx=ctx
             )
         else:
+            # Remove song from looped songs set
+            self.looped_songs.remove(current_song_url)
+            
             # Clear the callback when loop is disabled
             music_bot.after_song_callback = None
             
-            if music_bot.current_song:
-                # Remove all songs from queue that match the current song's URL
-                original_length = len(music_bot.queue)
-                music_bot.queue = [song for song in music_bot.queue if song['url'] != music_bot.current_song['url']]
-                
-                description = f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})"
-            else:
-                description = "No song is currently playing"
-                
+            # Remove all songs from queue that match the current song's URL
+            music_bot.queue = [song for song in music_bot.queue if song['url'] != current_song_url]
+            
+            description = f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})"
+            
             embed = create_embed(
-                "Loop Mode Disabled 🔁",
+                "Loop Mode Disabled ",
                 description,
                 color=0xe74c3c,
-                thumbnail_url=music_bot.current_song.get('thumbnail') if music_bot.current_song else None,
+                thumbnail_url=music_bot.current_song.get('thumbnail'),
                 ctx=ctx
             )
         
