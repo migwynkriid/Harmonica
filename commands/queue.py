@@ -25,7 +25,7 @@ class QueueCog(commands.Cog):
             is_looping = loop_cog and music_bot.current_song['url'] in loop_cog.looped_songs
             queue_text += f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})"
             if is_looping:
-                queue_text += " (Looping)"
+                queue_text += " - :repeat:"
             queue_text += "\n\n"
 
         if music_bot.queue:
