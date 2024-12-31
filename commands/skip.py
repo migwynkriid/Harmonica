@@ -30,6 +30,16 @@ class SkipCog(commands.Cog):
         # Store current song info before skipping
         current_song = music_bot.current_song
         
+        # Check if current song is looping
+        loop_cog = self.bot.get_cog('Loop')
+        is_looping = loop_cog and current_song and current_song['url'] in loop_cog.looped_songs
+        
+        # If song is looping, remove it from looped songs and clear its instances from queue
+        if is_looping:
+            loop_cog.looped_songs.remove(current_song['url'])
+            music_bot.queue = [song for song in music_bot.queue if song['url'] != current_song['url']]
+            music_bot.after_song_callback = None
+        
         # Stop current song
         music_bot.voice_client.stop()
         
