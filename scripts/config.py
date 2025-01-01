@@ -10,7 +10,7 @@ def load_config():
         "PREFIX": "!",
         "LOG_LEVEL": "INFO",
         "VOICE": {
-            "INACTIVITY_LEAVE": True,
+            "INACTIVITY_LEAVE": False,
             "INACTIVITY_TIMEOUT": 60,
             "AUTO_LEAVE_EMPTY": True,
             "DEFAULT_VOLUME": 100
