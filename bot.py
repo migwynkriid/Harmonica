@@ -209,6 +209,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
         self.last_activity = time.time()
         self.inactivity_timeout = INACTIVITY_TIMEOUT
+        self.inactivity_leave = config_vars.get('INACTIVITY_LEAVE', True)
         self._inactivity_task = None
         self.last_update = 0
         self._last_progress = -1

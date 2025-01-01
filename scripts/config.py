@@ -10,6 +10,7 @@ def load_config():
         "PREFIX": "!",
         "LOG_LEVEL": "INFO",
         "VOICE": {
+            "INACTIVITY_LEAVE": True,
             "INACTIVITY_TIMEOUT": 60,
             "AUTO_LEAVE_EMPTY": True,
             "DEFAULT_VOLUME": 100
@@ -34,6 +35,7 @@ def load_config():
             'OWNER_ID': config['OWNER_ID'],
             'PREFIX': config['PREFIX'],
             'LOG_LEVEL': config.get('LOG_LEVEL', 'INFO'),
+            'INACTIVITY_LEAVE': config.get('VOICE', {}).get('INACTIVITY_LEAVE', True),
             'INACTIVITY_TIMEOUT': config.get('VOICE', {}).get('INACTIVITY_TIMEOUT', 60),
             'AUTO_LEAVE_EMPTY': config.get('VOICE', {}).get('AUTO_LEAVE_EMPTY', True),
             'DEFAULT_VOLUME': config.get('VOICE', {}).get('DEFAULT_VOLUME', 100),

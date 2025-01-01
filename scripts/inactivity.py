@@ -19,7 +19,7 @@ async def check_inactivity(bot_instance):
             if bot_instance.voice_client and bot_instance.voice_client.is_connected():
                 if bot_instance.voice_client.is_playing():
                     bot_instance.last_activity = time.time()
-                elif time.time() - bot_instance.last_activity > bot_instance.inactivity_timeout:
+                elif time.time() - bot_instance.last_activity > bot_instance.inactivity_timeout and bot_instance.inactivity_leave:
                     print(f"Leaving voice channel due to {bot_instance.inactivity_timeout} seconds of inactivity")
                     await bot_instance.voice_client.disconnect()
                     clear_queue()
