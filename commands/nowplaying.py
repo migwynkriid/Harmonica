@@ -52,7 +52,7 @@ class NowPlayingCog(commands.Cog):
             position_segment = int((percentage / 5) + 0.5)  # Round to nearest segment (each segment is 5%)
             progress_bar = "▬" * position_segment + ":radio_button:" + "▬" * (20 - position_segment - 1)
             
-            progress_info = f"{progress_bar}\n{current_time} / {total_time}"
+            progress_info = f"[{progress_bar}]\n{current_time} / {total_time}"
         
         # Create description with title and progress
         description = f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})\n\n{progress_info}"
