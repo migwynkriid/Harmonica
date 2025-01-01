@@ -6,7 +6,7 @@ from scripts.paths import get_ytdlp_path, get_ffmpeg_path
 def load_config():
     """Load or create the configuration file."""
     default_config = {
-        "OWNER_ID": "YOUR_DISCORD_USER_ID",
+        "OWNER_ID": "220301180562046977",
         "PREFIX": "!",
         "LOG_LEVEL": "INFO",
         "VOICE": {
