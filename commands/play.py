@@ -14,14 +14,7 @@ class PlayCog(commands.Cog):
         """Play a song in the voice channel"""
         from __main__ import music_bot
         
-        processing_embed = create_embed(
-            "Processing",
-            f"Searching for {query}" if query else "Please provide a query",
-            color=0x3498db,
-            ctx=ctx
-        )
-        status_msg = await ctx.send(embed=processing_embed)
-        
+        # First check if user provided a query
         if not query:
             usage_embed = create_embed(
                 "Usage",
@@ -29,14 +22,25 @@ class PlayCog(commands.Cog):
                 color=0xe74c3c,
                 ctx=ctx
             )
-            await status_msg.edit(embed=usage_embed)
+            await ctx.send(embed=usage_embed)
             return
 
+        # Then check if user is in a voice channel
         if not ctx.author.voice:
             embed = create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c, ctx=ctx)
-            await status_msg.edit(embed=embed)
+            await ctx.send(embed=embed)
             return
 
+        # Only now send the processing message
+        processing_embed = create_embed(
+            "Processing",
+            f"Searching for {query}",
+            color=0x3498db,
+            ctx=ctx
+        )
+        status_msg = await ctx.send(embed=processing_embed)
+        
+        # Connect to voice channel if needed
         if not ctx.guild.voice_client:
             await ctx.author.voice.channel.connect()
         elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
