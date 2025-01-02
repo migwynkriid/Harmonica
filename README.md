@@ -5,7 +5,7 @@ Presenting " Harmonica " This self hosted bot uses YT-DLP to download audio file
 **NOTE: Currently it is considered Work In Progress, it has and will have bugs, but the general idea is there and works.
 Recommend to only use it on a SINGLE private Discord server, you have to self host it on either a VPS or on your own machine.**
 
-Bot will misbehave if invited to multiple servers, this is a known issue and will be fixed in the future.
+Bot will misbehave if playing in multiple servers at the same time, this is a known issue and will be fixed in the future (However it is not a priority at the moment, you do not want your bot to be caught by the bigger fish).
 
 Current Issues:
 - [ ] Multiple servers does not work.
