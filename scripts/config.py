@@ -20,7 +20,7 @@ def load_config():
         },
         "MESSAGES": {
             "SHOW_PROGRESS_BAR": True,
-            "DISCORD_UI_BUTTONS": True
+            "DISCORD_UI_BUTTONS": False
         }
     }
 

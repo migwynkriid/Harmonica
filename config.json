@@ -1,18 +1,18 @@
 {
-    "OWNER_ID": 220301180562046977,
+    "OWNER_ID": "220301180562046977",
     "PREFIX": "!",
-    "LOG_LEVEL": "DEBUG",
+    "LOG_LEVEL": "INFO",
     "VOICE": {
         "INACTIVITY_LEAVE": false,
         "INACTIVITY_TIMEOUT": 60,
         "AUTO_LEAVE_EMPTY": true,
-        "DEFAULT_VOLUME": 75
+        "DEFAULT_VOLUME": 100
     },
     "DOWNLOADS": {
         "AUTO_CLEAR": true
     },
     "MESSAGES": {
         "SHOW_PROGRESS_BAR": true,
-        "DISCORD_UI_BUTTONS": true
+        "DISCORD_UI_BUTTONS": false
     }
 }
