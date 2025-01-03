@@ -8,19 +8,16 @@ class Loop(commands.Cog):
         self.bot = bot
         self.looped_songs = set()
 
-    @commands.command(aliases=['repeat'])
-    async def loop(self, ctx, count: int = 999):
-        """Toggle loop mode for the current song. Optionally specify number of times to add the song."""
+    async def _toggle_loop(self, count: int = 999):
+        """Core loop functionality that can be used by both command and button"""
         from __main__ import music_bot
         
         # Input validation
         if count < 1:
-            await ctx.send("Loop count must be a positive number!")
-            return
+            return False, "Loop count must be a positive number!"
             
         if not music_bot.current_song:
-            await ctx.send("No song is currently playing!")
-            return
+            return False, "No song is currently playing!"
 
         current_song_url = music_bot.current_song['url']
         is_song_looped = current_song_url in self.looped_songs
@@ -44,23 +41,14 @@ class Loop(commands.Cog):
             
             # Set up callback for future repeats
             music_bot.after_song_callback = lambda: self.bot.loop.create_task(
-                repeat_song(music_bot, ctx)
+                repeat_song(music_bot, None)  # We'll set the context later
             )
             
-            # Create description based on whether count was explicitly provided
-            count_was_provided = len(ctx.message.content.split()) > 1
-            title = f"Looping enabled :repeat: "
-            description = f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})"
-            if count_was_provided:
-                description += f"\nWill be added {count} time{'s' if count > 1 else ''}"
-                
-            embed = create_embed(
-                title,
-                description,
-                color=0x3498db,
-                thumbnail_url=music_bot.current_song.get('thumbnail'),
-                ctx=ctx
-            )
+            return True, {
+                'enabled': True,
+                'song': music_bot.current_song,
+                'count': count
+            }
         else:
             # Remove song from looped songs set
             self.looped_songs.remove(current_song_url)
@@ -71,16 +59,31 @@ class Loop(commands.Cog):
             # Remove all songs from queue that match the current song's URL
             music_bot.queue = [song for song in music_bot.queue if song['url'] != current_song_url]
             
-            description = f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})"
-            
-            embed = create_embed(
-                "Looping disabled :repeat: ",
-                description,
-                color=0xe74c3c,
-                thumbnail_url=music_bot.current_song.get('thumbnail'),
-                ctx=ctx
-            )
+            return True, {
+                'enabled': False,
+                'song': music_bot.current_song
+            }
+
+    @commands.command(aliases=['repeat'])
+    async def loop(self, ctx, count: int = 999):
+        """Toggle loop mode for the current song. Optionally specify number of times to add the song."""
+        success, result = await self._toggle_loop(count)
         
+        if not success:
+            await ctx.send(result)
+            return
+
+        color = 0x3498db if result['enabled'] else 0xe74c3c
+        title = "Looping enabled :repeat: " if result['enabled'] else "Looping disabled :repeat: "
+        description = f"[{result['song']['title']}]({result['song']['url']})"
+
+        embed = create_embed(
+            title,
+            description,
+            color=color,
+            thumbnail_url=result['song'].get('thumbnail'),
+            ctx=ctx
+        )
         await ctx.send(embed=embed)
 
 async def setup(bot):

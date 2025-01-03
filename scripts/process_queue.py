@@ -5,6 +5,7 @@ from pathlib import Path
 from scripts.duration import get_audio_duration
 from scripts.messages import create_embed
 from scripts.config import FFMPEG_OPTIONS, load_config
+from scripts.ui_components import create_now_playing_view
 
 # Get default volume from config
 config = load_config()
@@ -74,7 +75,14 @@ async def process_queue(music_bot):
             thumbnail_url=song.get('thumbnail'),
             ctx=ctx
         )
-        music_bot.now_playing_message = await ctx.send(embed=now_playing_embed)
+
+        # Create and send the message with the view if buttons are enabled
+        view = create_now_playing_view()
+        # Only pass the view if it's not None
+        kwargs = {'embed': now_playing_embed}
+        if view is not None:
+            kwargs['view'] = view
+        music_bot.now_playing_message = await ctx.send(**kwargs)
         
         await music_bot.bot.change_presence(activity=discord.Game(name=f"{song['title']}"))
         
@@ -115,7 +123,8 @@ async def process_queue(music_bot):
                             thumbnail_url=current_song_info.get('thumbnail'),
                             ctx=ctx
                         )
-                        await current_message.edit(embed=finished_embed)
+                        # Remove buttons when song is finished
+                        await current_message.edit(embed=finished_embed, view=None)
                     
                     music_bot.is_playing = False
                     music_bot.waiting_for_song = False

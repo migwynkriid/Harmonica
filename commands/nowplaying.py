@@ -5,6 +5,7 @@ import os
 import time
 from scripts.messages import create_embed
 from scripts.duration import get_audio_duration
+from scripts.ui_components import create_now_playing_view
 
 # Add the parent directory to sys.path to allow importing from bot
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -65,7 +66,13 @@ class NowPlayingCog(commands.Cog):
             ctx=ctx
         )
 
-        await ctx.send(embed=embed)
+        # Create the view with buttons if enabled
+        view = create_now_playing_view()
+        # Only pass the view if it's not None
+        kwargs = {'embed': embed}
+        if view is not None:
+            kwargs['view'] = view
+        await ctx.send(**kwargs)
 
 async def setup(bot):
     await bot.add_cog(NowPlayingCog(bot))

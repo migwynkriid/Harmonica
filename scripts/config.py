@@ -19,7 +19,8 @@ def load_config():
             "AUTO_CLEAR": True
         },
         "MESSAGES": {
-            "SHOW_PROGRESS_BAR": True
+            "SHOW_PROGRESS_BAR": True,
+            "DISCORD_UI_BUTTONS": True
         }
     }
 
@@ -31,17 +32,26 @@ def load_config():
     # Load the config
     with open('config.json', 'r') as f:
         config = json.load(f)
-        return {
-            'OWNER_ID': config['OWNER_ID'],
-            'PREFIX': config['PREFIX'],
-            'LOG_LEVEL': config.get('LOG_LEVEL', 'INFO'),
-            'INACTIVITY_LEAVE': config.get('VOICE', {}).get('INACTIVITY_LEAVE', True),
-            'INACTIVITY_TIMEOUT': config.get('VOICE', {}).get('INACTIVITY_TIMEOUT', 60),
-            'AUTO_LEAVE_EMPTY': config.get('VOICE', {}).get('AUTO_LEAVE_EMPTY', True),
-            'DEFAULT_VOLUME': config.get('VOICE', {}).get('DEFAULT_VOLUME', 100),
-            'AUTO_CLEAR_DOWNLOADS': config.get('DOWNLOADS', {}).get('AUTO_CLEAR', True),
-            'SHOW_PROGRESS_BAR': config.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', True)
+        
+        # Create a flattened version for backward compatibility
+        flattened = {
+            'OWNER_ID': config.get('OWNER_ID', default_config['OWNER_ID']),
+            'PREFIX': config.get('PREFIX', default_config['PREFIX']),
+            'LOG_LEVEL': config.get('LOG_LEVEL', default_config['LOG_LEVEL']),
+            'INACTIVITY_LEAVE': config.get('VOICE', {}).get('INACTIVITY_LEAVE', default_config['VOICE']['INACTIVITY_LEAVE']),
+            'INACTIVITY_TIMEOUT': config.get('VOICE', {}).get('INACTIVITY_TIMEOUT', default_config['VOICE']['INACTIVITY_TIMEOUT']),
+            'AUTO_LEAVE_EMPTY': config.get('VOICE', {}).get('AUTO_LEAVE_EMPTY', default_config['VOICE']['AUTO_LEAVE_EMPTY']),
+            'DEFAULT_VOLUME': config.get('VOICE', {}).get('DEFAULT_VOLUME', default_config['VOICE']['DEFAULT_VOLUME']),
+            'AUTO_CLEAR_DOWNLOADS': config.get('DOWNLOADS', {}).get('AUTO_CLEAR', default_config['DOWNLOADS']['AUTO_CLEAR']),
+            'SHOW_PROGRESS_BAR': config.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', default_config['MESSAGES']['SHOW_PROGRESS_BAR'])
         }
+        
+        # Add the nested structure to the flattened config
+        flattened['VOICE'] = config.get('VOICE', default_config['VOICE'])
+        flattened['DOWNLOADS'] = config.get('DOWNLOADS', default_config['DOWNLOADS'])
+        flattened['MESSAGES'] = config.get('MESSAGES', default_config['MESSAGES'])
+        
+        return flattened
         
 # Get paths
 FFMPEG_PATH = get_ffmpeg_path()

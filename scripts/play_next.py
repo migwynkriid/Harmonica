@@ -1,9 +1,11 @@
 import discord
+from discord.ui import Button, View
 import asyncio
 import os
 import time
 from scripts.messages import create_embed
 from scripts.config import load_config
+from scripts.ui_components import create_now_playing_view
 
 # Get default volume from config
 config = load_config()
@@ -52,7 +54,8 @@ async def play_next(ctx):
                             thumbnail_url=previous_song.get('thumbnail'),
                             ctx=ctx
                         )
-                        await music_bot.now_playing_message.edit(embed=finished_embed)
+                        # Don't include view for finished playing messages
+                        await music_bot.now_playing_message.edit(embed=finished_embed, view=None)
                     except Exception as e:
                         print(f"Error updating previous now playing message: {str(e)}")
 
@@ -63,7 +66,13 @@ async def play_next(ctx):
                     thumbnail_url=music_bot.current_song.get('thumbnail'),
                     ctx=ctx
                 )
-                music_bot.now_playing_message = await ctx.send(embed=now_playing_embed)
+                # Create view with buttons if enabled
+                view = create_now_playing_view()
+                # Only pass the view if it's not None
+                kwargs = {'embed': now_playing_embed}
+                if view is not None:
+                    kwargs['view'] = view
+                music_bot.now_playing_message = await ctx.send(**kwargs)
                 
                 await music_bot.bot.change_presence(activity=discord.Game(name=f"{music_bot.current_song['title']}"))
                 

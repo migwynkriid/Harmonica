@@ -37,7 +37,8 @@ class AfterPlayingHandler:
                         thumbnail_url=self.current_song.get('thumbnail'),
                         ctx=ctx
                     )
-                    await self.now_playing_message.edit(embed=finished_embed)
+                    # Remove buttons when song is finished
+                    await self.now_playing_message.edit(embed=finished_embed, view=None)
                 except Exception as e:
                     print(f"Error updating finished message: {str(e)}")
             

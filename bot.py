@@ -22,6 +22,7 @@ from collections import deque
 from datetime import datetime
 from pytz import timezone
 from scripts.play_next import play_next
+from scripts.ui_components import NowPlayingView
 from scripts.process_queue import process_queue
 from scripts.clear_queue import clear_queue
 from scripts.format_size import format_size
@@ -246,6 +247,10 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         await self.start_command_processor()
         await start_inactivity_checker(self)
         asyncio.create_task(self.process_download_queue())
+        
+        # Add the persistent view
+        self.bot.add_view(NowPlayingView())
+        
         print("Command processor started")
 
     async def start_command_processor(self):

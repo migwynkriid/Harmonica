@@ -12,6 +12,7 @@
         "AUTO_CLEAR": true
     },
     "MESSAGES": {
-        "SHOW_PROGRESS_BAR": true
+        "SHOW_PROGRESS_BAR": true,
+        "DISCORD_UI_BUTTONS": true
     }
 }
