@@ -19,8 +19,8 @@ class ResumeCog(commands.Cog):
                 music_bot.last_activity = time.time()
                 await ctx.send(
                     embed=create_embed(
-                        "Resumed ",
-                        f"[🎵 {music_bot.current_song['title']}]({music_bot.current_song['url']})",
+                        "Resumed ▶️",
+                        f"[ {music_bot.current_song['title']}]({music_bot.current_song['url']})",
                         color=0x2ecc71,
                         ctx=ctx
                     )

@@ -9,7 +9,7 @@ class AfterPlayingHandler:
         if error:
             print(f"Error in playback: {error}")
         
-        print("Song finished playing, checking queue...")
+        print("Song ended, checking queue...")
 
         # Check if there's an after_song_callback (for loop mode)
         if hasattr(self, 'after_song_callback') and self.after_song_callback:
@@ -28,19 +28,25 @@ class AfterPlayingHandler:
             await play_next(ctx)
         else:
             print("All songs finished, updating activity...")
-            if self.now_playing_message:
+            if self.now_playing_message and self.current_song and isinstance(self.current_song, dict):
                 try:
+                    # Determine the title based on whether the song was skipped
+                    title = "Skipped song" if hasattr(self, 'was_skipped') and self.was_skipped else "Finished playing"
+                    
                     finished_embed = create_embed(
-                        "Finished playing",
+                        title,
                         f"[{self.current_song['title']}]({self.current_song['url']})",
                         color=0x808080,
                         thumbnail_url=self.current_song.get('thumbnail'),
                         ctx=ctx
                     )
-                    await self.now_playing_message.edit(embed=finished_embed)
+                    # Remove buttons when song is finished
+                    await self.now_playing_message.edit(embed=finished_embed, view=None)
                 except Exception as e:
                     print(f"Error updating finished message: {str(e)}")
             
             self.is_playing = False
             self.current_song = None
+            if hasattr(self, 'was_skipped'):
+                self.was_skipped = False  # Reset the skipped flag
             await self.update_activity()

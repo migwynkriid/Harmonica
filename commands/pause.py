@@ -19,8 +19,8 @@ class PauseCog(commands.Cog):
                 music_bot.last_activity = time.time()
                 await ctx.send(
                     embed=create_embed(
-                        "Paused ",
-                        f"[🎵 {music_bot.current_song['title']}]({music_bot.current_song['url']})",
+                        "Paused ⏸️",
+                        f"[ {music_bot.current_song['title']}]({music_bot.current_song['url']})",
                         color=0xf1c40f,
                         ctx=ctx
                     )

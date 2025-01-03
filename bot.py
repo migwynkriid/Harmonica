@@ -22,6 +22,7 @@ from collections import deque
 from datetime import datetime
 from pytz import timezone
 from scripts.play_next import play_next
+from scripts.ui_components import NowPlayingView
 from scripts.process_queue import process_queue
 from scripts.clear_queue import clear_queue
 from scripts.format_size import format_size
@@ -33,7 +34,7 @@ from scripts.handle_spotify import SpotifyHandler
 from scripts.config import load_config, YTDL_OPTIONS, FFMPEG_OPTIONS
 from scripts.logging import setup_logging, get_ytdlp_logger
 from scripts.updatescheduler import check_updates, update_checker
-from scripts.voice import join_voice_channel, leave_voice_channel
+from scripts.voice import join_voice_channel, leave_voice_channel, handle_voice_state_update
 from scripts.inactivity import start_inactivity_checker, check_inactivity
 from scripts.messages import update_or_send_message, create_embed
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -104,34 +105,9 @@ async def on_command_error(ctx, error):
 
 @bot.event
 async def on_voice_state_update(member, before, after):
+    """Event handler for voice state updates"""
     global music_bot
-    if not music_bot or not music_bot.voice_client:
-        return
-
-    bot_voice_channel = music_bot.voice_client.channel
-    if not bot_voice_channel:
-        return
-
-    # Only check for empty channel if AUTO_LEAVE_EMPTY is enabled
-    if AUTO_LEAVE_EMPTY:
-        members_in_channel = sum(1 for m in bot_voice_channel.members if not m.bot)
-
-        if members_in_channel == 0:
-            if music_bot and music_bot.voice_client and music_bot.voice_client.is_connected():
-                if music_bot.voice_client.is_playing() or music_bot.queue:
-                    music_bot.voice_client.stop()
-                    # Delete queued messages
-                    for msg in music_bot.queued_messages.values():
-                        try:
-                            await msg.delete()
-                        except:
-                            pass
-                    music_bot.queued_messages.clear()
-                    music_bot.queue.clear()
-                    music_bot.current_song = None
-                    music_bot.is_playing = False
-                await music_bot.voice_client.disconnect()
-                print(f"No users in voice channel {bot_voice_channel.name}, disconnecting bot")
+    await handle_voice_state_update(music_bot, member, before, after)
 
 class DownloadProgress:
     def __init__(self, status_msg, view):
@@ -215,6 +191,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self._last_progress = -1
         self.last_known_ctx = None
         self.bot = None
+        self.was_skipped = False  # Add flag to track if song was skipped
 
         load_dotenv(dotenv_path=".spotifyenv")
         client_id = os.getenv('SPOTIPY_CLIENT_ID')
@@ -246,6 +223,10 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         await self.start_command_processor()
         await start_inactivity_checker(self)
         asyncio.create_task(self.process_download_queue())
+        
+        # Add the persistent view
+        self.bot.add_view(NowPlayingView())
+        
         print("Command processor started")
 
     async def start_command_processor(self):
@@ -347,8 +328,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             self.queue.append(result)
                             if not result.get('is_from_playlist'):
                                 queue_embed = create_embed(
-                                    "Added to Queue", 
-                                    f"[🎵 {result['title']}]({result['url']})",
+                                    "Added to Queue 🎵", 
+                                    f"[ {result['title']}]({result['url']})",
                                     color=0x3498db,
                                     thumbnail_url=result.get('thumbnail'),
                                     ctx=ctx
@@ -569,8 +550,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
                     if status_msg:
                         playlist_embed = create_embed(
-                            "Adding Playlist",
-                            f"[🎵 {playlist_title}]({playlist_url})\nDownloading first song...",
+                            "Adding Playlist 🎵",
+                            f"[ {playlist_title}]({playlist_url})\nDownloading first song...",
                             color=0x3498db,
                             thumbnail_url=video_thumbnail,
                             ctx=ctx

@@ -65,7 +65,8 @@ class PlayCog(commands.Cog):
                     'thumbnail': result.get('thumbnail'),
                     'ctx': ctx,
                     'is_stream': result.get('is_stream', False),
-                    'is_from_playlist': result.get('is_from_playlist', False)
+                    'is_from_playlist': result.get('is_from_playlist', False),
+                    'requester': ctx.author
                 })
 
                 if not music_bot.is_playing and not music_bot.waiting_for_song:

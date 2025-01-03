@@ -8,27 +8,24 @@ class SkipCog(commands.Cog):
         self.bot = bot
         self._last_member = None
 
-    @commands.command(name='skip')
-    async def skip(self, ctx, amount: int = 1):
-        """Skip one or multiple songs in the queue
-        Usage: !skip [amount]
-        amount: number of songs to skip (default: 1)"""
+    async def _skip_song(self, amount: int = 1):
+        """Core skip functionality that can be used by both command and button"""
         from __main__ import music_bot
         
         if not music_bot or not music_bot.voice_client:
-            await ctx.send(embed=create_embed("Error", "Not connected to a voice channel", color=0xe74c3c, ctx=ctx))
-            return
+            return False, "Not connected to a voice channel"
 
         if not music_bot.voice_client.is_playing() and not music_bot.voice_client.is_paused():
-            await ctx.send(embed=create_embed("Error", "Nothing is playing to skip", color=0xe74c3c, ctx=ctx))
-            return
+            return False, "Nothing is playing to skip"
 
         if amount < 1:
-            await ctx.send(embed=create_embed("Error", "Skip amount must be at least 1", color=0xe74c3c, ctx=ctx))
-            return
+            return False, "Skip amount must be at least 1"
 
         # Store current song info before skipping
         current_song = music_bot.current_song
+        
+        # Set the skipped flag
+        music_bot.was_skipped = True
         
         # Check if current song is looping
         loop_cog = self.bot.get_cog('Loop')
@@ -48,20 +45,25 @@ class SkipCog(commands.Cog):
             songs_to_remove = min(amount - 1, len(music_bot.queue))
             if songs_to_remove > 0:
                 del music_bot.queue[:songs_to_remove]
-                await ctx.send(embed=create_embed("Skipped", f"Skipped current song and {songs_to_remove} songs from queue", color=0x3498db, ctx=ctx))
-        else:
-            # If only skipping one song, show the skipped song's info
-            if current_song:
-                skip_embed = create_embed(
-                    "Skipped Song",
-                    f"[{current_song['title']}]({current_song['url']})",
-                    color=0x3498db,
-                    thumbnail_url=current_song.get('thumbnail'),
-                    ctx=ctx
-                )
-                await ctx.send(embed=skip_embed)
-
+                return True, f"Skipped current song and {songs_to_remove} songs from queue"
+        
         music_bot.last_activity = time.time()
+        return True, current_song if current_song else "Skipped"
+
+    @commands.command(name='skip')
+    async def skip(self, ctx, amount: int = 1):
+        """Skip one or multiple songs in the queue
+        Usage: !skip [amount]
+        amount: number of songs to skip (default: 1)"""
+        success, result = await self._skip_song(amount)
+        
+        if not success:
+            await ctx.send(embed=create_embed("Error", result, color=0xe74c3c, ctx=ctx))
+            return
+
+        # Don't send a skip message here since it's handled by the after_playing callback
+        if isinstance(result, dict) and amount > 1:  # Only show message for multiple skips
+            await ctx.send(embed=create_embed("Skipped", f"Skipped current song and {amount - 1} songs from queue", color=0x3498db, ctx=ctx))
 
 async def setup(bot):
     await bot.add_cog(SkipCog(bot))
