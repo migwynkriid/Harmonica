@@ -353,8 +353,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             self.queue.append(result)
                             if not result.get('is_from_playlist'):
                                 queue_embed = create_embed(
-                                    "Added to Queue", 
-                                    f"[🎵 {result['title']}]({result['url']})",
+                                    "Added to Queue 🎵", 
+                                    f"[ {result['title']}]({result['url']})",
                                     color=0x3498db,
                                     thumbnail_url=result.get('thumbnail'),
                                     ctx=ctx
@@ -575,8 +575,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
                     if status_msg:
                         playlist_embed = create_embed(
-                            "Adding Playlist",
-                            f"[🎵 {playlist_title}]({playlist_url})\nDownloading first song...",
+                            "Adding Playlist 🎵",
+                            f"[ {playlist_title}]({playlist_url})\nDownloading first song...",
                             color=0x3498db,
                             thumbnail_url=video_thumbnail,
                             ctx=ctx
