@@ -8,7 +8,7 @@ class SkipCog(commands.Cog):
         self.bot = bot
         self._last_member = None
 
-    async def _skip_song(self, amount: int = 1):
+    async def _skip_song(self, amount: int = 1, ctx=None):
         """Core skip functionality that can be used by both command and button"""
         from __main__ import music_bot
         
@@ -55,11 +55,15 @@ class SkipCog(commands.Cog):
         """Skip one or multiple songs in the queue
         Usage: !skip [amount]
         amount: number of songs to skip (default: 1)"""
-        success, result = await self._skip_song(amount)
+        success, result = await self._skip_song(amount, ctx)
         
         if not success:
             await ctx.send(embed=create_embed("Error", result, color=0xe74c3c, ctx=ctx))
             return
+
+        # Store ctx in current_song for footer information
+        if isinstance(result, dict):
+            result['ctx'] = ctx
 
         # Don't send a skip message here since it's handled by the after_playing callback
         if isinstance(result, dict) and amount > 1:  # Only show message for multiple skips
