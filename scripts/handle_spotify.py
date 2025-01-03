@@ -67,6 +67,28 @@ class SpotifyHandler:
                 # If not currently playing, start playback
                 if not self.is_playing and not self.voice_client.is_playing():
                     await play_next(ctx)
+                else:
+                    # Send "Added to Queue" message if we're not starting playback immediately
+                    queue_pos = len(self.queue)
+                    description = f"[🎵 {song_info['title']}]({song_info['url']})"
+                    
+                    # Only show position if current song is not looping
+                    if self.current_song:
+                        loop_cog = ctx.bot.get_cog('Loop')
+                        current_song_url = self.current_song['url']
+                        is_current_looping = loop_cog and current_song_url in loop_cog.looped_songs
+                        if not is_current_looping:
+                            description += f"\nPosition in queue: {queue_pos}"
+                        
+                    queue_embed = create_embed(
+                        "Added to Queue",
+                        description,
+                        color=0x3498db,
+                        thumbnail_url=song_info.get('thumbnail'),
+                        ctx=ctx
+                    )
+                    queue_msg = await ctx.send(embed=queue_embed)
+                    self.queued_messages[song_info['url']] = queue_msg
                 
                 return song_info
             
