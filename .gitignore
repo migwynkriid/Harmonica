@@ -34,3 +34,5 @@ scripts/__pycache__/*
 commands/__pycache__/*
 __pycache__
 config.json
+/config.json
+./config.json
