@@ -28,7 +28,7 @@ class AfterPlayingHandler:
             await play_next(ctx)
         else:
             print("All songs finished, updating activity...")
-            if self.now_playing_message:
+            if self.now_playing_message and self.current_song and isinstance(self.current_song, dict):
                 try:
                     finished_embed = create_embed(
                         "Finished playing",
