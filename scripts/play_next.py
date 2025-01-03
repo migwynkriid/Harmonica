@@ -22,6 +22,14 @@ async def play_next(ctx):
             music_bot.last_activity = time.time()
             print(f"Playing next song: {music_bot.current_song['title']}")
             
+            # Clean up the queued message for the song that's about to play
+            if music_bot.current_song['url'] in music_bot.queued_messages:
+                try:
+                    await music_bot.queued_messages[music_bot.current_song['url']].delete()
+                    del music_bot.queued_messages[music_bot.current_song['url']]
+                except Exception as e:
+                    print(f"Error deleting queued message: {str(e)}")
+
             if not music_bot.current_song.get('is_stream'):
                 if not os.path.exists(music_bot.current_song['file_path']):
                     print(f"Error: File not found: {music_bot.current_song['file_path']}")
