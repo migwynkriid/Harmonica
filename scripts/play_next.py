@@ -45,10 +45,11 @@ async def play_next(ctx):
                         print(f"Error during automatic restart in play_next: {str(e)}")
                     return
             else:
-                if music_bot.now_playing_message and not music_bot.was_skipped:
+                if music_bot.now_playing_message:
                     try:
+                        title = "Skipped song" if hasattr(music_bot, 'was_skipped') and music_bot.was_skipped else "Finished playing"
                         finished_embed = create_embed(
-                            "Finished playing",
+                            title,
                             f"[🎵 {previous_song['title']}]({previous_song['url']})",
                             color=0x808080,  # Gray color for finished
                             thumbnail_url=previous_song.get('thumbnail'),
