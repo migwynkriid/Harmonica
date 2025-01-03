@@ -56,12 +56,14 @@ async def play_next(ctx):
                 if music_bot.now_playing_message:
                     try:
                         title = "Skipped song" if hasattr(music_bot, 'was_skipped') and music_bot.was_skipped else "Finished playing"
+                        description = f"[🎵 {previous_song['title']}]({previous_song['url']})"
+                        
                         finished_embed = create_embed(
                             title,
-                            f"[🎵 {previous_song['title']}]({previous_song['url']})",
+                            description,
                             color=0x808080,  # Gray color for finished
                             thumbnail_url=previous_song.get('thumbnail'),
-                            ctx=ctx
+                            ctx=previous_song.get('ctx')  # Pass the original context to maintain requester info
                         )
                         # Don't include view for status messages
                         await music_bot.now_playing_message.edit(embed=finished_embed, view=None)
@@ -90,9 +92,17 @@ async def play_next(ctx):
 
                 try:
                     if music_bot.voice_client and music_bot.voice_client.is_connected():
-                        ffmpeg_options = {
-                            'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-                        }
+                        # Different FFmpeg options based on whether it's a stream or local file
+                        if music_bot.current_song.get('is_stream', False):
+                            ffmpeg_options = {
+                                'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+                            }
+                        else:
+                            # For local files (including Spotify tracks), use simpler options
+                            ffmpeg_options = {
+                                'options': '-vn',
+                            }
+                            
                         audio_source = discord.FFmpegPCMAudio(
                             music_bot.current_song['file_path'],
                             **ffmpeg_options

@@ -60,6 +60,8 @@ class SpotifyHandler:
             if song_info:
                 # Ensure the song is not marked as from a playlist
                 song_info['is_from_playlist'] = False
+                # Add requester information
+                song_info['requester'] = ctx.author
                 
                 # Add to queue
                 self.queue.append(song_info)

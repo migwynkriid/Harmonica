@@ -129,10 +129,31 @@ async def on_voice_state_update(member, before, after):
                             pass
                     music_bot.queued_messages.clear()
                     music_bot.queue.clear()
+                    
+                    # Update the now playing message to show it was stopped
+                    if music_bot.now_playing_message and music_bot.current_song:
+                        try:
+                            description = f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})"
+                            if 'requester' in music_bot.current_song:
+                                description += f"\nRequested by {music_bot.current_song['requester'].name}"
+                            
+                            stopped_embed = create_embed(
+                                "Finished playing",
+                                description,
+                                color=0x808080,
+                                thumbnail_url=music_bot.current_song.get('thumbnail'),
+                                ctx=music_bot.current_song.get('ctx')  # Pass the original context to maintain requester info
+                            )
+                            await music_bot.now_playing_message.edit(embed=stopped_embed, view=None)
+                        except Exception as e:
+                            print(f"Error updating now playing message: {str(e)}")
+                    
                     music_bot.current_song = None
                     music_bot.is_playing = False
+                    music_bot.now_playing_message = None
                 await music_bot.voice_client.disconnect()
                 print(f"No users in voice channel {bot_voice_channel.name}, disconnecting bot")
+                await music_bot.update_activity()
 
 class DownloadProgress:
     def __init__(self, status_msg, view):
