@@ -45,7 +45,7 @@ async def play_next(ctx):
                         print(f"Error during automatic restart in play_next: {str(e)}")
                     return
             else:
-                if music_bot.now_playing_message:
+                if music_bot.now_playing_message and not music_bot.was_skipped:
                     try:
                         finished_embed = create_embed(
                             "Finished playing",
@@ -54,7 +54,7 @@ async def play_next(ctx):
                             thumbnail_url=previous_song.get('thumbnail'),
                             ctx=ctx
                         )
-                        # Don't include view for finished playing messages
+                        # Don't include view for status messages
                         await music_bot.now_playing_message.edit(embed=finished_embed, view=None)
                     except Exception as e:
                         print(f"Error updating previous now playing message: {str(e)}")

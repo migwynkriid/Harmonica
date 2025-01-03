@@ -24,6 +24,9 @@ class SkipCog(commands.Cog):
         # Store current song info before skipping
         current_song = music_bot.current_song
         
+        # Set the skipped flag
+        music_bot.was_skipped = True
+        
         # Check if current song is looping
         loop_cog = self.bot.get_cog('Loop')
         is_looping = loop_cog and current_song and current_song['url'] in loop_cog.looped_songs
@@ -58,17 +61,9 @@ class SkipCog(commands.Cog):
             await ctx.send(embed=create_embed("Error", result, color=0xe74c3c, ctx=ctx))
             return
 
-        if isinstance(result, dict):  # It's a song info
-            skip_embed = create_embed(
-                "Skipped Song",
-                f"[{result['title']}]({result['url']})",
-                color=0x3498db,
-                thumbnail_url=result.get('thumbnail'),
-                ctx=ctx
-            )
-            await ctx.send(embed=skip_embed)
-        else:  # It's a message
-            await ctx.send(embed=create_embed("Skipped", result, color=0x3498db, ctx=ctx))
+        # Don't send a skip message here since it's handled by the after_playing callback
+        if isinstance(result, dict) and amount > 1:  # Only show message for multiple skips
+            await ctx.send(embed=create_embed("Skipped", f"Skipped current song and {amount - 1} songs from queue", color=0x3498db, ctx=ctx))
 
 async def setup(bot):
     await bot.add_cog(SkipCog(bot))

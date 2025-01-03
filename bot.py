@@ -216,6 +216,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self._last_progress = -1
         self.last_known_ctx = None
         self.bot = None
+        self.was_skipped = False  # Add flag to track if song was skipped
 
         load_dotenv(dotenv_path=".spotifyenv")
         client_id = os.getenv('SPOTIPY_CLIENT_ID')

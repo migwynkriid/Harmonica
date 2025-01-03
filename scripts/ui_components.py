@@ -46,26 +46,7 @@ class NowPlayingView(discord.ui.View):
             # Acknowledge the button press without sending a visible response
             await interaction.response.defer()
             
-            if success:
-                if isinstance(result, dict):  # It's a song info
-                    skip_embed = self._create_embed_with_footer(
-                        "Skipped Song",
-                        f"[{result['title']}]({result['url']})",
-                        0x3498db,
-                        result.get('thumbnail'),
-                        interaction
-                    )
-                    await interaction.channel.send(embed=skip_embed)
-                else:  # It's a message
-                    embed = self._create_embed_with_footer(
-                        "Skipped",
-                        result,
-                        0x3498db,
-                        None,
-                        interaction
-                    )
-                    await interaction.channel.send(embed=embed)
-            else:
+            if not success:  # Only show message on error
                 embed = self._create_embed_with_footer(
                     "Error",
                     result,
