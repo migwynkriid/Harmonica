@@ -13,7 +13,7 @@ class Log(commands.Cog):
     @commands.is_owner()
     async def log(self, ctx):
         """Clear the log file - Owner only command"""
-        if ctx.author.id != self.owner_id:
+        if ctx.author.id != self.OWNER_ID:
             await ctx.send(embed=discord.Embed(
                 title="Error",
                 description="This command is only available to the bot owner.",
