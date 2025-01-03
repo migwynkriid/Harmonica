@@ -34,7 +34,7 @@ from scripts.handle_spotify import SpotifyHandler
 from scripts.config import load_config, YTDL_OPTIONS, FFMPEG_OPTIONS
 from scripts.logging import setup_logging, get_ytdlp_logger
 from scripts.updatescheduler import check_updates, update_checker
-from scripts.voice import join_voice_channel, leave_voice_channel
+from scripts.voice import join_voice_channel, leave_voice_channel, handle_voice_state_update
 from scripts.inactivity import start_inactivity_checker, check_inactivity
 from scripts.messages import update_or_send_message, create_embed
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -105,55 +105,9 @@ async def on_command_error(ctx, error):
 
 @bot.event
 async def on_voice_state_update(member, before, after):
+    """Event handler for voice state updates"""
     global music_bot
-    if not music_bot or not music_bot.voice_client:
-        return
-
-    bot_voice_channel = music_bot.voice_client.channel
-    if not bot_voice_channel:
-        return
-
-    # Only check for empty channel if AUTO_LEAVE_EMPTY is enabled
-    if AUTO_LEAVE_EMPTY:
-        members_in_channel = sum(1 for m in bot_voice_channel.members if not m.bot)
-
-        if members_in_channel == 0:
-            if music_bot and music_bot.voice_client and music_bot.voice_client.is_connected():
-                if music_bot.voice_client.is_playing() or music_bot.queue:
-                    music_bot.voice_client.stop()
-                    # Delete queued messages
-                    for msg in music_bot.queued_messages.values():
-                        try:
-                            await msg.delete()
-                        except:
-                            pass
-                    music_bot.queued_messages.clear()
-                    music_bot.queue.clear()
-                    
-                    # Update the now playing message to show it was stopped
-                    if music_bot.now_playing_message and music_bot.current_song:
-                        try:
-                            description = f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})"
-                            if 'requester' in music_bot.current_song:
-                                description += f"\nRequested by {music_bot.current_song['requester'].name}"
-                            
-                            stopped_embed = create_embed(
-                                "Finished playing",
-                                description,
-                                color=0x808080,
-                                thumbnail_url=music_bot.current_song.get('thumbnail'),
-                                ctx=music_bot.current_song.get('ctx')  # Pass the original context to maintain requester info
-                            )
-                            await music_bot.now_playing_message.edit(embed=stopped_embed, view=None)
-                        except Exception as e:
-                            print(f"Error updating now playing message: {str(e)}")
-                    
-                    music_bot.current_song = None
-                    music_bot.is_playing = False
-                    music_bot.now_playing_message = None
-                await music_bot.voice_client.disconnect()
-                print(f"No users in voice channel {bot_voice_channel.name}, disconnecting bot")
-                await music_bot.update_activity()
+    await handle_voice_state_update(music_bot, member, before, after)
 
 class DownloadProgress:
     def __init__(self, status_msg, view):
