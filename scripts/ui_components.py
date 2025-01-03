@@ -3,6 +3,7 @@ from discord.ui import Button, View
 from scripts.config import load_config
 from scripts.messages import create_embed
 from datetime import datetime
+from scripts.voice import leave_voice_channel
 
 def should_show_buttons():
     """Check if UI buttons should be shown based on config"""
@@ -125,6 +126,44 @@ class NowPlayingView(discord.ui.View):
             embed = self._create_embed_with_footer(
                 "Error",
                 "Loop functionality is not available",
+                0xe74c3c,
+                None,
+                interaction
+            )
+            await interaction.channel.send(embed=embed)
+
+    @discord.ui.button(label="Stop ⛔", style=discord.ButtonStyle.danger, custom_id="stop_button", row=0)
+    async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Stop playback and leave voice channel"""
+        # Acknowledge the button press without sending a visible response
+        await interaction.response.defer()
+        
+        # Stop playback and leave voice channel
+        if interaction.guild.voice_client:
+            try:
+                if interaction.guild.voice_client.is_playing():
+                    interaction.guild.voice_client.stop()
+                await interaction.guild.voice_client.disconnect(force=True)
+                embed = self._create_embed_with_footer(
+                    "Stopped",
+                    "Music stopped and queue cleared",
+                    0xe74c3c,
+                    None,
+                    interaction
+                )
+            except Exception as e:
+                embed = self._create_embed_with_footer(
+                    "Error",
+                    f"Failed to leave voice channel: {str(e)}",
+                    0xe74c3c,
+                    None,
+                    interaction
+                )
+            await interaction.channel.send(embed=embed)
+        else:
+            embed = self._create_embed_with_footer(
+                "Error",
+                "Not in a voice channel",
                 0xe74c3c,
                 None,
                 interaction
