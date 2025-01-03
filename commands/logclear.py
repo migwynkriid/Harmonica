@@ -5,7 +5,7 @@ import json
 # Load config
 with open('config.json', 'r') as f:
     config = json.load(f)
-OWNER_ID = config['OWNER_ID']
+OWNER_ID = int(config['OWNER_ID'])
 
 async def setup(bot):
     bot.add_command(logclear)

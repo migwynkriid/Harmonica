@@ -7,7 +7,7 @@ class Log(commands.Cog):
         self.bot = bot
         with open('config.json', 'r') as f:
             config = json.load(f)
-        self.owner_id = config['OWNER_ID']
+        self.OWNER_ID = int(config['OWNER_ID'])
 
     @commands.command(name='log')
     @commands.is_owner()
