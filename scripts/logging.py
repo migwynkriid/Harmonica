@@ -24,7 +24,13 @@ class MessageFilter(logging.Filter):
             'Voice connection complete',   # Voice connection messages
             'Voice handshake complete',    # Voice connection messages
             'Connecting to voice',         # Voice connection messages
-            'Starting voice handshake'     # Voice connection messages
+            'Starting voice handshake',    # Voice connection messages
+            'ffmpeg-location ffmpeg does not exist', # Ignore false FFmpeg warning
+            'writing DASH m4a',           # Ignore DASH format warning
+            'should have terminated with a return code',
+            'has not terminated. Waiting to terminate',
+            'ffmpeg process',              # Ignore FFmpeg process termination messages
+            'Dispatching event'            # Filter out Discord event dispatching messages
         ]
 
     def filter(self, record):
@@ -37,26 +43,40 @@ class MessageFilter(logging.Filter):
 
 def setup_logging(log_level):
     """Set up logging configuration for all components."""
+    # Remove any existing handlers
+    root = logging.getLogger()
+    if root.handlers:
+        for handler in root.handlers:
+            root.removeHandler(handler)
+
     # Create handlers
     file_handler = logging.FileHandler('log.txt', encoding='utf-8')
     console_handler = logging.StreamHandler(sys.stdout)
+
+    # Create formatter
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s', 
+                                datefmt='%Y-%m-%d %H:%M:%S')
+    
+    # Add formatter to handlers
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
 
     # Add message filter to console handler only (keep full logs in file)
     message_filter = MessageFilter()
     console_handler.addFilter(message_filter)
 
-    # Configure basic logging
-    logging.basicConfig(
-        level=getattr(logging, log_level.upper(), logging.INFO),
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[file_handler, console_handler]
-    )
+    # Set log level
+    log_level_value = getattr(logging, log_level.upper(), logging.INFO)
+    root.setLevel(log_level_value)
 
-    # List of all Discord.py related loggers to configure
+    # Add handlers to root logger
+    root.addHandler(file_handler)
+    root.addHandler(console_handler)
+
+    # Configure specific loggers
     discord_loggers = [
         'discord',
         'yt-dlp',
-        'discord.player',
         'discord.client',
         'discord.voice_client',
         'discord.state',
@@ -76,7 +96,6 @@ def setup_logging(log_level):
     ]
 
     # Set log level for all Discord.py loggers
-    log_level_value = getattr(logging, log_level.upper(), logging.INFO)
     for logger_name in discord_loggers:
         logging.getLogger(logger_name).setLevel(log_level_value)
 
