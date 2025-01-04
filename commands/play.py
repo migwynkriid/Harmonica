@@ -69,7 +69,7 @@ class PlayCog(commands.Cog):
                     'requester': ctx.author
                 })
 
-                if not music_bot.is_playing and not music_bot.waiting_for_song:
+                if not music_bot.is_playing and not music_bot.waiting_for_song and not music_bot.voice_client.is_playing():
                     await process_queue(music_bot)
                 else:
                     if not result.get('is_from_playlist'):
