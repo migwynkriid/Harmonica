@@ -53,11 +53,13 @@ class PlayCog(commands.Cog):
             if not result:
                 return
         else:
-            async with music_bot.queue_lock:
-                result = await music_bot.download_song(query, status_msg=status_msg, ctx=ctx)
-                if not result:
-                    return
+            # Download song without holding the queue lock
+            result = await music_bot.download_song(query, status_msg=status_msg, ctx=ctx)
+            if not result:
+                return
 
+            # Only lock when modifying the queue
+            async with music_bot.queue_lock:
                 music_bot.queue.append({
                     'title': result['title'],
                     'url': result['url'],
@@ -69,31 +71,35 @@ class PlayCog(commands.Cog):
                     'requester': ctx.author
                 })
 
-                if not music_bot.is_playing and not music_bot.waiting_for_song and not music_bot.voice_client.is_playing():
-                    await process_queue(music_bot)
-                else:
-                    if not result.get('is_from_playlist'):
-                        queue_pos = len(music_bot.queue)
-                        # Check if current song is looped from the Loop cog
-                        loop_cog = self.bot.get_cog('Loop')
-                        description = f"[🎵 {result['title']}]({result['url']})"
+                # Check if we should start playing
+                should_play = not music_bot.is_playing and not music_bot.waiting_for_song and not music_bot.voice_client.is_playing()
+
+            # These operations don't need the queue lock
+            if should_play:
+                await process_queue(music_bot)
+            else:
+                if not result.get('is_from_playlist'):
+                    queue_pos = len(music_bot.queue)
+                    # Check if current song is looped from the Loop cog
+                    loop_cog = self.bot.get_cog('Loop')
+                    description = f"[🎵 {result['title']}]({result['url']})"
+                    
+                    # Only show position if current song is not looping
+                    if music_bot.current_song:
+                        current_song_url = music_bot.current_song['url']
+                        is_current_looping = loop_cog and current_song_url in loop_cog.looped_songs
+                        if not is_current_looping:
+                            description += f"\nPosition in queue: {queue_pos}"
                         
-                        # Only show position if current song is not looping
-                        if music_bot.current_song:
-                            current_song_url = music_bot.current_song['url']
-                            is_current_looping = loop_cog and current_song_url in loop_cog.looped_songs
-                            if not is_current_looping:
-                                description += f"\nPosition in queue: {queue_pos}"
-                            
-                        queue_embed = create_embed(
-                            "Added to Queue",
-                            description,
-                            color=0x3498db,
-                            thumbnail_url=result.get('thumbnail'),
-                            ctx=ctx
-                        )
-                        queue_msg = await ctx.send(embed=queue_embed)
-                        music_bot.queued_messages[result['url']] = queue_msg
+                    queue_embed = create_embed(
+                        "Added to Queue",
+                        description,
+                        color=0x3498db,
+                        thumbnail_url=result.get('thumbnail'),
+                        ctx=ctx
+                    )
+                    queue_msg = await ctx.send(embed=queue_embed)
+                    music_bot.queued_messages[result['url']] = queue_msg
 
 async def setup(bot):
     await bot.add_cog(PlayCog(bot))
