@@ -3,16 +3,18 @@ import sys
 
 class MessageFilter(logging.Filter):
     """Filter out specific log messages"""
-    def __init__(self, filtered_keywords=None):
+    def __init__(self, debug_mode=False):
         super().__init__()
+        self.debug_mode = debug_mode
         # Loggers to completely filter out
         self.filtered_loggers = {
             'discord.voice_state',    # Voice connection state changes
             'discord.gateway',        # Gateway connection messages
+            'discord.player',         # FFmpeg process messages
         }
         
         # Messages to filter from other loggers
-        self.filtered_keywords = filtered_keywords or [
+        self.filtered_keywords = [
             'Ignoring exception in view',  # Ignore button interaction timeouts
             'Downloading webpage',         # Ignore yt-dlp download info
             'Downloading video',          # Ignore yt-dlp download info
@@ -30,11 +32,16 @@ class MessageFilter(logging.Filter):
             'should have terminated with a return code',
             'has not terminated. Waiting to terminate',
             'ffmpeg process',              # Ignore FFmpeg process termination messages
-            'Dispatching event'            # Filter out Discord event dispatching messages
+            'Dispatching event',           # Filter out Discord event dispatching messages
+            'The voice handshake is being terminated'  # Filter voice termination messages
         ]
 
     def filter(self, record):
-        # Filter out messages from specific loggers entirely
+        # In debug mode, don't filter anything
+        if self.debug_mode:
+            return True
+            
+        # Filter out messages from specific loggers
         if record.name in self.filtered_loggers:
             return False
             
@@ -43,6 +50,9 @@ class MessageFilter(logging.Filter):
 
 def setup_logging(log_level):
     """Set up logging configuration for all components."""
+    # Check if we're in debug mode
+    is_debug = log_level.upper() == 'DEBUG'
+
     # Remove any existing handlers
     root = logging.getLogger()
     if root.handlers:
@@ -61,25 +71,23 @@ def setup_logging(log_level):
     file_handler.setFormatter(formatter)
     console_handler.setFormatter(formatter)
 
-    # Add message filter to console handler only (keep full logs in file)
-    message_filter = MessageFilter()
-    console_handler.addFilter(message_filter)
+    # Create message filter with debug mode setting
+    message_filter = MessageFilter(debug_mode=is_debug)
 
     # Set log level
     log_level_value = getattr(logging, log_level.upper(), logging.INFO)
     root.setLevel(log_level_value)
 
-    # Add handlers to root logger
-    root.addHandler(file_handler)
-    root.addHandler(console_handler)
-
-    # Configure specific loggers
-    discord_loggers = [
+    # Configure specific loggers that need to be filtered
+    filtered_loggers = [
         'discord',
         'yt-dlp',
         'discord.client',
         'discord.voice_client',
         'discord.state',
+        'discord.player',
+        'discord.voice_state',
+        'discord.gateway',
         'discord.interactions',
         'discord.webhook',
         'discord.ext.commands',
@@ -95,9 +103,20 @@ def setup_logging(log_level):
         'discord.intents'
     ]
 
-    # Set log level for all Discord.py loggers
-    for logger_name in discord_loggers:
-        logging.getLogger(logger_name).setLevel(log_level_value)
+    # Set up each Discord logger with the filter
+    for logger_name in filtered_loggers:
+        logger = logging.getLogger(logger_name)
+        # Only apply filter if not in debug mode
+        if not is_debug:
+            logger.addFilter(message_filter)
+        logger.addHandler(console_handler)
+        logger.addHandler(file_handler)
+        logger.setLevel(log_level_value)
+        logger.propagate = False  # Prevent duplicate logging
+
+    # Add handlers to root logger for non-Discord logs
+    root.addHandler(file_handler)
+    root.addHandler(console_handler)
 
 def get_ytdlp_logger():
     """Get the yt-dlp logger for use in YTDL options."""
