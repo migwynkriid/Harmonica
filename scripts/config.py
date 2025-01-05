@@ -3,6 +3,9 @@ import json
 from scripts.logging import get_ytdlp_logger
 from scripts.paths import get_ytdlp_path, get_ffmpeg_path
 
+# Get the absolute path to the cache directory
+CACHE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.cache'))
+
 def load_config():
     """Load or create the configuration file."""
     default_config = {
@@ -79,7 +82,9 @@ YTDL_OPTIONS = {
     'ffmpeg_location': FFMPEG_PATH,
     'yt_dlp_filename': YTDLP_PATH,
     'buffersize': 8192,
-    'http_chunk_size': 1048576
+    'http_chunk_size': 1048576,
+    'cachedir': CACHE_DIR,  # Use absolute path for cache directory
+    'write_download_archive': True  # Keep track of downloaded videos
 }
 
 FFMPEG_OPTIONS = {
