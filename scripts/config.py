@@ -65,6 +65,7 @@ YTDL_OPTIONS = {
     'outtmpl': '%(id)s.%(ext)s',
     'extract_audio': True,
     'concurrent_fragments': 8,
+    'concurrent-downloads': 4,
     'fragment_retries': 10,
     'retries': 5,
     'abort_on_unavailable_fragments': True,
