@@ -141,22 +141,18 @@ class DownloadProgress:
                 speed = d.get('speed', 0)
                 if total == 0:
                     return
-                
                 percentage = (downloaded / total) * 100
                 progress_bar = self.create_progress_bar(percentage)
-                speed_mb = speed / 1024 / 1024 if speed else 0
-                
+                speed_mb = speed / 1024 / 1024 if speed else 0  
                 status = f"Downloading: {self.title}\n"
                 status += f"\n{progress_bar} {percentage:.1f}%\n"
-                status += f"Speed: {speed_mb:.1f} MB/s"
-                
+                status += f"Speed: {speed_mb:.1f} MB/s"       
                 embed = discord.Embed(
                     title="Downloading",
                     description=status,
                     color=0xf1c40f,
                     timestamp=datetime.now()
                 )
-                
                 await self.status_msg.edit(embed=embed)               
             except Exception as e:
                 print(f"Error updating progress: {str(e)}")
@@ -226,8 +222,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         await self.start_command_processor()
         await start_inactivity_checker(self)
         asyncio.create_task(self.process_download_queue())
-        
-        # Add the persistent view
         self.bot.add_view(NowPlayingView())
 
     async def start_command_processor(self):
@@ -261,7 +255,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         """Internal method to handle a single play command"""
         if not ctx.voice_client and not await self.join_voice_channel(ctx):
             raise Exception("Could not join voice channel")
-
         self.last_activity = time.time()
         processing_embed = create_embed(
             "Processing",
@@ -270,13 +263,11 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             ctx=ctx
         )
         status_msg = await self.update_or_send_message(ctx, processing_embed)
-
         download_info = {
             'query': query,
             'ctx': ctx,
             'status_msg': status_msg
         }
-
         await self.download_queue.put(download_info)
         print(f"Added to download queue: {query}")
 
@@ -284,8 +275,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         """Process the download queue sequentially"""
         while True:
             try:
-                download_info = await self.download_queue.get()
-                
+                download_info = await self.download_queue.get()               
                 query = download_info['query']
                 ctx = download_info['ctx']
                 status_msg = download_info['status_msg']
@@ -293,24 +283,20 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 try:
                     async with self.download_lock:
                         self.currently_downloading = True
-                        print(f"Starting download: {query}")
-                        
+                        print(f"Starting download: {query}")                    
                         result = await self.download_song(query, status_msg=status_msg, ctx=ctx)
-                        
                         if not result:
                             if not status_msg:
                                 error_embed = create_embed("Error", "Failed to download song", color=0xe74c3c, ctx=ctx)
                                 await self.update_or_send_message(ctx, error_embed)
                             continue
-
                         if status_msg and not result.get('is_from_playlist'):
                             try:
                                 message_exists = True
                                 try:
                                     await status_msg.fetch()
                                 except discord.NotFound:
-                                    message_exists = False
-                                
+                                    message_exists = False               
                                 if message_exists:
                                     await status_msg.delete()
                             except Exception as e:
@@ -324,7 +310,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                     ctx=ctx
                                 )
                                 await status_msg.edit(embed=playlist_embed)
-
                         if self.voice_client and self.voice_client.is_playing():
                             self.queue.append(result)
                             if not result.get('is_from_playlist'):
@@ -340,17 +325,14 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         else:
                             self.queue.append(result)
                             await play_next(ctx)
-
                 except Exception as e:
                     print(f"Error processing download: {str(e)}")
                     if not status_msg:
                         error_embed = create_embed("Error", f"Error processing: {str(e)}", color=0xe74c3c, ctx=ctx)
-                        await self.update_or_send_message(ctx, error_embed)
-                
+                        await self.update_or_send_message(ctx, error_embed)           
                 finally:
                     self.currently_downloading = False
                     self.download_queue.task_done()
-
             except Exception as e:
                 print(f"Error in download queue processor: {str(e)}")
                 await asyncio.sleep(1)
@@ -368,13 +350,10 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 total = d.get('total_bytes') or d.get('total_bytes_estimate', 0)
                 if total > 0:
                     downloaded = d.get('downloaded_bytes', 0)
-                    percentage = int((downloaded / total) * 100)
-                    
+                    percentage = int((downloaded / total) * 100)                  
                     if percentage % 10 == 0 and percentage != self._last_progress:
-                        self._last_progress = percentage
-                        
-                        total_size = format_size(total)
-                        
+                        self._last_progress = percentage                   
+                        total_size = format_size(total)                
                         try:
                             await status_msg.fetch()
                             description = "Downloading..."
@@ -402,7 +381,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         """Download a song from YouTube, Spotify, or handle radio stream"""
         try:
             self._last_progress = -1
-
             if is_playlist_url(query):
                 ctx = ctx or status_msg.channel if status_msg else None
                 await self._handle_playlist(query, ctx, status_msg)
@@ -481,10 +459,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
             if not self.downloads_dir.exists():
                 self.downloads_dir.mkdir()
-
             if not is_url(query):
                 query = f"ytsearch1:{query}"
-
             ydl_opts = {
                 **YTDL_OPTIONS,
                 'outtmpl': os.path.join(self.downloads_dir, '%(id)s.%(ext)s'),
@@ -536,7 +512,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 raise Exception("Failed to get first video from playlist")
 
                             first_file_path = os.path.join(self.downloads_dir, f"{first_entry['id']}.{first_entry.get('ext', 'opus')}")
-
                             first_song = {
                                 'title': first_entry['title'],
                                 'url': first_entry['webpage_url'] if first_entry.get('webpage_url') else first_entry['url'],
@@ -546,7 +521,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 'is_from_playlist': True,
                                 'requester': ctx.author if ctx else None  # Add requester information
                             }
-
                             remaining_entries = info['entries'][1:]
                             asyncio.create_task(self._queue_playlist_videos(
                                 entries=remaining_entries,
@@ -562,8 +536,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             return first_song
                     else:
                         # Handle single video
-                        file_path = os.path.join(self.downloads_dir, f"{info['id']}.{info.get('ext', 'opus')}")
-                
+                        file_path = os.path.join(self.downloads_dir, f"{info['id']}.{info.get('ext', 'opus')}")        
                     if status_msg:
                         try:
                             message_exists = True
@@ -605,14 +578,11 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         await update_activity(self.bot, self.current_song, self.is_playing)
 
 music_bot = None
-
 @bot.event
 async def on_ready():
     """Called when the bot is ready"""
-    global music_bot
-    
+    global music_bot 
     clear_downloads_folder()
-    
     await bot.change_presence(activity=discord.Game(name="nothing! use !play "))
     print(f"----------------------------------------")
     print(f"{GREEN}Logged in as {RESET}{BLUE}{bot.user.name}")
@@ -626,8 +596,7 @@ async def on_ready():
     # Load scripts and commands
     load_scripts()
     await load_commands(bot)
-    update_checker.start(bot)
-    
+    update_checker.start(bot) 
     if not music_bot:
         music_bot = MusicBot()
         await music_bot.setup(bot)
