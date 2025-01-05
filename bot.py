@@ -61,6 +61,12 @@ DEFAULT_VOLUME = config_vars['DEFAULT_VOLUME']
 AUTO_CLEAR_DOWNLOADS = config_vars['AUTO_CLEAR_DOWNLOADS']
 SHOW_PROGRESS_BAR = config_vars['SHOW_PROGRESS_BAR']
 
+#Set up colors
+GREEN = '\033[92m'
+BLUE = '\033[94m'
+RED = '\033[91m'
+RESET = '\033[0m'
+
 # Set up logging
 setup_logging(LOG_LEVEL)
 
@@ -151,8 +157,7 @@ class DownloadProgress:
                     timestamp=datetime.now()
                 )
                 
-                await self.status_msg.edit(embed=embed)
-                
+                await self.status_msg.edit(embed=embed)               
             except Exception as e:
                 print(f"Error updating progress: {str(e)}")
 
@@ -178,11 +183,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.now_playing_message = None
         self.downloads_dir = Path(__file__).parent / 'downloads'
         self.cookie_file = Path(__file__).parent / 'cookies.txt'
-        self.playback_start_time = None  # Track when the current song started playing
-        
+        self.playback_start_time = None  # Track when the current song started playing      
         if not self.downloads_dir.exists():
             self.downloads_dir.mkdir()
-
         self.last_activity = time.time()
         self.inactivity_timeout = INACTIVITY_TIMEOUT
         self.inactivity_leave = config_vars.get('INACTIVITY_LEAVE', True)
@@ -197,12 +200,12 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         client_id = os.getenv('SPOTIPY_CLIENT_ID')
         client_secret = os.getenv('SPOTIPY_CLIENT_SECRET')
         
-        print(f"Spotify environment file path: {os.path.abspath('.spotifyenv')}")
-        print(f"Spotify client ID found: {'Yes' if client_id else 'No'}")
-        print(f"Spotify client secret found: {'Yes' if client_secret else 'No'}")
+        print(f"{GREEN}Spotify environment file path:{RESET} {BLUE}{os.path.abspath('.spotifyenv')}{RESET}")
+        print(f"{GREEN}Spotify client ID found:{RESET} {BLUE if client_id else RED}{'Yes' if client_id else 'No'}{RESET}")
+        print(f"{GREEN}Spotify client secret found:{RESET} {BLUE if client_secret else RED}{'Yes' if client_secret else 'No'}{RESET}")
         
         if not client_id or not client_secret:
-            print("Warning: Spotify credentials not found. Spotify functionality will be limited.")
+            print(f"{RED}Warning: Spotify credentials not found. Spotify functionality will be limited.{RESET}")
             self.sp = None
         else:
             try:
@@ -211,9 +214,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     client_secret=client_secret
                 )
                 self.sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
-                print("Successfully initialized Spotify client")
+                print(f"{GREEN}Successfully initialized Spotify client{RESET}")
             except Exception as e:
-                print(f"Error initializing Spotify client: {str(e)}")
+                print(f"{RED}Error initializing Spotify client: {str(e)}{RESET}")
                 self.sp = None
 
     async def setup(self, bot_instance):
@@ -226,14 +229,11 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         
         # Add the persistent view
         self.bot.add_view(NowPlayingView())
-        
-        print("Command processor started")
 
     async def start_command_processor(self):
         """Start the command processor task"""
         if self.command_processor_task is None:
             self.command_processor_task = asyncio.create_task(self.process_command_queue())
-            print("Command processor started")
             print('----------------------------------------')
 
     async def process_command_queue(self):
@@ -397,7 +397,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             return
             except Exception as e:
                 print(f"Error in progress hook: {str(e)}")
-
 
     async def download_song(self, query, status_msg=None, ctx=None):
         """Download a song from YouTube, Spotify, or handle radio stream"""
@@ -616,13 +615,13 @@ async def on_ready():
     
     await bot.change_presence(activity=discord.Game(name="nothing! use !play "))
     print(f"----------------------------------------")
-    print(f"Logged in as {bot.user.name}")
-    print(f"Bot ID: {bot.user.id}")
-    print(f"Bot Invite URL: {discord.utils.oauth_url(bot.user.id)}")
+    print(f"{GREEN}Logged in as {RESET}{BLUE}{bot.user.name}")
+    print(f"{GREEN}Bot ID: {RESET}{BLUE}{bot.user.id}")
+    print(f"{GREEN}Bot Invite URL: {RESET}{BLUE}{discord.utils.oauth_url(bot.user.id)}")
     print(f"----------------------------------------")
-    print(f"Loaded configuration:")
-    print(f"Owner ID: {OWNER_ID}")
-    print(f"Command Prefix: {PREFIX}")
+    print(f"{GREEN}Loaded configuration:{RESET}")
+    print(f"{GREEN}Owner ID:{RESET} {BLUE}{OWNER_ID}{RESET} ")
+    print(f"{GREEN}Command Prefix:{RESET} {BLUE}{PREFIX}{RESET} ")
     
     # Load scripts and commands
     load_scripts()
@@ -634,5 +633,4 @@ async def on_ready():
         await music_bot.setup(bot)
 
 bot.remove_command('help')
-
 bot.run(os.getenv('DISCORD_TOKEN'))
