@@ -3,6 +3,9 @@ import json
 from scripts.logging import get_ytdlp_logger
 from scripts.paths import get_ytdlp_path, get_ffmpeg_path
 
+# Get the absolute path to the cache directory
+CACHE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.cache'))
+
 def load_config():
     """Load or create the configuration file."""
     default_config = {
@@ -62,6 +65,7 @@ YTDL_OPTIONS = {
     'outtmpl': '%(id)s.%(ext)s',
     'extract_audio': True,
     'concurrent_fragments': 8,
+    'concurrent-downloads': 4,
     'fragment_retries': 10,
     'retries': 5,
     'abort_on_unavailable_fragments': True,
@@ -79,10 +83,14 @@ YTDL_OPTIONS = {
     'ffmpeg_location': FFMPEG_PATH,
     'yt_dlp_filename': YTDLP_PATH,
     'buffersize': 8192,
-    'http_chunk_size': 1048576
+    'http_chunk_size': 1048576,
+    'cachedir': CACHE_DIR,  # Use absolute path for cache directory
+    'write_download_archive': True,  # Keep track of downloaded videos
+    'player_client': 'web',  # Use only web player API
+    'player_skip': ['mweb', 'android', 'ios']  # Skip other player APIs
 }
 
 FFMPEG_OPTIONS = {
     'executable': FFMPEG_PATH,
-    'options': '-loglevel warning -vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+    'options': f'-loglevel {load_config()["LOG_LEVEL"].lower()} -vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -threads 4 -af aresample=async=1 -buffer_size 64k',
 }

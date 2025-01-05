@@ -58,12 +58,20 @@ async def play_next(ctx):
                         title = "Skipped song" if hasattr(music_bot, 'was_skipped') and music_bot.was_skipped else "Finished playing"
                         description = f"[🎵 {previous_song['title']}]({previous_song['url']})"
                         
+                        # Create a context-like object with the requester information
+                        class DummyCtx:
+                            def __init__(self, author):
+                                self.author = author
+                        
+                        # Use the original requester if available, otherwise use the context
+                        ctx_with_requester = DummyCtx(previous_song.get('requester', ctx.author)) if previous_song.get('requester') else ctx
+                        
                         finished_embed = create_embed(
                             title,
                             description,
                             color=0x808080,  # Gray color for finished
                             thumbnail_url=previous_song.get('thumbnail'),
-                            ctx=previous_song.get('ctx')  # Pass the original context to maintain requester info
+                            ctx=ctx_with_requester
                         )
                         # Don't include view for status messages
                         await music_bot.now_playing_message.edit(embed=finished_embed, view=None)
