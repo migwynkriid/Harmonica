@@ -502,12 +502,67 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(query, download=True))
                     
                     if info.get('_type') == 'playlist' and not is_playlist_url(query):
+                        # Handle search results that return a playlist
                         if not info.get('entries'):
                             raise Exception("No search results found")
                         info = info['entries'][0]
+                        file_path = os.path.join(self.downloads_dir, f"{info['id']}.{info.get('ext', 'opus')}")
                     
-                    file_path = os.path.join(self.downloads_dir, f"{info['id']}.{info.get('ext', 'opus')}")
-                    
+                    elif info.get('_type') == 'playlist' and is_playlist_url(query):
+                        # Handle actual playlist URLs
+                        if not info.get('entries'):
+                            raise Exception("Playlist is empty")
+
+                        ctx = ctx or status_msg.channel if status_msg else None
+                        first_video = info['entries'][0]
+                        video_thumbnail = first_video.get('thumbnail')
+                        playlist_title = info.get('title', 'Unknown Playlist')
+                        playlist_url = info.get('webpage_url', query)
+                        total_videos = len(info['entries'])
+
+                        if status_msg:
+                            playlist_embed = create_embed(
+                                "Adding Playlist 🎵",
+                                f"[ {playlist_title}]({playlist_url})\nDownloading first song...",
+                                color=0x3498db,
+                                thumbnail_url=video_thumbnail,
+                                ctx=ctx
+                            )
+                            await status_msg.edit(embed=playlist_embed)
+
+                        if info['entries']:
+                            first_entry = info['entries'][0]
+                            if not first_entry:
+                                raise Exception("Failed to get first video from playlist")
+
+                            first_file_path = os.path.join(self.downloads_dir, f"{first_entry['id']}.{first_entry.get('ext', 'opus')}")
+
+                            first_song = {
+                                'title': first_entry['title'],
+                                'url': first_entry['webpage_url'] if first_entry.get('webpage_url') else first_entry['url'],
+                                'file_path': first_file_path,
+                                'thumbnail': first_entry.get('thumbnail'),
+                                'ctx': ctx,
+                                'is_from_playlist': True
+                            }
+
+                            remaining_entries = info['entries'][1:]
+                            asyncio.create_task(self._queue_playlist_videos(
+                                entries=remaining_entries,
+                                ctx=ctx,
+                                is_from_playlist=True,
+                                status_msg=status_msg,
+                                ydl_opts=ydl_opts,
+                                playlist_title=playlist_title,
+                                playlist_url=playlist_url,
+                                total_videos=total_videos
+                            ))
+
+                            return first_song
+                    else:
+                        # Handle single video
+                        file_path = os.path.join(self.downloads_dir, f"{info['id']}.{info.get('ext', 'opus')}")
+                
                     if status_msg:
                         try:
                             message_exists = True
@@ -526,7 +581,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         'url': info['webpage_url'] if info.get('webpage_url') else info['url'],
                         'file_path': file_path,
                         'thumbnail': info.get('thumbnail'),
-                        'is_from_playlist': is_playlist_url(query)
+                        'is_stream': False,
+                        'is_from_playlist': is_playlist_url(query),
+                        'ctx': status_msg.channel if status_msg else None
                     }
                 except Exception as e:
                     print(f"Error downloading song: {str(e)}")
