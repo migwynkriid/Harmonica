@@ -497,22 +497,16 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(query, download=False))
-                
-                if info.get('_type') == 'playlist' and not is_playlist_url(query):
-                    if not info.get('entries'):
-                        raise Exception("No search results found")
-                    info = info['entries'][0]
+                try:
+                    # Single extraction with download
+                    info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(query, download=True))
                     
-                    video_info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(
-                        info['webpage_url'],
-                        download=True
-                    ))
+                    if info.get('_type') == 'playlist' and not is_playlist_url(query):
+                        if not info.get('entries'):
+                            raise Exception("No search results found")
+                        info = info['entries'][0]
                     
-                    if video_info.get('_type') == 'playlist':
-                        video_info = video_info['entries'][0]
-                    
-                    file_path = os.path.join(self.downloads_dir, f"{video_info['id']}.{video_info.get('ext', 'opus')}")
+                    file_path = os.path.join(self.downloads_dir, f"{info['id']}.{info.get('ext', 'opus')}")
                     
                     if status_msg:
                         try:
@@ -528,105 +522,18 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             print(f"Note: Could not delete processing message: {e}")
                     
                     return {
-                        'title': video_info['title'],
-                        'url': video_info['webpage_url'] if video_info.get('webpage_url') else video_info['url'],
+                        'title': info['title'],
+                        'url': info['webpage_url'] if info.get('webpage_url') else info['url'],
                         'file_path': file_path,
-                        'thumbnail': video_info.get('thumbnail'),
-                        'is_from_playlist': False,
-                        'ctx': status_msg.channel if status_msg else None
-                    }
-                elif info.get('_type') == 'playlist' and is_playlist_url(query):
-                    if not info.get('entries'):
-                        raise Exception("Playlist is empty")
-
-                    ctx = ctx or status_msg.channel if status_msg else None
-
-                    first_video = info['entries'][0]
-                    video_thumbnail = first_video.get('thumbnail')
-
-                    playlist_title = info.get('title', 'Unknown Playlist')
-                    playlist_url = info.get('webpage_url', query)
-                    total_videos = len(info['entries'])
-
-                    if status_msg:
-                        playlist_embed = create_embed(
-                            "Adding Playlist 🎵",
-                            f"[ {playlist_title}]({playlist_url})\nDownloading first song...",
-                            color=0x3498db,
-                            thumbnail_url=video_thumbnail,
-                            ctx=ctx
-                        )
-                        await status_msg.edit(embed=playlist_embed)
-
-                    if info['entries']:
-                        first_entry = info['entries'][0]
-                        if not first_entry:
-                            raise Exception("Failed to get first video from playlist")
-
-                        first_video_info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(
-                            first_entry['webpage_url'] if first_entry.get('webpage_url') else first_entry['url'],
-                            download=True
-                        ))
-
-                        if first_video_info.get('_type') == 'playlist':
-                            first_video_info = first_video_info['entries'][0]
-
-                        first_file_path = os.path.join(self.downloads_dir, f"{first_video_info['id']}.{first_video_info.get('ext', 'opus')}")
-
-                        first_song = {
-                            'title': first_video_info['title'],
-                            'url': first_video_info['webpage_url'] if first_video_info.get('webpage_url') else first_video_info['url'],
-                            'file_path': first_file_path,
-                            'thumbnail': first_video_info.get('thumbnail'),
-                            'ctx': ctx,
-                            'is_from_playlist': True
-                        }
-
-                        remaining_entries = info['entries'][1:]
-                        asyncio.create_task(self._queue_playlist_videos(
-                            entries=remaining_entries,
-                            ctx=ctx,
-                            is_from_playlist=True,
-                            status_msg=status_msg,
-                            ydl_opts=ydl_opts,
-                            playlist_title=playlist_title,
-                            playlist_url=playlist_url,
-                            total_videos=total_videos
-                        ))
-
-                        return first_song
-
-                else:
-                    video_info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(
-                        info['webpage_url'] if info.get('webpage_url') else info['url'],
-                        download=True
-                    ))
-
-                    if video_info.get('_type') == 'playlist':
-                        video_info = video_info['entries'][0]
-
-                    file_path = os.path.join(self.downloads_dir, f"{video_info['id']}.{video_info.get('ext', 'opus')}")
-
-                    if status_msg:
-                        try:
-                            message_exists = True
-                            try:
-                                await status_msg.fetch()
-                            except discord.NotFound:
-                                message_exists = False
-                            
-                            if message_exists:
-                                await status_msg.delete()
-                        except Exception as e:
-                            print(f"Note: Could not delete processing message: {e}")
-                    
-                    return {
-                        'title': video_info['title'],
-                        'url': f"https://youtube.com/watch?v={video_info['id']}",
-                        'file_path': file_path,
-                        'thumbnail': video_info.get('thumbnail'),
+                        'thumbnail': info.get('thumbnail'),
                         'is_from_playlist': is_playlist_url(query)
                     }
+                except Exception as e:
+                    print(f"Error downloading song: {str(e)}")
+                    if status_msg:
+                        error_embed = create_embed("Error", f"Error downloading song: {str(e)}", color=0xff0000, ctx=status_msg.channel)
+                        await status_msg.edit(embed=error_embed)
+                    raise
 
         except Exception as e:
             print(f"Error downloading song: {str(e)}")
