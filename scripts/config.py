@@ -92,5 +92,5 @@ YTDL_OPTIONS = {
 
 FFMPEG_OPTIONS = {
     'executable': FFMPEG_PATH,
-    'options': '-loglevel warning -vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+    'options': '-loglevel warning -vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -threads 4',
 }
