@@ -543,7 +543,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 'file_path': first_file_path,
                                 'thumbnail': first_entry.get('thumbnail'),
                                 'ctx': ctx,
-                                'is_from_playlist': True
+                                'is_from_playlist': True,
+                                'requester': ctx.author if ctx else None  # Add requester information
                             }
 
                             remaining_entries = info['entries'][1:]
