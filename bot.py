@@ -584,6 +584,7 @@ async def on_ready():
     global music_bot 
     clear_downloads_folder()
     await bot.change_presence(activity=discord.Game(name="nothing! use !play "))
+    owner = await bot.fetch_user(OWNER_ID)
     print(f"----------------------------------------")
     print(f"{GREEN}Logged in as {RESET}{BLUE}{bot.user.name}")
     print(f"{GREEN}Bot ID: {RESET}{BLUE}{bot.user.id}")
@@ -591,6 +592,7 @@ async def on_ready():
     print(f"----------------------------------------")
     print(f"{GREEN}Loaded configuration:{RESET}")
     print(f"{GREEN}Owner ID:{RESET} {BLUE}{OWNER_ID}{RESET} ")
+    print(f"{GREEN}Owner name:{RESET} {BLUE}{owner.name}{RESET} ")
     print(f"{GREEN}Command Prefix:{RESET} {BLUE}{PREFIX}{RESET} ")
     
     # Load scripts and commands
