@@ -84,7 +84,9 @@ YTDL_OPTIONS = {
     'buffersize': 8192,
     'http_chunk_size': 1048576,
     'cachedir': CACHE_DIR,  # Use absolute path for cache directory
-    'write_download_archive': True  # Keep track of downloaded videos
+    'write_download_archive': True,  # Keep track of downloaded videos
+    'player_client': 'web',  # Use only web player API
+    'player_skip': ['mweb', 'android', 'ios']  # Skip other player APIs
 }
 
 FFMPEG_OPTIONS = {
