@@ -38,18 +38,16 @@ async def process_queue(music_bot):
 
         music_bot.last_known_ctx = ctx
 
-        #if not music_bot.voice_client or not music_bot.voice_client.is_connected():
-            #print("Not connected to voice during process_queue")
-            #try:
-                #if ctx:
-                    #await ctx.send("⚠️ Voice connection lost. Automatically restarting bot...")
-                
-                #restart_cog = music_bot.bot.get_cog('Restart')
-                #if restart_cog:
-                    #await restart_cog.restart_cmd(ctx)
-            #except Exception as e:
-                #print(f"Error during automatic restart in process_queue: {str(e)}")
-            #return
+        if not music_bot.voice_client or not music_bot.voice_client.is_connected():
+            try:
+                # Clear the current song and reset states
+                music_bot.current_song = None
+                music_bot.is_playing = False
+                music_bot.voice_client = None
+                music_bot.waiting_for_song = False
+            except Exception as e:
+                print(f"Error during voice connection cleanup: {str(e)}")
+            return
 
         if song['url'] in music_bot.queued_messages:
             try:

@@ -42,11 +42,22 @@ class PlayCog(commands.Cog):
         
         # Connect to voice channel if needed
         if not ctx.guild.voice_client:
-            await ctx.author.voice.channel.connect()
+            try:
+                await ctx.author.voice.channel.connect()
+            except discord.ClientException as e:
+                if "already connected" in str(e):
+                    # If already connected but in a different state, clean up and reconnect
+                    if music_bot.voice_client:
+                        await music_bot.voice_client.disconnect()
+                    music_bot.voice_client = None
+                    await ctx.author.voice.channel.connect()
+                else:
+                    raise e
         elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
             await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
 
         music_bot.voice_client = ctx.guild.voice_client
+        music_bot.is_playing = False  # Reset playing state when reconnecting
 
         if 'open.spotify.com' in query:
             result = await music_bot.handle_spotify_url(query, ctx, status_msg)
