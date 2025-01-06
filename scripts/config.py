@@ -47,15 +47,12 @@ def load_config():
             'DEFAULT_VOLUME': config.get('VOICE', {}).get('DEFAULT_VOLUME', default_config['VOICE']['DEFAULT_VOLUME']),
             'AUTO_CLEAR_DOWNLOADS': config.get('DOWNLOADS', {}).get('AUTO_CLEAR', default_config['DOWNLOADS']['AUTO_CLEAR']),
             'SHOW_PROGRESS_BAR': config.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', default_config['MESSAGES']['SHOW_PROGRESS_BAR']),
-            'REQUIRE_DJ_ROLE': config.get('PERMISSIONS', {}).get('REQUIRE_DJ_ROLE', default_config['PERMISSIONS']['REQUIRE_DJ_ROLE'])
         }
         
         # Add the nested structure to the flattened config
         flattened['VOICE'] = config.get('VOICE', default_config['VOICE'])
         flattened['DOWNLOADS'] = config.get('DOWNLOADS', default_config['DOWNLOADS'])
-        flattened['MESSAGES'] = config.get('MESSAGES', default_config['MESSAGES'])
-        flattened['PERMISSIONS'] = config.get('PERMISSIONS', default_config['PERMISSIONS'])
-        
+        flattened['MESSAGES'] = config.get('MESSAGES', default_config['MESSAGES'])        
         return flattened
         
 # Get paths
