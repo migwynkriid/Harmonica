@@ -23,10 +23,7 @@ def load_config():
         },
         "MESSAGES": {
             "SHOW_PROGRESS_BAR": True,
-            "DISCORD_UI_BUTTONS": False
-        },
-        "PERMISSIONS": {
-            "REQUIRE_DJ_ROLE": False
+            "DISCORD_UI_BUTTONS": False,
         }
     }
 
