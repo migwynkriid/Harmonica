@@ -1,5 +1,6 @@
 import logging
 import sys
+from datetime import datetime
 
 class MessageFilter(logging.Filter):
     """Filter out specific log messages"""
@@ -48,8 +49,37 @@ class MessageFilter(logging.Filter):
         # For other loggers, filter by message content
         return not any(keyword in record.getMessage() for keyword in self.filtered_keywords)
 
+class OutputCapture:
+    """Captures ALL terminal output and writes it to the log file"""
+    def __init__(self, log_file, stream=None):
+        self.terminal = stream or sys.stdout
+        self.log_file = open(log_file, 'a', encoding='utf-8')
+        
+    def write(self, message):
+        # Write to terminal
+        self.terminal.write(message)
+        # Remove color codes and clean up the message
+        clean_message = message.replace(GREEN, '').replace(BLUE, '').replace(RED, '').replace(RESET, '').strip()
+        if clean_message:  # Only log non-empty messages
+            # Add timestamp and write directly to file
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            self.log_file.write(f"{timestamp} {clean_message}\n")
+            self.log_file.flush()
+            
+    def flush(self):
+        self.terminal.flush()
+        self.log_file.flush()
+
 def setup_logging(log_level):
     """Set up logging configuration for all components."""
+    # Import color codes and datetime
+    global GREEN, BLUE, RED, RESET
+    from datetime import datetime
+    try:
+        from bot import GREEN, BLUE, RED, RESET
+    except ImportError:
+        GREEN = BLUE = RED = RESET = ''
+    
     # Check if we're in debug mode
     is_debug = log_level.upper() == 'DEBUG'
 
@@ -60,7 +90,8 @@ def setup_logging(log_level):
             root.removeHandler(handler)
 
     # Create handlers
-    file_handler = logging.FileHandler('log.txt', encoding='utf-8')
+    log_file = 'log.txt'
+    file_handler = logging.FileHandler(log_file, encoding='utf-8')
     console_handler = logging.StreamHandler(sys.stdout)
 
     # Create formatter
@@ -117,6 +148,10 @@ def setup_logging(log_level):
     # Add handlers to root logger for non-Discord logs
     root.addHandler(file_handler)
     root.addHandler(console_handler)
+    
+    # Capture ALL terminal output
+    sys.stdout = OutputCapture(log_file, sys.stdout)
+    sys.stderr = OutputCapture(log_file, sys.stderr)  # Also capture error output
 
 def get_ytdlp_logger():
     """Get the yt-dlp logger for use in YTDL options."""
