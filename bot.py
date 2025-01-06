@@ -3,6 +3,7 @@ import discord
 import yt_dlp
 import asyncio
 import re
+import subprocess
 import unicodedata
 import sys
 import locale
@@ -12,7 +13,6 @@ import json
 import pytz
 import logging
 import urllib.request
-import subprocess
 import spotipy
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
@@ -584,7 +584,18 @@ async def on_ready():
     global music_bot 
     clear_downloads_folder()
     await bot.change_presence(activity=discord.Game(name="nothing! use !play "))
-    owner = await bot.fetch_user(OWNER_ID)
+    owner_name = f"{RED}Owner could not be fetched. Do you share a server with the bot?{RESET}"
+    try:
+        owner = await bot.fetch_user(OWNER_ID)
+        owner_name = f"{BLUE}{owner.name}{RESET}"
+    except discord.NotFound:
+        pass
+    except Exception as e:
+        owner_name = f"{RED}Error contacting owner: {str(e)}{RESET}"
+
+    with open('scripts/consoleprint.txt', 'r') as f: print(f"{BLUE}{f.read()}{RESET}")
+    commit_count = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD']).decode('utf-8').strip()
+    print(f"{GREEN}\nCurrent commit count: {BLUE}{commit_count}{RESET}")
     print(f"----------------------------------------")
     print(f"{GREEN}Logged in as {RESET}{BLUE}{bot.user.name}")
     print(f"{GREEN}Bot ID: {RESET}{BLUE}{bot.user.id}")
@@ -592,7 +603,7 @@ async def on_ready():
     print(f"----------------------------------------")
     print(f"{GREEN}Loaded configuration:{RESET}")
     print(f"{GREEN}Owner ID:{RESET} {BLUE}{OWNER_ID}{RESET} ")
-    print(f"{GREEN}Owner name:{RESET} {BLUE}{owner.name}{RESET} ")
+    print(f"{GREEN}Owner name:{RESET} {BLUE}{owner_name}{RESET}")
     print(f"{GREEN}Command Prefix:{RESET} {BLUE}{PREFIX}{RESET} ")
     
     # Load scripts and commands

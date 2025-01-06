@@ -17,7 +17,14 @@ def create_embed(title, description, color=0x3498db):
     return embed
 
 async def check_updates(bot):
-    owner = await bot.fetch_user(bot.owner_id)
+    try:
+        owner = await bot.fetch_user(bot.owner_id)
+    except discord.NotFound:
+        print("\033[91mWarning: Could not send update notification. Owner could not be contacted.\nDo you share a server with the bot?\033[0m")
+        return
+    except Exception as e:
+        print(f"\033[91mWarning: Could not send update notification. Error: {str(e)}\033[0m")
+        return
     
     try:
         result = subprocess.run(
@@ -48,7 +55,10 @@ async def check_updates(bot):
             f"Error checking for updates: {str(e)}",
             color=0xe74c3c
         )
-        await owner.send(embed=error_embed)
+        try:
+            await owner.send(embed=error_embed)
+        except:
+            print(f"\033[91mWarning: Could not send update error notification to owner.\033[0m")
 
 @tasks.loop(hours=1)
 async def update_checker(bot):
