@@ -196,9 +196,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         client_id = os.getenv('SPOTIPY_CLIENT_ID')
         client_secret = os.getenv('SPOTIPY_CLIENT_SECRET')
         
-        print(f"{GREEN}Spotify environment file path:{RESET} {BLUE}{os.path.abspath('.spotifyenv')}{RESET}")
-        print(f"{GREEN}Spotify client ID found:{RESET} {BLUE if client_id else RED}{'Yes' if client_id else 'No'}{RESET}")
-        print(f"{GREEN}Spotify client secret found:{RESET} {BLUE if client_secret else RED}{'Yes' if client_secret else 'No'}{RESET}")
+        print(f"{GREEN}Spotify credentials found:{RESET} {BLUE if (client_id and client_secret) else RED}{'Yes' if (client_id and client_secret) else 'No'}{RESET}")
         
         if not client_id or not client_secret:
             print(f"{RED}Warning: Spotify credentials not found. Spotify functionality will be limited.{RESET}")
@@ -210,10 +208,14 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     client_secret=client_secret
                 )
                 self.sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
-                print(f"{GREEN}Successfully initialized Spotify client{RESET}")
             except Exception as e:
                 print(f"{RED}Error initializing Spotify client: {str(e)}{RESET}")
                 self.sp = None
+
+        if self.cookie_file.exists():
+            print(f"{GREEN}YouTube cookies file found:{RESET} {BLUE}Yes{RESET}")
+        else:
+            print(f"{RED}YouTube cookies not found, features might be limited{RESET}")
 
     async def setup(self, bot_instance):
         """Setup the bot with the event loop"""
