@@ -3,7 +3,7 @@ import asyncio
 def clear_queue():
     """Clear both download and playback queues"""
     try:
-        from __main__ import music_bot
+        from bot import music_bot
         
         music_bot.queue.clear()
         

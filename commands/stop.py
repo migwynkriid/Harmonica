@@ -11,7 +11,7 @@ class StopCog(commands.Cog):
     @commands.command(name='stop')
     async def stop(self, ctx):
         """Stop playback, clear queue, and leave the voice channel"""
-        from __main__ import music_bot
+        from bot import music_bot
         
         try:
             clear_queue()

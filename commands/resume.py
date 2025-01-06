@@ -11,7 +11,7 @@ class ResumeCog(commands.Cog):
     @commands.command(name='resume')
     async def resume(self, ctx):
         """Resume the currently paused song"""
-        from __main__ import music_bot
+        from bot import music_bot
         
         try:
             if music_bot.voice_client and music_bot.voice_client.is_paused():

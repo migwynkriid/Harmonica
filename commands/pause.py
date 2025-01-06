@@ -11,7 +11,7 @@ class PauseCog(commands.Cog):
     @commands.command(name='pause')
     async def pause(self, ctx):
         """Pause the currently playing song"""
-        from __main__ import music_bot
+        from bot import music_bot
         
         try:
             if music_bot.voice_client and music_bot.voice_client.is_playing():

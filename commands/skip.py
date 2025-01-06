@@ -10,7 +10,7 @@ class SkipCog(commands.Cog):
 
     async def _skip_song(self, amount: int = 1, ctx=None):
         """Core skip functionality that can be used by both command and button"""
-        from __main__ import music_bot
+        from bot import music_bot
         
         if not music_bot or not music_bot.voice_client:
             return False, "Not connected to a voice channel"

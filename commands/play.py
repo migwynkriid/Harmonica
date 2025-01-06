@@ -12,7 +12,7 @@ class PlayCog(commands.Cog):
     @commands.command(name='play')
     async def play(self, ctx, *, query=None):
         """Play a song in the voice channel"""
-        from __main__ import music_bot
+        from bot import music_bot
         
         # First check if user provided a query
         if not query:

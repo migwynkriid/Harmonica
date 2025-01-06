@@ -21,7 +21,7 @@ class NowPlayingCog(commands.Cog):
     async def nowplaying(self, ctx):
         """Show the currently playing song"""
         # Access the music_bot from the global scope
-        from __main__ import music_bot
+        from bot import music_bot
         
         if not music_bot:
             await ctx.send("Music bot is not initialized yet. Please wait a moment and try again.")

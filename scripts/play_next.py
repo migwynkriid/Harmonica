@@ -13,7 +13,7 @@ DEFAULT_VOLUME = config.get('DEFAULT_VOLUME', 100)
 
 async def play_next(ctx):
     """Play the next song in the queue"""
-    from __main__ import music_bot
+    from bot import music_bot
     
     if len(music_bot.queue) > 0:
         try:
