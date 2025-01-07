@@ -7,10 +7,13 @@ class Clear(commands.Cog):
         self.bot = bot
 
     @commands.command(name='clear', aliases=['clearqueue'])
-    async def clear(self, ctx):
-        """Clears all songs from the queue"""
+    async def clear(self, ctx, position: int = None):
+        """Clears songs from the queue
+        Usage:
+        !clear - Clears entire queue
+        !clear [position] - Removes song at specified position in queue"""
         from bot import music_bot
-        await clear_queue_command(ctx, music_bot)
+        await clear_queue_command(ctx, music_bot, position)
 
 async def setup(bot):
     await bot.add_cog(Clear(bot))
