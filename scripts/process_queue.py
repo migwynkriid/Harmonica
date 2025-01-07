@@ -84,20 +84,10 @@ async def process_queue(music_bot):
         
         await music_bot.bot.change_presence(activity=discord.Game(name=f"{song['title']}"))
         
-        if song.get('is_stream'):
-            audio_source = discord.FFmpegPCMAudio(
-                song['file_path'],
-                **FFMPEG_OPTIONS
-            )
-        else:
-            audio_source = discord.FFmpegPCMAudio(
-                song['file_path'],
-                **FFMPEG_OPTIONS
-            )
-
-        # Convert DEFAULT_VOLUME from percentage (0-100) to float (0.0-2.0)
-        default_volume = DEFAULT_VOLUME / 50.0  # This makes 100% = 2.0, 50% = 1.0, etc.
-        audio_source = discord.PCMVolumeTransformer(audio_source, volume=default_volume)
+        audio_source = discord.FFmpegPCMAudio(
+            song['file_path'],
+            **FFMPEG_OPTIONS
+        )
 
         current_message = music_bot.now_playing_message
         current_song_info = {
@@ -141,6 +131,11 @@ async def process_queue(music_bot):
 
         music_bot.voice_client.play(audio_source, after=after_playing)
 
+    except Exception as e:
+        print(f"Error in process_queue: {str(e)}")
+        music_bot.waiting_for_song = False
+        if not music_bot.is_playing:
+            await process_queue(music_bot)
     finally:
         music_bot.waiting_for_song = False
         if not music_bot.is_playing:

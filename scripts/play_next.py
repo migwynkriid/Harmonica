@@ -4,7 +4,7 @@ import asyncio
 import os
 import time
 from scripts.messages import create_embed
-from scripts.config import load_config
+from scripts.config import load_config, FFMPEG_OPTIONS
 from scripts.ui_components import create_now_playing_view
 
 # Get default volume from config
@@ -100,24 +100,10 @@ async def play_next(ctx):
 
                 try:
                     if music_bot.voice_client and music_bot.voice_client.is_connected():
-                        # Different FFmpeg options based on whether it's a stream or local file
-                        if music_bot.current_song.get('is_stream', False):
-                            ffmpeg_options = {
-                                'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-                            }
-                        else:
-                            # For local files (including Spotify tracks), use simpler options
-                            ffmpeg_options = {
-                                'options': '-vn',
-                            }
-                            
                         audio_source = discord.FFmpegPCMAudio(
                             music_bot.current_song['file_path'],
-                            **ffmpeg_options
+                            **FFMPEG_OPTIONS
                         )
-                        # Convert DEFAULT_VOLUME from percentage (0-100) to float (0.0-2.0)
-                        default_volume = DEFAULT_VOLUME / 50.0  # This makes 100% = 2.0, 50% = 1.0, etc.
-                        audio_source = discord.PCMVolumeTransformer(audio_source, volume=default_volume)
                         music_bot.voice_client.play(
                             audio_source,
                             after=lambda e: asyncio.run_coroutine_threadsafe(
