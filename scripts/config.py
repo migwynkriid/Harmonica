@@ -6,6 +6,11 @@ from scripts.paths import get_ytdlp_path, get_ffmpeg_path
 # Get the absolute path to the cache directory
 CACHE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.cache'))
 
+# Create cache directory and subdirectories
+os.makedirs(CACHE_DIR, exist_ok=True)
+os.makedirs(os.path.join(CACHE_DIR, 'youtube-sigfuncs'), exist_ok=True)
+os.makedirs(os.path.join(CACHE_DIR, 'youtube-nsig'), exist_ok=True)
+
 def load_config():
     """Load or create the configuration file."""
     default_config = {
