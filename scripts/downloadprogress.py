@@ -17,7 +17,7 @@ class DownloadProgress:
         
     def create_progress_bar(self, percentage, width=20):
         filled = int(width * (percentage / 100))
-        bar = "█" * filled + "░" * (width - filled)
+        bar = "▓" * filled + "░" * (width - filled)
         return bar
         
     async def progress_hook(self, d):
@@ -31,11 +31,9 @@ class DownloadProgress:
             try:
                 downloaded = d.get('downloaded_bytes', 0)
                 total = d.get('total_bytes', 0) or d.get('total_bytes_estimate', 0)
-                speed = d.get('speed', 0)
                 if total == 0:
                     return
                 percentage = (downloaded / total) * 100
-                speed_mb = speed / 1024 / 1024 if speed else 0
                 downloaded_size = format_size(downloaded)
                 total_size = format_size(total)
                 info = d.get('info_dict', {})
@@ -44,15 +42,13 @@ class DownloadProgress:
                 
                 if SHOW_PROGRESS_BAR:
                     progress_bar = self.create_progress_bar(percentage)
-                    status += f"{progress_bar} "
+                    status += f"{progress_bar}\n\n"
                 
-                status += f"{percentage:.1f}%\n"
-                status += f"Size: {downloaded_size} / {total_size}\n"
-                status += f"Speed: {speed_mb:.1f} MB/s"
+                status += f"Size: {downloaded_size} / {total_size}"
                 embed = discord.Embed(
                     title="Downloading",
                     description=status,
-                    color=0xf1c40f,
+                    color=0x3498db,
                     timestamp=datetime.now()
                 )
                 if self.ctx and hasattr(self.ctx, 'author') and self.ctx.author:
