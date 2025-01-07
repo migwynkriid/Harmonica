@@ -23,7 +23,7 @@ class DownloadProgress:
     async def progress_hook(self, d):
         if d['status'] == 'downloading':
             current_time = time.time()
-            if current_time - self.last_update < 1:
+            if current_time - self.last_update < 2:
                 return
                 
             self.last_update = current_time
