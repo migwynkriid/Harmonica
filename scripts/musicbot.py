@@ -45,6 +45,7 @@ from scripts.url_identifier import is_url, is_playlist_url, is_radio_stream
 from scripts.voice import join_voice_channel, leave_voice_channel, handle_voice_state_update
 from scripts.ytdlp import get_ytdlp_path, ytdlp_version
 from spotipy.oauth2 import SpotifyClientCredentials
+from spotipy.cache_handler import CacheFileHandler
 
 config_vars = load_config()
 INACTIVITY_TIMEOUT = config_vars.get('INACTIVITY_TIMEOUT', 60)
@@ -83,6 +84,12 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.last_known_ctx = None
         self.bot = None
         self.was_skipped = False  # Add flag to track if song was skipped
+        self.cache_dir = Path(__file__).parent.parent / '.cache'
+        self.spotify_cache = self.cache_dir / 'spotify'
+        
+        # Create cache directories if they don't exist
+        self.cache_dir.mkdir(exist_ok=True)
+        self.spotify_cache.mkdir(exist_ok=True)
 
         load_dotenv(dotenv_path=".spotifyenv")
         client_id = os.getenv('SPOTIPY_CLIENT_ID')
@@ -95,9 +102,13 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             self.sp = None
         else:
             try:
+                cache_handler = CacheFileHandler(
+                    cache_path=str(self.spotify_cache / '.spotify-token-cache')
+                )
                 client_credentials_manager = SpotifyClientCredentials(
                     client_id=client_id,
-                    client_secret=client_secret
+                    client_secret=client_secret,
+                    cache_handler=cache_handler
                 )
                 self.sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
             except Exception as e:
