@@ -2,6 +2,10 @@ import discord
 import time
 from datetime import datetime
 from scripts.format_size import format_size
+from scripts.config import load_config
+
+config_vars = load_config()
+SHOW_PROGRESS_BAR = config_vars.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', True)
 
 class DownloadProgress:
     def __init__(self, status_msg, view):
@@ -31,12 +35,16 @@ class DownloadProgress:
                 if total == 0:
                     return
                 percentage = (downloaded / total) * 100
-                progress_bar = self.create_progress_bar(percentage)
                 speed_mb = speed / 1024 / 1024 if speed else 0
                 downloaded_size = format_size(downloaded)
                 total_size = format_size(total)
-                status = f"Downloading: {self.title}\n"
-                status += f"\n{progress_bar} {percentage:.1f}%\n"
+                status = f"Downloading: {self.title}\n\n"
+                
+                if SHOW_PROGRESS_BAR:
+                    progress_bar = self.create_progress_bar(percentage)
+                    status += f"{progress_bar} "
+                
+                status += f"{percentage:.1f}%\n"
                 status += f"Size: {downloaded_size} / {total_size}\n"
                 status += f"Speed: {speed_mb:.1f} MB/s"
                 embed = discord.Embed(
