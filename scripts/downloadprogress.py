@@ -38,7 +38,9 @@ class DownloadProgress:
                 speed_mb = speed / 1024 / 1024 if speed else 0
                 downloaded_size = format_size(downloaded)
                 total_size = format_size(total)
-                status = f"Downloading: {self.title}\n\n"
+                info = d.get('info_dict', {})
+                video_title = info.get('title', self.title)
+                status = f"Downloading: {video_title}\n"
                 
                 if SHOW_PROGRESS_BAR:
                     progress_bar = self.create_progress_bar(percentage)
