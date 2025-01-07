@@ -26,6 +26,7 @@ from scripts.after_playing_coro import AfterPlayingHandler
 from scripts.cleardownloads import clear_downloads_folder
 from scripts.clear_queue import clear_queue
 from scripts.config import load_config, YTDL_OPTIONS, FFMPEG_OPTIONS
+from scripts.downloadprogress import DownloadProgress
 from scripts.duration import get_audio_duration
 from scripts.format_size import format_size
 from scripts.handle_playlist import PlaylistHandler
@@ -248,40 +249,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         bar = '█' * filled + '░' * (length - filled)
         return f"[{bar}] {percentage}%"
 
-    async def progress_hook(self, d, status_msg):
-        """Progress hook for yt-dlp"""
-        if d['status'] == 'downloading':
-            try:
-                total = d.get('total_bytes') or d.get('total_bytes_estimate', 0)
-                if total > 0:
-                    downloaded = d.get('downloaded_bytes', 0)
-                    percentage = int((downloaded / total) * 100)                  
-                    if percentage % 10 == 0 and percentage != self._last_progress:
-                        self._last_progress = percentage                   
-                        total_size = format_size(total)                
-                        try:
-                            await status_msg.fetch()
-                            description = "Downloading..."
-                            if SHOW_PROGRESS_BAR:
-                                progress_bar = self.create_progress_bar(percentage)
-                                description += f"\n{progress_bar}"
-                            description += f"\nFile size: {total_size}"
-                            
-                            processing_embed = create_embed(
-                                "Processing",
-                                description,
-                                color=0x3498db,
-                                ctx=status_msg.channel
-                            )
-                            await status_msg.edit(embed=processing_embed)
-                        except discord.NotFound:
-                            return
-                        except Exception as e:
-                            print(f"Error updating progress message: {str(e)}")
-                            return
-            except Exception as e:
-                print(f"Error in progress hook: {str(e)}")
-
     async def download_song(self, query, status_msg=None, ctx=None):
         """Download a song from YouTube, Spotify, or handle radio stream"""
         try:
@@ -366,12 +333,17 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 self.downloads_dir.mkdir()
             if not is_url(query):
                 query = f"ytsearch1:{query}"
+                
+            # Create DownloadProgress instance with ctx
+            progress = DownloadProgress(status_msg, None)
+            progress.ctx = ctx or (status_msg.channel if status_msg else None)
+                
             ydl_opts = {
                 **YTDL_OPTIONS,
                 'outtmpl': os.path.join(self.downloads_dir, '%(id)s.%(ext)s'),
                 'cookiefile': self.cookie_file if self.cookie_file.exists() else None,
                 'progress_hooks': [lambda d: asyncio.run_coroutine_threadsafe(
-                    self.progress_hook(d, status_msg), 
+                    progress.progress_hook(d), 
                     self.bot_loop
                 )] if status_msg else [],
                 'default_search': 'ytsearch'
