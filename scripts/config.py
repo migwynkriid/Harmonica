@@ -70,6 +70,12 @@ def load_config():
 FFMPEG_PATH = get_ffmpeg_path()
 YTDLP_PATH = get_ytdlp_path()
 
+# Get config for volume
+config = load_config()
+DEFAULT_VOLUME = config.get('VOICE', {}).get('DEFAULT_VOLUME', 100)
+# Convert DEFAULT_VOLUME from percentage (0-100) to float (0.0-2.0)
+volume_float = DEFAULT_VOLUME / 50.0  # This makes 100% = 2.0, 50% = 1.0, etc.
+
 YTDL_OPTIONS = {
     'format': 'bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio/best/bestaudio*',
     'outtmpl': '%(id)s.%(ext)s',
@@ -102,5 +108,5 @@ YTDL_OPTIONS = {
 
 FFMPEG_OPTIONS = {
     'executable': FFMPEG_PATH,
-    'options': f'-loglevel {load_config()["LOG_LEVEL"].lower()} -vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -threads 4 -af aresample=async=1 -buffer_size 64k',
+    'options': f'-loglevel {config["LOG_LEVEL"].lower()} -vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -threads 4 -af aresample=async=1:min_hard_comp=0.100000:first_pts=0,equalizer=f=100:t=h:width=200:g=-6,volume={volume_float} -buffer_size 64k',
 }
