@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import time
 from scripts.messages import create_embed
+from scripts.permissions import check_dj_role
 
 class PauseCog(commands.Cog):
     def __init__(self, bot):
@@ -9,6 +10,7 @@ class PauseCog(commands.Cog):
         self._last_member = None
 
     @commands.command(name='pause')
+    @check_dj_role()
     async def pause(self, ctx):
         """Pause the currently playing song"""
         from bot import music_bot

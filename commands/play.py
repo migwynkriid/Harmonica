@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import time
 from scripts.messages import create_embed
+from scripts.permissions import check_dj_role
 from scripts.process_queue import process_queue
 
 class PlayCog(commands.Cog):
@@ -10,6 +11,7 @@ class PlayCog(commands.Cog):
         self._last_member = None
 
     @commands.command(name='play')
+    @check_dj_role()
     async def play(self, ctx, *, query=None):
         """Play a song in the voice channel"""
         from bot import music_bot

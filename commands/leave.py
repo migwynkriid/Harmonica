@@ -2,13 +2,15 @@ import discord
 from discord.ext import commands
 from scripts.voice import leave_voice_channel
 from scripts.messages import create_embed
+from scripts.permissions import check_dj_role
 
 class LeaveCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self._last_member = None
 
-    @commands.command(name='leave')
+    @commands.command(name='leave', aliases=['disconnect'])
+    @check_dj_role()
     async def leave(self, ctx):
         """Leave the voice channel"""
         from bot import music_bot

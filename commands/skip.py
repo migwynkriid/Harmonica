@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import time
 from scripts.messages import create_embed
+from scripts.permissions import check_dj_role
 
 class SkipCog(commands.Cog):
     def __init__(self, bot):
@@ -51,6 +52,7 @@ class SkipCog(commands.Cog):
         return True, current_song if current_song else "Skipped"
 
     @commands.command(name='skip')
+    @check_dj_role()
     async def skip(self, ctx, amount: int = 1):
         """Skip one or multiple songs in the queue
         Usage: !skip [amount]

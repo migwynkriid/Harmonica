@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from scripts.messages import create_embed
+from scripts.permissions import check_dj_role
 from scripts.clear_queue import clear_queue
 
 class StopCog(commands.Cog):
@@ -9,6 +10,7 @@ class StopCog(commands.Cog):
         self._last_member = None
 
     @commands.command(name='stop')
+    @check_dj_role()
     async def stop(self, ctx):
         """Stop playback, clear queue, and leave the voice channel"""
         from bot import music_bot

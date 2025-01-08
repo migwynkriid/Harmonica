@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from scripts.repeatsong import repeat_song
 from scripts.messages import create_embed
+from scripts.permissions import check_dj_role
 
 class Loop(commands.Cog):
     def __init__(self, bot):
@@ -64,7 +65,8 @@ class Loop(commands.Cog):
                 'song': music_bot.current_song
             }
 
-    @commands.command(aliases=['repeat'])
+    @commands.command(name='loop', aliases=['repeat'])
+    @check_dj_role()
     async def loop(self, ctx, count: int = 999):
         """Toggle loop mode for the current song. Optionally specify number of times to add the song."""
         success, result = await self._toggle_loop(count)

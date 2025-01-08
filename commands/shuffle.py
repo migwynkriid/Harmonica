@@ -1,6 +1,7 @@
 from discord.ext import commands
 from scripts.shufflelogic import shuffle_queue
-from scripts.ui_components import create_embed
+from scripts.messages import create_embed
+from scripts.permissions import check_dj_role
 
 class ShuffleCog(commands.Cog):
     def __init__(self, bot):
@@ -8,6 +9,7 @@ class ShuffleCog(commands.Cog):
         self._last_member = None
 
     @commands.command(name='shuffle')
+    @check_dj_role()
     async def shuffle(self, ctx):
         """Randomly shuffle all songs in the queue"""
         from bot import music_bot

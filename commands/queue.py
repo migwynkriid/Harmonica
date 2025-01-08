@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from scripts.messages import create_embed
+from scripts.permissions import check_dj_role
 
 class QueueCog(commands.Cog):
     def __init__(self, bot):
@@ -8,6 +9,7 @@ class QueueCog(commands.Cog):
         self._last_member = None
 
     @commands.command(name='queue', aliases=['playing'])
+    @check_dj_role()
     async def queue(self, ctx):
         """Show the current queue"""
         from bot import music_bot

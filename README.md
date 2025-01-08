@@ -52,6 +52,7 @@ Current Issues:
 - **Playback Controls**: Basic controls like play, pause, skip, and stop.
 - **Queue System**: Manage a queue of songs to play in sequence.
 - **Loop Mode**: Toggle loop mode for continuous playback of the current song.
+- **Optional Permissions**: DJ and Administrator roles can perform certain actions, such as skipping, clearing the queue, or restarting the bot.
 
 ## Commands
 - `!help` - Display this help message.
@@ -61,6 +62,8 @@ Current Issues:
 - `!resume` - Resume playback.
 - `!stop` - Stop playback, clear the queue, and leave the voice channel.
 - `!skip` - Skip the current song.
+- `!clear` - Clear the queue.
+- `!shuffle` - Shuffle the queue.
 - `!queue` - Show the current song queue.
 - `!leave` - Leave the voice channel.
 - `!loop` - Toggle loop mode for the current song.

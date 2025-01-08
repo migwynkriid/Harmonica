@@ -27,17 +27,18 @@ def load_config():
             "INACTIVITY_LEAVE": False,
             "INACTIVITY_TIMEOUT": 60,
             "AUTO_LEAVE_EMPTY": True,
-            "DEFAULT_VOLUME": 100
+            "DEFAULT_VOLUME": 100,
         },
         "DOWNLOADS": {
-            "AUTO_CLEAR": True
+            "AUTO_CLEAR": True,
         },
         "MESSAGES": {
             "SHOW_PROGRESS_BAR": True,
             "DISCORD_UI_BUTTONS": False,
         },
         "PERMISSIONS": {
-            "REQUIRES_DJ_ROLE": "false",
+            "REQUIRES_DJ_ROLE": False,
+            "REQUIRES_ADMIN_ROLE": False,
         }
     }
 
