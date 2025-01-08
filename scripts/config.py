@@ -38,7 +38,6 @@ def load_config():
         },
         "PERMISSIONS": {
             "REQUIRES_DJ_ROLE": False,
-            "REQUIRES_ADMIN_ROLE": False,
         }
     }
 

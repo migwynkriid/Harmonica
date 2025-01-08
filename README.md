@@ -52,7 +52,7 @@ Current Issues:
 - **Playback Controls**: Basic controls like play, pause, skip, and stop.
 - **Queue System**: Manage a queue of songs to play in sequence.
 - **Loop Mode**: Toggle loop mode for continuous playback of the current song.
-- **Optional Permissions**: DJ and Administrator roles can perform certain actions, such as skipping, clearing the queue, or restarting the bot.
+- **Optional Permissions**: DJ role can perform certain actions, such as skipping, clearing the queue.
 
 ## Commands
 - `!help` - Display this help message.
