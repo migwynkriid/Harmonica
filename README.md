@@ -62,11 +62,14 @@ Current Issues:
 - `!resume` - Resume playback.
 - `!stop` - Stop playback, clear the queue, and leave the voice channel.
 - `!skip` - Skip the current song.
-- `!clear` - Clear the queue.
+- `!clear` - Clear the queue. Aliases: `!clearqueue`
+- `!clear [position]` - Remove song at specified position in queue.
 - `!shuffle` - Shuffle the queue.
 - `!queue` - Show the current song queue.
-- `!leave` - Leave the voice channel.
-- `!loop` - Toggle loop mode for the current song.
+- `!leave` - Leave the voice channel. Aliases: `!disconnect`
+- `!loop` - Toggle loop mode for the current song. Aliases: `!repeat`
+- `!loop [count]` - Toggle loop mode for the current song for the specified number of times. Aliases: `!repeat [count]`
+- `!ping` - Show bot latency and connection info.
 - `!log` - Log the current context.
 - `!restart` - Restart the bot (Owner only).
 - `!logclear` - Clear the log file (Owner only command).
