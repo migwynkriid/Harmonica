@@ -73,7 +73,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.now_playing_message = None
         self.downloads_dir = Path(__file__).parent.parent / 'downloads'
         self.cookie_file = Path(__file__).parent.parent / 'cookies.txt'
-        self.playback_start_time = None  # Track when the current song started playing      
+        self.playback_start_time = None  # Track when the current song started playing
+        self.in_progress_downloads = {}  # Track downloads in progress
         if not self.downloads_dir.exists():
             self.downloads_dir.mkdir()
         self.last_activity = time.time()
@@ -162,6 +163,24 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         if not ctx.voice_client and not await self.join_voice_channel(ctx):
             raise Exception("Could not join voice channel")
         self.last_activity = time.time()
+
+        # Check if this query is already being downloaded
+        if query in self.in_progress_downloads:
+            print(f"Query '{query}' already downloading - queueing duplicate request")
+            if self.in_progress_downloads[query]:  # If we have the song info
+                song_info = self.in_progress_downloads[query]
+                self.queue.append(song_info)
+                queue_embed = create_embed(
+                    "Added to Queue 🎵", 
+                    f"[ {song_info['title']}]({song_info['url']})",
+                    color=0x3498db,
+                    thumbnail_url=song_info.get('thumbnail'),
+                    ctx=ctx
+                )
+                queue_msg = await ctx.send(embed=queue_embed)
+                self.queued_messages[song_info['url']] = queue_msg
+            return
+
         processing_embed = create_embed(
             "Processing",
             f"Searching for {query}",
@@ -189,8 +208,11 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 try:
                     async with self.download_lock:
                         self.currently_downloading = True
-                        print(f"Starting download: {query}")                    
+                        print(f"Starting download: {query}")
+                        self.in_progress_downloads[query] = None  # Mark as downloading but no info yet
                         result = await self.download_song(query, status_msg=status_msg, ctx=ctx)
+                        if result:
+                            self.in_progress_downloads[query] = result  # Store the song info
                         if not result:
                             if not status_msg:
                                 error_embed = create_embed("Error", "Failed to download song", color=0xe74c3c, ctx=ctx)
