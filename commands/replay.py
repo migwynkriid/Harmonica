@@ -33,6 +33,10 @@ class ReplayCog(commands.Cog):
         current_song = music_bot.current_song
         music_bot.current_song = current_song  # Reassign to ensure it's maintained
         
+        # If this is the last song, add it back to queue to prevent queue from appearing empty
+        if len(music_bot.queue) == 0:
+            music_bot.queue.append(current_song)
+        
         # Reset playback start time and set status
         music_bot.playback_start_time = None
         music_bot.is_playing = True
