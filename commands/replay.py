@@ -3,6 +3,7 @@ from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 from scripts.config import FFMPEG_OPTIONS
+from scripts.activity import update_activity
 
 class ReplayCog(commands.Cog):
     def __init__(self, bot):
@@ -28,18 +29,26 @@ class ReplayCog(commands.Cog):
         # Stop current playback
         ctx.voice_client.stop()
         
-        # Reset playback start time
+        # Store current song info and ensure it stays as current song
+        current_song = music_bot.current_song
+        music_bot.current_song = current_song  # Reassign to ensure it's maintained
+        
+        # Reset playback start time and set status
         music_bot.playback_start_time = None
+        music_bot.is_playing = True
         
         # Create a new FFmpeg audio source with the same file
-        source = discord.FFmpegPCMAudio(music_bot.current_song['file_path'], **FFMPEG_OPTIONS)
+        source = discord.FFmpegPCMAudio(current_song['file_path'], **FFMPEG_OPTIONS)
         
         # Play the audio
         ctx.voice_client.play(source, after=lambda e: music_bot.bot_loop.create_task(music_bot.after_playing_coro(e, ctx)))
         
-        embed = create_embed("Replay", f"🔄 Restarted: {music_bot.current_song['title']}", color=0x3498db, ctx=ctx)
-        if 'thumbnail' in music_bot.current_song:
-            embed.set_thumbnail(url=music_bot.current_song['thumbnail'])
+        # Update bot activity using the bot instance
+        await self.bot.change_presence(activity=discord.Game(name=f"🎵 {current_song['title']}"))
+        
+        embed = create_embed("Replay", f"🔄 Restarted: {current_song['title']}", color=0x3498db, ctx=ctx)
+        if 'thumbnail' in current_song:
+            embed.set_thumbnail(url=current_song['thumbnail'])
         await ctx.send(embed=embed)
 
 async def setup(bot):
