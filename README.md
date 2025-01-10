@@ -59,6 +59,7 @@ Current Issues:
 
 - `!play [URL/search term]` - Play a song from YouTube or Spotify.
 - `!search [search term]` - Searches the term on YouTube.
+- `!join` - Join your voice channel. Aliases: `!summon`
 - `!pause` - Pause the current song.
 - `!resume` - Resume playback.
 - `!stop` - Stop playback, clear the queue, and leave the voice channel.
