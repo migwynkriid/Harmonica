@@ -18,7 +18,6 @@ class SearchCog(commands.Cog):
         try:
             search_opts = {
                 **BASE_YTDL_OPTIONS,
-                'format': 'best',
                 'quiet': True,
                 'no_warnings': True,
                 'extract_flat': True,
@@ -80,15 +79,25 @@ class SearchCog(commands.Cog):
             )
 
         try:
+            # Start a task to delete the message after 30 seconds
+            async def delete_after_timeout():
+                await asyncio.sleep(30)
+                try:
+                    await message.delete()
+                except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+                    pass  # Message was already deleted, we can't delete it, or other Discord error
+
+            delete_task = asyncio.create_task(delete_after_timeout())
+            
             reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+            # Cancel the delete task since we got a reaction
+            delete_task.cancel()
             
             # Delete the search message with reactions
             try:
                 await message.delete()
-            except discord.NotFound:
-                print("Message was already deleted")
-            except Exception as e:
-                print(f"Error deleting message: {e}")
+            except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+                pass  # Silently handle any Discord errors
             
             selected_index = number_emojis.index(str(reaction.emoji))
             selected_video = results[selected_index]
