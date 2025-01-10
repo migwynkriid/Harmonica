@@ -66,17 +66,21 @@ class SearchCog(commands.Cog):
         embed.set_footer(text="React with 1️⃣-5️⃣ to select a song")
         message = await ctx.send(embed=embed)
 
-        # Add reactions with 10ms delay between each
-        for emoji in number_emojis[:len(results)]:
-            await message.add_reaction(emoji)
-            await asyncio.sleep(0.01)  # 10ms delay
-
         def check(reaction, user):
             return (
                 user == ctx.author 
-                and str(reaction.emoji) in number_emojis 
+                and str(reaction.emoji) in number_emojis[:len(results)]
                 and reaction.message.id == message.id
             )
+
+        # Create tasks for adding reactions and waiting for user input
+        reaction_tasks = [
+            asyncio.create_task(message.add_reaction(emoji))
+            for emoji in number_emojis[:len(results)]
+        ]
+        wait_for_reaction = asyncio.create_task(
+            self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+        )
 
         try:
             # Start a task to delete the message after 30 seconds
@@ -89,7 +93,9 @@ class SearchCog(commands.Cog):
 
             delete_task = asyncio.create_task(delete_after_timeout())
             
-            reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+            # Wait for user reaction (other tasks will continue in parallel)
+            reaction, user = await wait_for_reaction
+            
             # Cancel the delete task since we got a reaction
             delete_task.cancel()
             
