@@ -112,7 +112,8 @@ DEFAULT_VOLUME = config.get('VOICE', {}).get('DEFAULT_VOLUME', 100)
 # Convert DEFAULT_VOLUME from percentage (0-100) to float (0.0-2.0)
 volume_float = DEFAULT_VOLUME / 50.0  # This makes 100% = 2.0, 50% = 1.0, etc.
 
-YTDL_OPTIONS = {
+# Base yt-dlp options for downloading content
+BASE_YTDL_OPTIONS = {
     'format': 'bestaudio[ext=m4a][abr<=96]/bestaudio[abr<=96]/bestaudio/best/bestaudio*',
     'outtmpl': '%(id)s.%(ext)s',
     'extract_audio': True,
@@ -141,6 +142,9 @@ YTDL_OPTIONS = {
     'player_client': 'web',  # Use only web player API
     'player_skip': ['mweb', 'android', 'ios']  # Skip other player APIs
 }
+
+# For backward compatibility
+YTDL_OPTIONS = BASE_YTDL_OPTIONS
 
 FFMPEG_OPTIONS = {
     'executable': FFMPEG_PATH,

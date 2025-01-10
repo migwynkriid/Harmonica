@@ -25,7 +25,7 @@ from scripts.activity import update_activity
 from scripts.after_playing_coro import AfterPlayingHandler
 from scripts.cleardownloads import clear_downloads_folder
 from scripts.clear_queue import clear_queue
-from scripts.config import load_config, YTDL_OPTIONS, FFMPEG_OPTIONS
+from scripts.config import load_config, YTDL_OPTIONS, FFMPEG_OPTIONS, BASE_YTDL_OPTIONS
 from scripts.downloadprogress import DownloadProgress
 from scripts.duration import get_audio_duration
 from scripts.format_size import format_size
@@ -359,9 +359,34 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             # Create DownloadProgress instance with ctx
             progress = DownloadProgress(status_msg, None)
             progress.ctx = ctx or (status_msg.channel if status_msg else None)
+            
+            # First, extract info without downloading to check if it's a livestream
+            with yt_dlp.YoutubeDL({**BASE_YTDL_OPTIONS, 'extract_flat': True}) as ydl:
+                try:
+                    info_dict = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(query, download=False))
+                    is_live = info_dict.get('is_live', False) or info_dict.get('live_status') in ['is_live', 'post_live', 'is_upcoming']
+                    if is_live:
+                        print(f"Livestream detected: {query}")
+                        # For livestreams, we don't download but return stream info
+                        result = {
+                            'title': info_dict.get('title', 'Livestream'),
+                            'url': query,
+                            'file_path': info_dict.get('url', query),  # Use the direct stream URL
+                            'is_stream': True,
+                            'is_live': True,
+                            'thumbnail': info_dict.get('thumbnail'),
+                            'duration': None  # Livestreams don't have a fixed duration
+                        }
+                        if status_msg:
+                            await status_msg.delete()
+                        return result
+                except Exception as e:
+                    print(f"Error checking livestream status: {e}")
+                    is_live = False
                 
+            # For non-livestream content, proceed with normal download
             ydl_opts = {
-                **YTDL_OPTIONS,
+                **BASE_YTDL_OPTIONS,
                 'outtmpl': os.path.join(self.downloads_dir, '%(id)s.%(ext)s'),
                 'cookiefile': self.cookie_file if self.cookie_file.exists() else None,
                 'progress_hooks': [lambda d: asyncio.run_coroutine_threadsafe(
