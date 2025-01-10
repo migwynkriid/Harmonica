@@ -112,7 +112,7 @@ class SearchCog(commands.Cog):
                 # Create processing message
                 processing_embed = create_embed(
                     "Processing",
-                    f"Adding {selected_video['title']} to queue...",
+                    f"Searching for {selected_video['title']}",
                     color=0x3498db,
                     ctx=ctx
                 )
