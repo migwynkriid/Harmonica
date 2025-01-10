@@ -58,6 +58,7 @@ Current Issues:
 - `!help` - Display this help message.
 
 - `!play [URL/search term]` - Play a song from YouTube or Spotify.
+- `!search [search term]` - Searches the term on YouTube.
 - `!pause` - Pause the current song.
 - `!resume` - Resume playback.
 - `!stop` - Stop playback, clear the queue, and leave the voice channel.
@@ -66,7 +67,7 @@ Current Issues:
 - `!clear [position]` - Remove song at specified position in queue.
 - `!shuffle` - Shuffle the queue.
 - `!queue` - Show the current song queue.
-- '!replay' - Replays the current song
+- `!replay` - Replays the current song.
 - `!leave` - Leave the voice channel. Aliases: `!disconnect`
 - `!loop` - Toggle loop mode for the current song. Aliases: `!repeat`
 - `!loop [count]` - Toggle loop mode for the current song for the specified number of times. Aliases: `!repeat [count]`
