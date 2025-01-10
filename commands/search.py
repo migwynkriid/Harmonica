@@ -78,6 +78,9 @@ class SearchCog(commands.Cog):
 
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+                # Delete the search message with reactions
+                await message.delete()
+                
                 selected_index = number_emojis.index(str(reaction.emoji))
                 selected_video = results[selected_index]
                 video_url = f"https://www.youtube.com/watch?v={selected_video['id']}"
