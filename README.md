@@ -66,6 +66,7 @@ Current Issues:
 - `!clear [position]` - Remove song at specified position in queue.
 - `!shuffle` - Shuffle the queue.
 - `!queue` - Show the current song queue.
+- '!replay' - Replays the current song
 - `!leave` - Leave the voice channel. Aliases: `!disconnect`
 - `!loop` - Toggle loop mode for the current song. Aliases: `!repeat`
 - `!loop [count]` - Toggle loop mode for the current song for the specified number of times. Aliases: `!repeat [count]`
