@@ -96,8 +96,10 @@ class SearchCog(commands.Cog):
             # Wait for user reaction (other tasks will continue in parallel)
             reaction, user = await wait_for_reaction
             
-            # Cancel the delete task since we got a reaction
+            # Cancel all remaining tasks
             delete_task.cancel()
+            for task in reaction_tasks:
+                task.cancel()
             
             # Delete the search message with reactions
             try:
