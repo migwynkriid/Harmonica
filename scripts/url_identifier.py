@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 
 def is_radio_stream(url):
     """Check if the URL is a radio stream"""
-    stream_extensions = ['.mp3', '.aac', '.m4a', '.flac', '.wav', '.ogg', '.opus', '.wma']
+    stream_extensions = ['.mp3', '.aac', '.m4a', '.flac', '.wav', '.ogg', '.opus', '.m3u8', '.wma']
     return any(url.lower().endswith(ext) for ext in stream_extensions)
 
 def is_playlist_url(url):
