@@ -177,7 +177,8 @@ class SearchCog(commands.Cog):
                     thumbnail_url=result.get('thumbnail'),
                     ctx=ctx
                 )
-                await ctx.send(embed=queue_embed)
+                queue_msg = await ctx.send(embed=queue_embed)
+                music_bot.queued_messages[result['url']] = queue_msg
                 
         except asyncio.TimeoutError:
             await message.clear_reactions()
