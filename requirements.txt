@@ -9,4 +9,5 @@ requests
 pytz
 #spotipy==2.23.0
 spotipy
+lyricsgenius
 yt-dlp

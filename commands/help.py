@@ -17,6 +17,12 @@ class HelpCog(commands.Cog):
         # Music playback commands
         help_embed.add_field(name=f"{prefix}play [URL/search term]", value="Play a song from YouTube or Spotify.", inline=False)
         help_embed.add_field(name=f"{prefix}pause", value="Pause the current song.", inline=False)
+        help_embed.add_field(name=f"{prefix}replay", value="Restart the current song.", inline=False)
+        help_embed.add_field(name=f"{prefix}clear", value="Clears the queue", inline=False)
+        help_embed.add_field(name=f"{prefix}join", value="Join a voice channel.", inline=False)
+        help_embed.add_field(name=f"{prefix}ping", value="Show bot latency and connection info.", inline=False)
+        help_embed.add_field(name=f"{prefix}search", value="Searches for a song on YouTube.", inline=False)
+        help_embed.add_field(name=f"{prefix}shuffle", value="Shuffle the queue.", inline=False)
         help_embed.add_field(name=f"{prefix}resume", value="Resume playback.", inline=False)
         help_embed.add_field(name=f"{prefix}skip", value="Skip the current song.", inline=False)
         help_embed.add_field(name=f"{prefix}stop", value="Stop playback, clear the queue, and leave the voice channel.", inline=False)
