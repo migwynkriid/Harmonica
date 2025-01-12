@@ -159,7 +159,7 @@ FFMPEG_OPTIONS = {
         '-reconnect_delay_max 5 '
         '-threads 4 '
         '-af '
-        'aresample=async=1:min_hard_comp=0.100000:first_pts=0,'
+        'aresample=async=1:min_hard_comp=0.100000:max_soft_comp=0.100000:first_pts=0,'
         'equalizer=f=100:t=h:width=200:g=-3,'
         f'volume={volume_float} '
         '-buffer_size 64k'
