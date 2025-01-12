@@ -140,7 +140,10 @@ BASE_YTDL_OPTIONS = {
     'cachedir': CACHE_DIR,  # Use absolute path for cache directory
     'write_download_archive': True,  # Keep track of downloaded videos
     'player_client': 'web',  # Use only web player API
-    'player_skip': ['mweb', 'android', 'ios']  # Skip other player APIs
+    'player_skip': ['mweb', 'android', 'ios'],  # Skip other player APIs
+    'extractor_retries': 3,  # Number of retries for extractors
+    'geo_bypass': True,  # Bypass geographical restrictions
+    'socket_timeout': 10  # Timeout for socket operations
 }
 
 # For backward compatibility
