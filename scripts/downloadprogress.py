@@ -51,6 +51,10 @@ class DownloadProgress:
                     color=0x3498db,
                     timestamp=datetime.now()
                 )
+                # Add thumbnail if available
+                thumbnail_url = info.get('thumbnail')
+                if thumbnail_url:
+                    embed.set_thumbnail(url=thumbnail_url)
                 if self.ctx and hasattr(self.ctx, 'author') and self.ctx.author:
                     embed.set_footer(
                         text=f"Requested by {self.ctx.author.display_name}",
