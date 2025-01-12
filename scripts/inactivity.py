@@ -17,9 +17,14 @@ async def check_inactivity(bot_instance):
             await asyncio.sleep(60)
             
             if bot_instance.voice_client and bot_instance.voice_client.is_connected():
-                if bot_instance.voice_client.is_playing():
+                # Reset activity timer if music is playing or there are songs in queue
+                if bot_instance.voice_client.is_playing() or bot_instance.queue:
                     bot_instance.last_activity = time.time()
-                elif time.time() - bot_instance.last_activity > bot_instance.inactivity_timeout and bot_instance.inactivity_leave:
+                # Only disconnect if inactive AND no music is playing/queued
+                elif (time.time() - bot_instance.last_activity > bot_instance.inactivity_timeout and 
+                      bot_instance.inactivity_leave and 
+                      not bot_instance.voice_client.is_playing() and 
+                      not bot_instance.queue):
                     print(f"Leaving voice channel due to {bot_instance.inactivity_timeout} seconds of inactivity")
                     await bot_instance.voice_client.disconnect()
                     clear_queue()
