@@ -255,9 +255,15 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             await play_next(ctx)
                 except Exception as e:
                     print(f"Error processing download: {str(e)}")
-                    if not status_msg:
-                        error_embed = create_embed("Error", f"Error processing: {str(e)}", color=0xe74c3c, ctx=ctx)
-                        await self.update_or_send_message(ctx, error_embed)           
+                    if status_msg:
+                        error_embed = create_embed(
+                            "Error ❌",
+                            str(e),
+                            color=0xe74c3c,
+                            ctx=ctx if ctx else status_msg.channel
+                        )
+                        await status_msg.edit(embed=error_embed)
+                    return None
                 finally:
                     self.currently_downloading = False
                     self.download_queue.task_done()
@@ -404,7 +410,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     if info.get('_type') == 'playlist' and not is_playlist_url(query):
                         # Handle search results that return a playlist
                         if not info.get('entries'):
-                            raise Exception("No search results found")
+                            raise Exception("No results found for your search.\nPlease try again with another search term")
                         info = info['entries'][0]
                         file_path = os.path.join(self.downloads_dir, f"{info['id']}.{info.get('ext', 'opus')}")
                     
@@ -486,14 +492,24 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 except Exception as e:
                     print(f"Error downloading song: {str(e)}")
                     if status_msg:
-                        error_embed = create_embed("Error", f"Error downloading song: {str(e)}", color=0xff0000, ctx=status_msg.channel)
+                        error_embed = create_embed(
+                            "Error ❌",
+                            str(e),
+                            color=0xe74c3c,
+                            ctx=ctx if ctx else status_msg.channel
+                        )
                         await status_msg.edit(embed=error_embed)
                     raise
 
         except Exception as e:
             print(f"Error downloading song: {str(e)}")
             if status_msg:
-                error_embed = create_embed("Error", f"Error downloading song: {str(e)}", color=0xff0000, ctx=status_msg.channel)
+                error_embed = create_embed(
+                    "Error ❌",
+                    str(e),
+                    color=0xe74c3c,
+                    ctx=ctx if ctx else status_msg.channel
+                )
                 await status_msg.edit(embed=error_embed)
             raise
 
