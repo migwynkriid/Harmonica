@@ -54,9 +54,15 @@ class QueueCog(commands.Cog):
                         
                     song_title = song['title']
                     if song_title not in shown_songs:
-                        queue_text += f"`{position}.` [{song_title}]({song['url']})\n"
+                        if position <= 10:  # Only show first 10 songs
+                            queue_text += f"`{position}.` [{song_title}]({song['url']})\n"
                         shown_songs.add(song_title)
                         position += 1
+                
+                # If there are more than 10 songs, show the count of remaining songs
+                if len(shown_songs) > 10:
+                    remaining_songs = len(shown_songs) - 10
+                    queue_text += f"\n+`{remaining_songs}` more in queue waiting to play\n"
 
         if not music_bot.download_queue.empty():
             queue_text += "\n**Downloading:**\n"
