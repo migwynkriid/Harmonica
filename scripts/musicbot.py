@@ -121,6 +121,18 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             print(f"{GREEN}YouTube cookies file found:{RESET} {BLUE}Yes{RESET}")
         else:
             print(f"{RED}YouTube cookies not found, features might be limited{RESET}")
+            
+        # Check for Genius lyrics token
+        genius_token_file = Path(__file__).parent.parent / '.geniuslyrics'
+        if genius_token_file.exists():
+            with open(genius_token_file, 'r') as f:
+                content = f.read().strip()
+                has_token = content and not content.endswith('=')
+            print(f"{GREEN}Genius lyrics token found:{RESET} {BLUE if has_token else RED}{'Yes' if has_token else 'No'}{RESET}")
+            if not has_token:
+                print(f"{RED}Warning: Genius lyrics token not set. Lyrics features might be limited.{RESET}")
+        else:
+            print(f"{RED}Warning: Genius lyrics token file not found. Lyrics features might be limited.{RESET}")
 
     async def setup(self, bot_instance):
         """Setup the bot with the event loop"""
@@ -473,8 +485,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             try:
                                 await status_msg.fetch()
                             except discord.NotFound:
-                                message_exists = False
-                            
+                                message_exists = False               
                             if message_exists:
                                 await status_msg.delete()
                         except Exception as e:
