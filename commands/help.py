@@ -26,6 +26,7 @@ class HelpCog(commands.Cog):
         help_embed.add_field(name=f"{prefix}resume", value="Resume playback.", inline=False)
         help_embed.add_field(name=f"{prefix}skip", value="Skip the current song.", inline=False)
         help_embed.add_field(name=f"{prefix}stop", value="Stop playback, clear the queue, and leave the voice channel.", inline=False)
+        help_embed.add_field(name=f"{prefix}lyrics", value="Get lyrics for the current song", inline=False)
         help_embed.add_field(name=f"{prefix}queue", value="Show the current song queue.", inline=False)
         help_embed.add_field(name=f"{prefix}leave", value="Leave the voice channel.", inline=False)
         help_embed.add_field(name=f"{prefix}loop", value="Toggle loop mode for the current song.", inline=False)

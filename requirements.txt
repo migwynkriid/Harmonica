@@ -10,4 +10,5 @@ pytz
 #spotipy==2.23.0
 spotipy
 lyricsgenius
+azapi
 yt-dlp
