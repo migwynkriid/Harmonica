@@ -76,6 +76,15 @@ async def lyrics(ctx):
         await ctx.send(embed=create_embed("Error", "No song is currently playing!", color=0xe74c3c, ctx=ctx))
         return
         
+    # Get current song title and clean it
+    query = music_bot.current_song.get('title')
+    if not query:
+        await ctx.send(embed=create_embed("Error", "Could not get the current song's title.", color=0xe74c3c, ctx=ctx))
+        return
+    
+    # Clean the song title before searching
+    cleaned_query = clean_song_title(query)
+
     # Get token from .geniuslyrics file
     token_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.geniuslyrics')
     try:
@@ -100,17 +109,34 @@ async def lyrics(ctx):
         return
     
     if not genius_token:
-        await ctx.send(embed=create_embed("Configuration Error", "Genius API token is empty. Please add your token after 'YOUR_GENIUS_CLIENT_ACCESS_TOKEN=' in the `.geniuslyrics` file.", color=0xe74c3c, ctx=ctx))
-        return
-    
-    # Get current song title and clean it
-    query = music_bot.current_song.get('title')
-    if not query:
-        await ctx.send(embed=create_embed("Error", "Could not get the current song's title.", color=0xe74c3c, ctx=ctx))
-        return
-    
-    # Clean the song title before searching
-    cleaned_query = clean_song_title(query)
+        # Skip Genius and try AZLyrics directly
+        try:
+            # Initialize AZLyrics
+            api = AZlyrics()
+            
+            # Try to split the title which is usually in "Artist - Song" format
+            if " - " in cleaned_query:
+                artist, title = cleaned_query.split(" - ", 1)
+            else:
+                # If no clear separator, use the whole title as song name
+                title = cleaned_query
+                artist = ""
+            
+            # Search for lyrics
+            api.title = title
+            api.artist = artist
+            lyrics = api.getLyrics(save=False)
+            
+            if lyrics and lyrics != "":
+                await send_lyrics_embed(ctx, query, artist if artist else "Unknown Artist", lyrics, "AZLyrics")
+                return
+            
+            await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {query}", color=0xe74c3c, ctx=ctx))
+            return
+                
+        except Exception as e:
+            await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {query}", color=0xe74c3c, ctx=ctx))
+            return
     
     try:
         # First try with Genius
@@ -140,13 +166,13 @@ async def lyrics(ctx):
             lyrics = api.getLyrics(save=False)
             
             if lyrics and lyrics != "":
-                await send_lyrics_embed(ctx, title, artist if artist else "Unknown Artist", lyrics, "AZLyrics")
+                await send_lyrics_embed(ctx, query, artist if artist else "Unknown Artist", lyrics, "AZLyrics")
                 return
             
-            await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {query}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {cleaned_query}", color=0xe74c3c, ctx=ctx))
                 
         except Exception as e:
-            await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {query}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {cleaned_query}", color=0xe74c3c, ctx=ctx))
             
     except Exception as e:
         await ctx.send(embed=create_embed("Error", f"An error occurred while fetching lyrics: {str(e)}", color=0xe74c3c, ctx=ctx))

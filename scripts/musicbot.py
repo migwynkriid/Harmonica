@@ -20,7 +20,7 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from pathlib import Path
 from pytz import timezone
-from scripts.constants import RED, GREEN, BLUE, RESET, SHOW_PROGRESS_BAR
+from scripts.constants import RED, GREEN, BLUE, RESET, SHOW_PROGRESS_BAR, YELLOW
 from scripts.activity import update_activity
 from scripts.after_playing_coro import AfterPlayingHandler
 from scripts.cleardownloads import clear_downloads_folder
@@ -130,9 +130,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 has_token = content and not content.endswith('=')
             print(f"{GREEN}Genius lyrics token found:{RESET} {BLUE if has_token else RED}{'Yes' if has_token else 'No'}{RESET}")
             if not has_token:
-                print(f"{RED}Warning: Genius lyrics token not set. Lyrics features might be limited.{RESET}")
-        else:
-            print(f"{RED}Warning: Genius lyrics token file not found. Lyrics features might be limited.{RESET}")
+                print(f"{RED}Warning: Genius lyrics token not found. {YELLOW}AZLyrics will be used as a fallback.{RESET}")
 
     async def setup(self, bot_instance):
         """Setup the bot with the event loop"""
