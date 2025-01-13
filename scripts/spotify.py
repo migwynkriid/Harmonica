@@ -1,3 +1,13 @@
+import os
+from pathlib import Path
+import shutil
+
+# Check if .spotifyenv exists, if not create it from example
+spotifyenv_path = Path(__file__).parent.parent / '.spotifyenv'
+spotifyenv_example_path = Path(__file__).parent.parent / '.spotifyenv.example'
+if not spotifyenv_path.exists() and spotifyenv_example_path.exists():
+    shutil.copy2(spotifyenv_example_path, spotifyenv_path)
+
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import os
