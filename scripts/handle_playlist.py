@@ -17,7 +17,7 @@ class PlaylistHandler:
                 if entry:
                     # Check if bot is still in voice chat
                     if not self.voice_client or not self.voice_client.is_connected():
-                        await self.bot_instance.cancel_downloads()
+                        await self.cancel_downloads()
                         if status_msg:
                             try:
                                 await status_msg.delete()
