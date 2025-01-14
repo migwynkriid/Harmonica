@@ -32,7 +32,7 @@ class StopCog(commands.Cog):
             music_bot.current_song = None
             music_bot.is_playing = False
             
-            await ctx.send(embed=create_embed("Stopped", "Playback stopped cleaeared the queue", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Stopped", "Playback stopped and cleared the queue", color=0xe74c3c, ctx=ctx))
 
         except Exception as e:
             await ctx.send(embed=create_embed("Error", f"An error occurred while stopping: {str(e)}", color=0xe74c3c, ctx=ctx))
