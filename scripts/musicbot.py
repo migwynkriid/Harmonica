@@ -451,12 +451,23 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     self.current_ydl = None
 
             try:
-                # First, extract info without downloading to check if it's a livestream
+                # First, extract info without downloading to check if it's a livestream or if file exists
                 with yt_dlp.YoutubeDL({**BASE_YTDL_OPTIONS, 'extract_flat': True}) as ydl:
                     self.current_download_task = asyncio.create_task(extract_info(ydl, query, download=False))
                     try:
                         info_dict = await self.current_download_task
                         is_live = info_dict.get('is_live', False) or info_dict.get('live_status') in ['is_live', 'post_live', 'is_upcoming']
+                        
+                        # Check if file already exists
+                        video_id = info_dict.get('id')
+                        existing_file = None
+                        if video_id:
+                            for ext in ['opus', 'm4a', 'mp3', 'webm']:
+                                potential_file = os.path.join(self.downloads_dir, f"{video_id}.{ext}")
+                                if os.path.exists(potential_file):
+                                    existing_file = potential_file
+                                    break
+                        
                         if is_live:
                             print(f"Livestream detected: {query}")
                             result = {
@@ -471,6 +482,19 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             if status_msg:
                                 await status_msg.delete()
                             return result
+                        elif existing_file:
+                            print(f"Using existing file: {existing_file}")
+                            if status_msg:
+                                await status_msg.delete()
+                            return {
+                                'title': info_dict['title'],
+                                'url': info_dict['webpage_url'] if info_dict.get('webpage_url') else info_dict['url'],
+                                'file_path': existing_file,
+                                'thumbnail': info_dict.get('thumbnail'),
+                                'is_stream': False,
+                                'is_from_playlist': is_playlist_url(query),
+                                'ctx': status_msg.channel if status_msg else None
+                            }
                     except asyncio.CancelledError:
                         print("Info extraction cancelled")
                         raise Exception("Download cancelled")
