@@ -55,12 +55,17 @@ class PlaylistHandler:
                 total_videos = len(info['entries'])
 
                 if status_msg:
+                    playlist_title = info.get('title', 'Unknown')
+                    playlist_url = info.get('webpage_url', url)
+                    description = f"Playlist: [{playlist_title}]({playlist_url})\nEntries: {total_videos}"
                     playlist_embed = create_embed(
                         "Processing Playlist",
-                        f"Extracted {total_videos} links. Starting downloads...",
+                        description,
                         color=0x3498db,
                         ctx=ctx
                     )
+                    if info.get('thumbnail'):
+                        playlist_embed.set_thumbnail(url=info['thumbnail'])
                     await status_msg.edit(embed=playlist_embed)
 
                 if not self.voice_client or not self.voice_client.is_connected():
