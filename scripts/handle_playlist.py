@@ -15,6 +15,16 @@ class PlaylistHandler:
         try:
             for entry in entries:
                 if entry:
+                    # Check if bot is still in voice chat
+                    if not self.voice_client or not self.voice_client.is_connected():
+                        await self.bot_instance.cancel_downloads()
+                        if status_msg:
+                            try:
+                                await status_msg.delete()
+                            except:
+                                pass
+                        return
+                        
                     try:
                         video_url = f"https://youtube.com/watch?v={entry['id']}"
                         song_info = await self.download_song(video_url, status_msg=None)
