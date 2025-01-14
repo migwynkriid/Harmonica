@@ -112,7 +112,7 @@ async def lyrics(ctx):
         # Skip Genius and try AZLyrics directly
         try:
             # Initialize AZLyrics
-            api = AZlyrics('google', accuracy=0.2)
+            api = AZlyrics('google', accuracy=0.1)
             
             # Try to split the title which is usually in "Artist - Song" format
             if " - " in cleaned_query:
