@@ -7,6 +7,7 @@ from pathlib import Path
 from scripts.play_next import play_next
 from scripts.config import load_config
 from scripts.messages import update_or_send_message, create_embed
+from scripts.duration import get_audio_duration
 
 class PlaylistHandler:
     async def _process_playlist_downloads(self, entries, ctx, status_msg=None):
@@ -17,6 +18,8 @@ class PlaylistHandler:
                     video_url = f"https://youtube.com/watch?v={entry['id']}"
                     song_info = await self.download_song(video_url, status_msg=None)
                     if song_info:
+                        # Get duration using ffprobe
+                        song_info['duration'] = get_audio_duration(song_info['file_path'])
                         async with self.queue_lock:
                             self.queue.append(song_info)
                             if not self.is_playing and not self.voice_client.is_playing():
@@ -82,6 +85,8 @@ class PlaylistHandler:
                         first_url = f"https://youtube.com/watch?v={first_entry['id']}"
                         first_song = await self.download_song(first_url, status_msg=None)
                         if first_song:
+                            # Get duration using ffprobe
+                            first_song['duration'] = get_audio_duration(first_song['file_path'])
                             self.queue.append(first_song)
                             if not self.is_playing:
                                 await play_next(ctx)

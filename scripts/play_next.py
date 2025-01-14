@@ -104,6 +104,8 @@ async def play_next(ctx):
                             music_bot.current_song['file_path'],
                             **FFMPEG_OPTIONS
                         )
+                        # Set the playback start time right before starting playback
+                        music_bot.playback_start_time = time.time()
                         music_bot.voice_client.play(
                             audio_source,
                             after=lambda e: asyncio.run_coroutine_threadsafe(
