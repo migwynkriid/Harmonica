@@ -7,6 +7,7 @@ import os
 from scripts.play_next import play_next
 from dotenv import load_dotenv
 from scripts.messages import create_embed
+from scripts.duration import get_audio_duration
 
 class SpotifyHandler:
     async def handle_spotify_url(self, url, ctx, status_msg=None):
@@ -62,7 +63,8 @@ class SpotifyHandler:
                 song_info['is_from_playlist'] = False
                 # Add requester information
                 song_info['requester'] = ctx.author
-                
+                # Get duration using ffprobe
+                song_info['duration'] = get_audio_duration(song_info['file_path'])
                 # Add to queue
                 self.queue.append(song_info)
                 
@@ -136,6 +138,9 @@ class SpotifyHandler:
                 first_song = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
                 if first_song:
                     first_song['is_from_playlist'] = True
+                    first_song['requester'] = ctx.author
+                    # Get duration using ffprobe
+                    first_song['duration'] = get_audio_duration(first_song['file_path'])
                     self.queue.append(first_song)
                     if not self.is_playing and not self.voice_client.is_playing():
                         await play_next(ctx)
@@ -185,6 +190,9 @@ class SpotifyHandler:
                 first_song = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
                 if first_song:
                     first_song['is_from_playlist'] = True
+                    first_song['requester'] = ctx.author
+                    # Get duration using ffprobe
+                    first_song['duration'] = get_audio_duration(first_song['file_path'])
                     self.queue.append(first_song)
                     if not self.is_playing and not self.voice_client.is_playing():
                         await play_next(ctx)
@@ -215,19 +223,16 @@ class SpotifyHandler:
 
                 artists = ", ".join([artist['name'] for artist in track['artists']])
                 search_query = f"{track['name']} {artists}"
-
-                try:
-                    song_info = await self.download_song(search_query, status_msg=None, ctx=ctx)
-                    if song_info:
-                        song_info['is_from_playlist'] = True
-                        async with self.queue_lock:
-                            self.queue.append(song_info)
-                            if not self.is_playing and not self.voice_client.is_playing():
-                                await play_next(ctx)
-                except Exception as e:
-                    print(f"Error processing track '{track['name']}': {str(e)}")
-                    continue
-
+                
+                song_info = await self.download_song(search_query, status_msg=None, ctx=ctx)
+                if song_info:
+                    # Get duration using ffprobe
+                    song_info['duration'] = get_audio_duration(song_info['file_path'])
+                    song_info['requester'] = ctx.author
+                    self.queue.append(song_info)
+                    
+                    if not self.is_playing and not self.voice_client.is_playing():
+                        await play_next(ctx)
                 processed += 1
                 if status_msg and processed % 5 == 0:
                     try:
