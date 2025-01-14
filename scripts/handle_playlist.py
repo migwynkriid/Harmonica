@@ -5,7 +5,7 @@ import os
 import json
 from pathlib import Path
 from scripts.play_next import play_next
-from scripts.config import load_config
+from scripts.config import load_config, BASE_YTDL_OPTIONS
 from scripts.messages import update_or_send_message, create_embed
 from scripts.duration import get_audio_duration
 
@@ -15,20 +15,24 @@ class PlaylistHandler:
         try:
             for entry in entries:
                 if entry:
-                    video_url = f"https://youtube.com/watch?v={entry['id']}"
-                    song_info = await self.download_song(video_url, status_msg=None)
-                    if song_info:
-                        # Get duration using ffprobe
-                        song_info['duration'] = get_audio_duration(song_info['file_path'])
-                        async with self.queue_lock:
-                            self.queue.append(song_info)
-                            if not self.is_playing and not self.voice_client.is_playing():
-                                await play_next(ctx)
+                    try:
+                        video_url = f"https://youtube.com/watch?v={entry['id']}"
+                        song_info = await self.download_song(video_url, status_msg=None)
+                        if song_info:
+                            # Get duration using ffprobe
+                            song_info['duration'] = get_audio_duration(song_info['file_path'])
+                            async with self.queue_lock:
+                                self.queue.append(song_info)
+                                if not self.is_playing and not self.voice_client.is_playing():
+                                    await play_next(ctx)
+                    except Exception as e:
+                        print(f"Error downloading song {entry.get('id', 'unknown')}: {str(e)}")
+                        continue  # Skip this song and continue with the next one
 
             if status_msg:
                 final_embed = create_embed(
                     "Playlist Complete",
-                    f"All songs have been downloaded and queued",
+                    f"All available songs have been downloaded and queued",
                     color=0x00ff00,
                     ctx=status_msg.channel
                 )
@@ -44,10 +48,13 @@ class PlaylistHandler:
     async def _handle_playlist(self, url, ctx, status_msg=None):
         """Handle a YouTube playlist by extracting video links and downloading them sequentially"""
         try:
-            ydl_opts = {
-                'extract_flat': True,
-                'quiet': True
-            }
+            # Use BASE_YTDL_OPTIONS and override only what's needed for playlist extraction
+            ydl_opts = BASE_YTDL_OPTIONS.copy()
+            ydl_opts.update({
+                'extract_flat': 'in_playlist',  # Only extract video metadata for playlist items
+                'format': None,  # Don't need format for playlist extraction
+                'download': False  # Don't download during playlist extraction
+            })
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(url, download=False))
