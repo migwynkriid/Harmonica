@@ -118,12 +118,10 @@ def setup_logging(log_level):
     filtered_loggers = [
         'discord',
         'yt-dlp',
-        'discord.client',
         'discord.voice_client',
         'discord.state',
         'discord.player',
         'discord.voice_state',
-        'discord.gateway',
         'discord.interactions',
         'discord.webhook',
         'discord.ext.commands',
