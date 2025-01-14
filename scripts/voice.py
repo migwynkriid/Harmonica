@@ -110,6 +110,8 @@ async def handle_voice_state_update(bot_instance, member, before, after):
                     bot_instance.current_song = None
                     bot_instance.is_playing = False
                     bot_instance.now_playing_message = None
+                # Cancel any active downloads before disconnecting
+                await bot_instance.cancel_downloads()
                 await bot_instance.voice_client.disconnect()
                 print(f"No users in voice channel {bot_voice_channel.name}, disconnecting bot")
                 await bot_instance.update_activity()
