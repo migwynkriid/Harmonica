@@ -26,6 +26,8 @@ async def check_inactivity(bot_instance):
                       not bot_instance.voice_client.is_playing() and 
                       not bot_instance.queue):
                     print(f"Leaving voice channel due to {bot_instance.inactivity_timeout} seconds of inactivity")
+                    # Cancel any active downloads before disconnecting
+                    await bot_instance.cancel_downloads()
                     await bot_instance.voice_client.disconnect()
                     clear_queue()
         except Exception as e:
