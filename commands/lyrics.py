@@ -147,32 +147,36 @@ async def lyrics(ctx):
             await send_lyrics_embed(ctx, song.title, song.artist, song.lyrics, "Genius")
             return
             
-        # If Genius fails, try with AZLyrics
-        try:
-            # Initialize AZLyrics
-            api = AZlyrics()
+    except Exception as e:
+        if "403" in str(e):
+            pass  # Skip to AZLyrics fallback
+        else:
+            await ctx.send(embed=create_embed("Error", f"An error occurred while fetching lyrics: {str(e)}", color=0xe74c3c, ctx=ctx))
+            return
             
-            # Try to split the title which is usually in "Artist - Song" format
-            if " - " in cleaned_query:
-                artist, title = cleaned_query.split(" - ", 1)
-            else:
-                # If no clear separator, use the whole title as song name
-                title = cleaned_query
-                artist = ""
-            
-            # Search for lyrics
-            api.title = title
-            api.artist = artist
-            lyrics = api.getLyrics(save=False)
-            
-            if lyrics and lyrics != "":
-                await send_lyrics_embed(ctx, query, artist if artist else "Unknown Artist", lyrics, "AZLyrics")
-                return
-            
-            await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {cleaned_query}", color=0xe74c3c, ctx=ctx))
-                
-        except Exception as e:
-            await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {cleaned_query}", color=0xe74c3c, ctx=ctx))
+    # If Genius fails, try with AZLyrics
+    try:
+        # Initialize AZLyrics
+        api = AZlyrics()
+        
+        # Try to split the title which is usually in "Artist - Song" format
+        if " - " in cleaned_query:
+            artist, title = cleaned_query.split(" - ", 1)
+        else:
+            # If no clear separator, use the whole title as song name
+            title = cleaned_query
+            artist = ""
+        
+        # Search for lyrics
+        api.title = title
+        api.artist = artist
+        lyrics = api.getLyrics(save=False)
+        
+        if lyrics and lyrics != "":
+            await send_lyrics_embed(ctx, query, artist if artist else "Unknown Artist", lyrics, "AZLyrics")
+            return
+        
+        await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {cleaned_query}", color=0xe74c3c, ctx=ctx))
             
     except Exception as e:
-        await ctx.send(embed=create_embed("Error", f"An error occurred while fetching lyrics: {str(e)}", color=0xe74c3c, ctx=ctx))
+        await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {cleaned_query}", color=0xe74c3c, ctx=ctx))
