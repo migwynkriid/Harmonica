@@ -18,7 +18,7 @@ class ShuffleCog(commands.Cog):
         if success:
             await ctx.send(embed=create_embed("Queue Shuffled", "The queue has been randomly shuffled!\n Pending downloads are not shuffled", color=0x2ecc71, ctx=ctx))
         else:
-            await ctx.send(embed=create_embed("Cannot Shuffle", "The queue is empty!", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Cannot Shuffle", "Nothing is playing or nothing is waiting in the queue!", color=0xe74c3c, ctx=ctx))
 
 async def setup(bot):
     await bot.add_cog(ShuffleCog(bot))
