@@ -326,6 +326,20 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.should_stop_downloads = False
         self.current_download_task = None
 
+        # Stop any current playback
+        if self.voice_client and self.voice_client.is_playing():
+            self.voice_client.stop()
+        
+        # Clear the queue and disconnect
+        self.queue.clear()
+        if self.voice_client and self.voice_client.is_connected():
+            await self.voice_client.disconnect()
+            
+        # Reset the music bot state
+        self.current_song = None
+        self.is_playing = False
+        await update_activity(self.bot, self.current_song, self.is_playing)
+
     def _download_hook(self, d):
         """Custom download hook that checks for cancellation"""
         if self.should_stop_downloads:
