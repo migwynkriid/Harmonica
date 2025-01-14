@@ -16,7 +16,7 @@ class ShuffleCog(commands.Cog):
         success = await shuffle_queue(ctx, music_bot)
         
         if success:
-            await ctx.send(embed=create_embed("Queue Shuffled", "The queue has been randomly shuffled!", color=0x2ecc71, ctx=ctx))
+            await ctx.send(embed=create_embed("Queue Shuffled", "The queue has been randomly shuffled!\n Pending downloads are not shuffled", color=0x2ecc71, ctx=ctx))
         else:
             await ctx.send(embed=create_embed("Cannot Shuffle", "The queue is empty!", color=0xe74c3c, ctx=ctx))
 
