@@ -16,10 +16,23 @@ class StopCog(commands.Cog):
         from bot import music_bot
         
         try:
+            # Cancel any active downloads first
+            await music_bot.cancel_downloads()
+            
+            # Stop any current playback
+            if music_bot.voice_client and music_bot.voice_client.is_playing():
+                music_bot.voice_client.stop()
+            
+            # Clear the queue and disconnect
             clear_queue()
             if music_bot.voice_client and music_bot.voice_client.is_connected():
                 await music_bot.voice_client.disconnect()
-            await ctx.send(embed=create_embed("Stopped", "Music stopped and queue cleared", color=0xe74c3c, ctx=ctx))
+                
+            # Reset the music bot state
+            music_bot.current_song = None
+            music_bot.is_playing = False
+            
+            await ctx.send(embed=create_embed("Stopped", "Playback stopped cleaeared the queue", color=0xe74c3c, ctx=ctx))
 
         except Exception as e:
             await ctx.send(embed=create_embed("Error", f"An error occurred while stopping: {str(e)}", color=0xe74c3c, ctx=ctx))

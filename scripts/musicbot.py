@@ -88,6 +88,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.was_skipped = False  # Add flag to track if song was skipped
         self.cache_dir = Path(__file__).parent.parent / '.cache'
         self.spotify_cache = self.cache_dir / 'spotify'
+        self.should_stop_downloads = False  # Flag to control download cancellation
+        self.current_download_task = None  # Track current download task
+        self.current_ydl = None  # Track current YoutubeDL instance
         
         # Create cache directories if they don't exist
         self.cache_dir.mkdir(exist_ok=True)
@@ -281,6 +284,54 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 print(f"Error in download queue processor: {str(e)}")
                 await asyncio.sleep(1)
 
+    async def cancel_downloads(self):
+        """Cancel all active downloads and clear the download queue"""
+        self.should_stop_downloads = True
+        
+        # Cancel current download task if it exists
+        if self.current_download_task and not self.current_download_task.done():
+            self.current_download_task.cancel()
+            try:
+                await self.current_download_task
+            except (asyncio.CancelledError, Exception):
+                pass
+
+        # Force close current yt-dlp instance if it exists
+        if self.current_ydl:
+            try:
+                # Try to abort the current download
+                if hasattr(self.current_ydl, '_download_retcode'):
+                    self.current_ydl._download_retcode = 1
+                # Close the instance
+                self.current_ydl.close()
+            except Exception as e:
+                print(f"Error closing yt-dlp instance: {e}")
+        
+        # Clear the download queue
+        while not self.download_queue.empty():
+            try:
+                self.download_queue.get_nowait()
+                self.download_queue.task_done()
+            except asyncio.QueueEmpty:
+                break
+                
+        # Clear any incomplete downloads from the queue
+        self.queue = [song for song in self.queue if not isinstance(song.get('file_path'), type(None))]
+        
+        # Clear in-progress downloads tracking
+        self.in_progress_downloads.clear()
+        
+        # Wait a moment for any active downloads to notice the cancellation flag
+        await asyncio.sleep(0.5)
+        self.should_stop_downloads = False
+        self.current_download_task = None
+
+    def _download_hook(self, d):
+        """Custom download hook that checks for cancellation"""
+        if self.should_stop_downloads:
+            raise Exception("Download cancelled by user")
+        return d
+
     def create_progress_bar(self, percentage, length=10):
         """Create a progress bar with the given percentage"""
         filled = int(length * (percentage / 100))
@@ -376,46 +427,65 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             progress = DownloadProgress(status_msg, None)
             progress.ctx = ctx or (status_msg.channel if status_msg else None)
             
-            # First, extract info without downloading to check if it's a livestream
-            with yt_dlp.YoutubeDL({**BASE_YTDL_OPTIONS, 'extract_flat': True}) as ydl:
+            async def extract_info(ydl, url, download=True):
+                """Wrap yt-dlp extraction in a cancellable task"""
                 try:
-                    info_dict = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(query, download=False))
-                    is_live = info_dict.get('is_live', False) or info_dict.get('live_status') in ['is_live', 'post_live', 'is_upcoming']
-                    if is_live:
-                        print(f"Livestream detected: {query}")
-                        # For livestreams, we don't download but return stream info
-                        result = {
-                            'title': info_dict.get('title', 'Livestream'),
-                            'url': query,
-                            'file_path': info_dict.get('url', query),  # Use the direct stream URL
-                            'is_stream': True,
-                            'is_live': True,
-                            'thumbnail': info_dict.get('thumbnail'),
-                            'duration': None  # Livestreams don't have a fixed duration
-                        }
-                        if status_msg:
-                            await status_msg.delete()
-                        return result
-                except Exception as e:
-                    print(f"Error checking livestream status: {e}")
-                    is_live = False
-                
-            # For non-livestream content, proceed with normal download
-            ydl_opts = {
-                **BASE_YTDL_OPTIONS,
-                'outtmpl': os.path.join(self.downloads_dir, '%(id)s.%(ext)s'),
-                'cookiefile': self.cookie_file if self.cookie_file.exists() else None,
-                'progress_hooks': [lambda d: asyncio.run_coroutine_threadsafe(
-                    progress.progress_hook(d), 
-                    self.bot_loop
-                )] if status_msg else [],
-                'default_search': 'ytsearch'
-            }
+                    self.current_ydl = ydl
+                    loop = asyncio.get_event_loop()
+                    return await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=download))
+                finally:
+                    self.current_ydl = None
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                try:
-                    # Single extraction with download
-                    info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(query, download=True))
+            try:
+                # First, extract info without downloading to check if it's a livestream
+                with yt_dlp.YoutubeDL({**BASE_YTDL_OPTIONS, 'extract_flat': True}) as ydl:
+                    self.current_download_task = asyncio.create_task(extract_info(ydl, query, download=False))
+                    try:
+                        info_dict = await self.current_download_task
+                        is_live = info_dict.get('is_live', False) or info_dict.get('live_status') in ['is_live', 'post_live', 'is_upcoming']
+                        if is_live:
+                            print(f"Livestream detected: {query}")
+                            result = {
+                                'title': info_dict.get('title', 'Livestream'),
+                                'url': query,
+                                'file_path': info_dict.get('url', query),
+                                'is_stream': True,
+                                'is_live': True,
+                                'thumbnail': info_dict.get('thumbnail'),
+                                'duration': None
+                            }
+                            if status_msg:
+                                await status_msg.delete()
+                            return result
+                    except asyncio.CancelledError:
+                        print("Info extraction cancelled")
+                        raise Exception("Download cancelled")
+                    except Exception as e:
+                        print(f"Error checking livestream status: {e}")
+                        is_live = False
+
+                # For non-livestream content, proceed with normal download
+                ydl_opts = {
+                    **BASE_YTDL_OPTIONS,
+                    'outtmpl': os.path.join(self.downloads_dir, '%(id)s.%(ext)s'),
+                    'cookiefile': self.cookie_file if self.cookie_file.exists() else None,
+                    'progress_hooks': [
+                        lambda d: self._download_hook(d),
+                        lambda d: asyncio.run_coroutine_threadsafe(
+                            progress.progress_hook(d),
+                            self.bot_loop
+                        ) if status_msg else None
+                    ],
+                    'default_search': 'ytsearch'
+                }
+
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    self.current_download_task = asyncio.create_task(extract_info(ydl, query, download=True))
+                    try:
+                        info = await self.current_download_task
+                    except asyncio.CancelledError:
+                        print("Download cancelled")
+                        raise Exception("Download cancelled")
                     
                     if info.get('_type') == 'playlist' and not is_playlist_url(query):
                         # Handle search results that return a playlist
@@ -498,17 +568,17 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         'is_from_playlist': is_playlist_url(query),
                         'ctx': status_msg.channel if status_msg else None
                     }
-                except Exception as e:
-                    print(f"Error downloading song: {str(e)}")
-                    if status_msg:
-                        error_embed = create_embed(
-                            "Error ❌",
-                            str(e),
-                            color=0xe74c3c,
-                            ctx=ctx if ctx else status_msg.channel
-                        )
-                        await status_msg.edit(embed=error_embed)
-                    raise
+            except Exception as e:
+                print(f"Error downloading song: {str(e)}")
+                if status_msg:
+                    error_embed = create_embed(
+                        "Error ❌",
+                        str(e),
+                        color=0xe74c3c,
+                        ctx=ctx if ctx else status_msg.channel
+                    )
+                    await status_msg.edit(embed=error_embed)
+                raise
 
         except Exception as e:
             print(f"Error downloading song: {str(e)}")
