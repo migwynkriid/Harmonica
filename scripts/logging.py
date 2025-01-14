@@ -34,7 +34,12 @@ class MessageFilter(logging.Filter):
             'has not terminated. Waiting to terminate',
             'ffmpeg process',              # Ignore FFmpeg process termination messages
             'Dispatching event',           # Filter out Discord event dispatching messages
-            'The voice handshake is being terminated'  # Filter voice termination messages
+            'The voice handshake is being terminated', # Filter voice termination messages
+            'discord.client Dispatching event',  # Filter out Discord event dispatching messages
+            'discord.client',
+            'discord.gateway',
+            'discord.gateway Keeping shard ID', # Gateway shard messages
+            'discord.gateway For Shard ID', # Gateway shard messages
         ]
 
     def filter(self, record):
