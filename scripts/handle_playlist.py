@@ -64,9 +64,14 @@ class PlaylistHandler:
                         color=0x3498db,
                         ctx=ctx
                     )
-                    if info.get('thumbnail'):
-                        playlist_embed.set_thumbnail(url=info['thumbnail'])
+                    # Try different thumbnail sources
+                    thumbnail_url = info.get('thumbnails', [{}])[0].get('url') if info.get('thumbnails') else None
+                    if not thumbnail_url:
+                        thumbnail_url = info.get('thumbnail')
+                    if thumbnail_url:
+                        playlist_embed.set_thumbnail(url=thumbnail_url)
                     await status_msg.edit(embed=playlist_embed)
+                    await status_msg.delete(delay=10)  
 
                 if not self.voice_client or not self.voice_client.is_connected():
                     await self.join_voice_channel(ctx)
