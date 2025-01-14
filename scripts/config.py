@@ -143,7 +143,9 @@ BASE_YTDL_OPTIONS = {
     'player_skip': ['mweb', 'android', 'ios'],  # Skip other player APIs
     'extractor_retries': 3,  # Number of retries for extractors
     'geo_bypass': True,  # Bypass geographical restrictions
-    'socket_timeout': 10  # Timeout for socket operations
+    'socket_timeout': 10,  # Timeout for socket operations
+    'ignore_no_formats_error': True,  # Skip videos with no available formats
+    'ignore_unavailable_video': True  # Skip unavailable videos
 }
 
 # For backward compatibility
