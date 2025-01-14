@@ -21,6 +21,7 @@ from discord.ext import tasks
 from collections import deque
 from datetime import datetime
 from pytz import timezone
+from scripts.commandlogger import CommandLogger
 from scripts.downloadprogress import DownloadProgress
 from scripts.constants import RED, GREEN, BLUE, RESET
 from scripts.musicbot import MusicBot, PlaylistHandler, AfterPlayingHandler, SpotifyHandler
@@ -86,6 +87,16 @@ bot = commands.Bot(
     case_insensitive=True,
     owner_id=int(OWNER_ID)
 )
+
+command_logger = CommandLogger()
+
+@bot.event
+async def on_command(ctx):
+    """Log commands when they are used"""
+    command_name = ctx.command.name if ctx.command else "unknown"
+    full_command = ctx.message.content
+    username = str(ctx.author)
+    command_logger.log_command(username, full_command)
 
 @bot.event
 async def on_command_error(ctx, error):
