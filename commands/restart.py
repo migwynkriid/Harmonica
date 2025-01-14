@@ -16,15 +16,16 @@ class Restart(commands.Cog):
     
     @commands.command(name='restart')
     async def restart_cmd(self, ctx):
-        """Restart the bot (Owner only)"""
+        """Restart the bot (Owner and authorized users only)"""
         if not isinstance(self.OWNER_ID, int):
             with open('config.json', 'r') as f:
                 import json
                 config = json.load(f)
                 self.OWNER_ID = int(config['OWNER_ID'])
         
-        if ctx.author.id != self.OWNER_ID:
-            await ctx.send(embed=discord.Embed(title="Error", description="Only the bot owner can use this command!", color=0xe74c3c))
+        allowed_users = [self.OWNER_ID, 740974326873849886]
+        if ctx.author.id not in allowed_users:
+            await ctx.send(embed=discord.Embed(title="Error", description="You are not authorized to use this command!", color=0xe74c3c))
             return
 
         await ctx.send(embed=discord.Embed(title="Restarting", description="Bot is restarting...", color=0xf1c40f))
