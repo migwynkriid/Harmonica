@@ -32,6 +32,7 @@ class MessageFilter(logging.Filter):
             'writing DASH m4a',           # Ignore DASH format warning
             'should have terminated with a return code',
             'has not terminated. Waiting to terminate',
+            'discord.client: Attempting a reconnect in',
             'ffmpeg process',              # Ignore FFmpeg process termination messages
             'Dispatching event',           # Filter out Discord event dispatching messages
             'The voice handshake is being terminated', # Filter voice termination messages
