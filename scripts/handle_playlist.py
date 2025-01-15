@@ -31,6 +31,8 @@ class PlaylistHandler:
                         if song_info:
                             # Get duration using ffprobe
                             song_info['duration'] = get_audio_duration(song_info['file_path'])
+                            song_info['requester'] = ctx.author
+                            song_info['is_from_playlist'] = True
                             async with self.queue_lock:
                                 self.queue.append(song_info)
                                 if not self.is_playing and not self.voice_client.is_playing() and len(self.queue) == 1:
@@ -104,6 +106,8 @@ class PlaylistHandler:
                         if first_song:
                             # Get duration using ffprobe
                             first_song['duration'] = get_audio_duration(first_song['file_path'])
+                            first_song['requester'] = ctx.author
+                            first_song['is_from_playlist'] = True
                             async with self.queue_lock:
                                 self.queue.append(first_song)
                                 if not self.is_playing and not self.voice_client.is_playing():
@@ -134,6 +138,8 @@ class PlaylistHandler:
                     video_url = f"https://youtube.com/watch?v={entry['id']}"
                     song_info = await self.download_song(video_url, status_msg=None)
                     if song_info:
+                        song_info['requester'] = ctx.author
+                        song_info['is_from_playlist'] = True
                         async with self.queue_lock:
                             self.queue.append(song_info)
                             if not self.is_playing and not self.voice_client.is_playing() and len(self.queue) == 1:

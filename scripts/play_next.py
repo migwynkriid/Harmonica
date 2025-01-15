@@ -64,7 +64,9 @@ async def play_next(ctx):
                                 self.author = author
                         
                         # Use the original requester if available, otherwise use the context
-                        ctx_with_requester = DummyCtx(previous_song.get('requester', ctx.author)) if previous_song.get('requester') else ctx
+                        # For playlist songs, the requester is stored in the song info
+                        requester = previous_song.get('requester', ctx.author)
+                        ctx_with_requester = DummyCtx(requester) if requester else ctx
                         
                         finished_embed = create_embed(
                             title,
@@ -78,12 +80,21 @@ async def play_next(ctx):
                     except Exception as e:
                         print(f"Error updating previous now playing message: {str(e)}")
 
+                # Create a context-like object with the requester information for the current song
+                class DummyCtx:
+                    def __init__(self, author):
+                        self.author = author
+                
+                # Use the requester from the current song if available, otherwise use the context
+                current_requester = music_bot.current_song.get('requester', ctx.author)
+                ctx_with_requester = DummyCtx(current_requester) if current_requester else ctx
+
                 now_playing_embed = create_embed(
                     "Now playing 🎵",
                     f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})",
                     color=0x00ff00,
                     thumbnail_url=music_bot.current_song.get('thumbnail'),
-                    ctx=ctx
+                    ctx=ctx_with_requester
                 )
                 # Create view with buttons if enabled
                 view = create_now_playing_view()

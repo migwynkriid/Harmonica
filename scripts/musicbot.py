@@ -383,6 +383,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         print(f"Processing track: {track}")
                         song_info = await self.download_song(track, status_msg, ctx)
                         if song_info:
+                            # Set requester information for each track
+                            song_info['requester'] = ctx.author if ctx else None
                             if not first_song:
                                 first_song = song_info
                             else:
@@ -397,6 +399,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         print(f"Processing track: {track}")
                         song_info = await self.download_song(track, status_msg, ctx)
                         if song_info:
+                            # Set requester information for each track
+                            song_info['requester'] = ctx.author if ctx else None
                             if not first_song:
                                 first_song = song_info
                             else:
@@ -574,6 +578,10 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 await status_msg.delete()
                         except Exception as e:
                             print(f"Note: Could not delete processing message: {e}")
+                    
+                    # Add requester information to the song info
+                    if ctx:
+                        info['requester'] = ctx.author
                     
                     return {
                         'title': info['title'],

@@ -193,7 +193,21 @@ class SpotifyHandler:
                     first_song['requester'] = ctx.author
                     # Get duration using ffprobe
                     first_song['duration'] = get_audio_duration(first_song['file_path'])
-                    self.queue.append(first_song)
+                    
+                    # Create a new dictionary with all required fields
+                    queue_entry = {
+                        'title': first_song['title'],
+                        'url': first_song['url'],
+                        'file_path': first_song['file_path'],
+                        'thumbnail': first_song.get('thumbnail'),
+                        'duration': first_song['duration'],
+                        'is_stream': first_song.get('is_stream', False),
+                        'is_from_playlist': True,
+                        'requester': ctx.author,
+                        'ctx': ctx
+                    }
+                    
+                    self.queue.append(queue_entry)
                     if not self.is_playing and not self.voice_client.is_playing():
                         await play_next(ctx)
 
@@ -228,8 +242,20 @@ class SpotifyHandler:
                 if song_info:
                     # Get duration using ffprobe
                     song_info['duration'] = get_audio_duration(song_info['file_path'])
-                    song_info['requester'] = ctx.author
-                    self.queue.append(song_info)
+                    # Create a new dictionary with all required fields
+                    queue_entry = {
+                        'title': song_info['title'],
+                        'url': song_info['url'],
+                        'file_path': song_info['file_path'],
+                        'thumbnail': song_info.get('thumbnail'),
+                        'duration': song_info['duration'],
+                        'is_stream': song_info.get('is_stream', False),
+                        'is_from_playlist': True,
+                        'requester': ctx.author,
+                        'ctx': ctx
+                    }
+                    
+                    self.queue.append(queue_entry)
                     
                     if not self.is_playing and not self.voice_client.is_playing():
                         await play_next(ctx)
