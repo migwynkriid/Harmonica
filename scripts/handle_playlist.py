@@ -33,7 +33,7 @@ class PlaylistHandler:
                             song_info['duration'] = get_audio_duration(song_info['file_path'])
                             async with self.queue_lock:
                                 self.queue.append(song_info)
-                                if not self.is_playing and not self.voice_client.is_playing():
+                                if not self.is_playing and not self.voice_client.is_playing() and len(self.queue) == 1:
                                     await play_next(ctx)
                     except Exception as e:
                         print(f"Error downloading song {entry.get('id', 'unknown')}: {str(e)}")
@@ -104,9 +104,10 @@ class PlaylistHandler:
                         if first_song:
                             # Get duration using ffprobe
                             first_song['duration'] = get_audio_duration(first_song['file_path'])
-                            self.queue.append(first_song)
-                            if not self.is_playing:
-                                await play_next(ctx)
+                            async with self.queue_lock:
+                                self.queue.append(first_song)
+                                if not self.is_playing and not self.voice_client.is_playing():
+                                    await play_next(ctx)
 
                 if len(info['entries']) > 1:
                     asyncio.create_task(self._process_playlist_downloads(info['entries'][1:], ctx, status_msg))
@@ -135,7 +136,7 @@ class PlaylistHandler:
                     if song_info:
                         async with self.queue_lock:
                             self.queue.append(song_info)
-                            if not self.is_playing and not self.voice_client.is_playing():
+                            if not self.is_playing and not self.voice_client.is_playing() and len(self.queue) == 1:
                                 await play_next(ctx)
 
             if status_msg:
