@@ -56,7 +56,7 @@ A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, 
 
 2. **Genius Lyrics**
    - Edit `.geniuslyrics` (created on first startup)
-   - Add your Genius API credentials
+   - Add your [Genius API](https://genius.com/api-clients) credentials
 
 3. **YouTube Authentication**
    - Install [Get Cookies.txt extension](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
