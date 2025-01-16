@@ -4,6 +4,35 @@ A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, 
 
 ![Bot Preview](https://github.com/user-attachments/assets/1ee417c8-db7c-458c-987d-95dcd909ee47)
 
+## ✨ Features
+
+### 🎵 Music Support
+- Multi-platform support (YouTube, Spotify, direct links)
+- High-quality audio streaming
+- Livestream support
+- Playlist support
+
+### 🎚️ Playback Control
+- Basic controls (play, pause, skip)
+- Queue management
+- Loop mode with count option
+- Shuffle functionality
+- Real-time track information
+
+### 🎯 Smart Features
+- YouTube search integration
+- Spotify playlist parsing
+- Genius lyrics integration
+- Automatic FFmpeg setup
+- Configurable auto-leave
+- Download cleanup
+
+### ⚙️ Administration
+- Role-based permissions
+- Configurable command prefix
+- Detailed logging system
+- Auto-updates capability
+
 > ⚠️ **Note**: This bot is currently in development. While functional, it's recommended for use on a single private Discord server only.
 
 ## ⚡ Quick Start
@@ -106,7 +135,7 @@ A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, 
   - macOS: Manual placement in root directory
   - Linux: Automatic installation
 
-- **YouTube Sign-In Error**: Check/update cookies.txt
+- **YouTube Sign-In Error/403 Error**: Check/update cookies.txt
 
 - **Known Limitations**:
   - ❌ Multiple server support (WIP)
