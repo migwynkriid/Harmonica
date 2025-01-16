@@ -1,9 +1,9 @@
 # Harmonica - Discord Music Bot
 
-Presenting " Harmonica " This self hosted bot uses YT-DLP to download audio files from YouTube, Spotify, direct links and livestream linksto play them directly in your Discord voice channel.
+Presenting "Harmonica" This self hosted bot uses YT-DLP to download audio files from YouTube, Spotify, direct links and livestream link sto play them directly in your Discord voice channel.
 
-**NOTE: Currently it is considered Work In Progress, it has and will have bugs, but the general idea is there and works.
-Recommend to only use it on a SINGLE private Discord server, you have to self host it on either a VPS or on your own machine.**
+**NOTE: Currently it is considered Work In Progress, it has and will have bugs, but the general idea is there and it works.
+Recommended to only use it on a SINGLE private Discord server, you have to self host it on either a VPS or on your own machine.**
 
 Bot will misbehave if playing in multiple servers at the same time, this is a known issue and will be fixed in the future (However it is not a priority at the moment, you do not want your bot to be caught by the bigger fish).
 
@@ -31,14 +31,16 @@ Current Issues:
    ```
    DISCORD_TOKEN=your_token_here
    ```
-3.1 **Spotify Credentials**: Rename the `.spotifyenv.example` file to `.spotifyenv` and add your Spotify credentials:
+3.1 **[Optional]Spotify Credentials**: Rename the `.spotifyenv.example` file to `.spotifyenv` and add your Spotify credentials:
    ```
    SPOTIPY_CLIENT_ID=your_client_id_here
    SPOTIPY_CLIENT_SECRET=your_client_secret_here
    ```
    You can get these credentials by following the instructions in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/applications).
 
-4. **Cookies**: Import cookies.txt using the [Get Cookies.txt extension](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc) and place it in the root directory.
+3.2 **[Optional]Genius Credentials**: Edit the `.geniuslyrics` which gets created on first startup and add your Genius credentials:
+
+4. **Cookies**: [Import cookies.txt](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp) using the [Get Cookies.txt extension](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc) and place it in the root directory. Skipping this step may limit the functionality of the bot.
 
 5. **Run the Bot**: Start the bot using the following command:
    ```bash
@@ -56,7 +58,6 @@ Current Issues:
 
 ## Commands
 - `!help` - Display this help message.
-
 - `!play [URL/search term]` - Play a song from YouTube or Spotify.
 - `!search [search term]` - Searches the term on YouTube.
 - `!join` - Join your voice channel. Aliases: `!summon`
@@ -81,6 +82,6 @@ Current Issues:
 ## Troubleshooting
 - **FFmpeg Installation**: Ensure `ffmpeg` is in your system's PATH. If issues persist, manually download and place `ffmpeg` in the bot's root directory.
 - **Bot Token Issues**: Double-check that the Discord bot token is correctly placed in the `.env` file.
-- **Please Sign-In YouTube Issue**: Your cookies.txt file may be either invalid, missing or expired. Export it as .json 
+- **Please Sign-In YouTube Issue**: Your cookies.txt file may be either invalid, missing or expired. 
 
 For further assistance, please refer to the bot's documentation or open a Issue on GitHub.
