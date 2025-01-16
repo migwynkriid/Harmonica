@@ -65,14 +65,16 @@ A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, 
 
 ## 🎮 Commands
 
-### Playback Controls
+### Music Playback
 - `!play [URL/search]` - Play audio from URL or search
+- `!search [term]` - Search YouTube for a song
 - `!pause` - Pause playback
 - `!resume` - Resume playback
 - `!stop` - Stop and clear queue
 - `!skip` - Skip current track
 - `!replay` - Replay current track
 - `!loop [count]` - Toggle loop mode (optional count)
+- `!nowplaying` - Show current track info
 
 ### Queue Management
 - `!queue` - Show queue
@@ -84,11 +86,16 @@ A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, 
 - `!join` / `!summon` - Join your channel
 - `!leave` / `!disconnect` - Leave channel
 
+### Lyrics & Information
+- `!lyrics` - Get lyrics for current song
+
 ### System Commands
 - `!ping` - Show bot status
+- `!version` - Show bot version
 - `!log` - Log current context
 - `!restart` - Restart bot (Owner)
 - `!logclear` - Clear logs (Owner)
+- `!update` - Update bot files (Owner)
 - `!help` - Show all commands
 
 ## 🔍 Troubleshooting
