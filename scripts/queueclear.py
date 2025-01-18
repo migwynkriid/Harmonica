@@ -47,7 +47,7 @@ async def clear_queue_command(ctx, music_bot, position: int = None):
         music_bot.queue.clear()
         await music_bot.cancel_downloads(disconnect_voice=False)
         embed = create_embed(
-            "Queue Cleared",
+            "Queue cleared",
             f"Successfully cleared {queue_length} songs from the queue!",
             discord.Color.green(),
             ctx=ctx
