@@ -284,8 +284,13 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 print(f"Error in download queue processor: {str(e)}")
                 await asyncio.sleep(1)
 
-    async def cancel_downloads(self):
-        """Cancel all active downloads and clear the download queue"""
+    async def cancel_downloads(self, disconnect_voice=True):
+        """
+        Cancel all active downloads and clear the download queue
+        
+        Args:
+            disconnect_voice (bool): Whether to disconnect from voice chat after canceling downloads
+        """
         self.should_stop_downloads = True
         
         # Cancel current download task if it exists
@@ -330,15 +335,16 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         if self.voice_client and self.voice_client.is_playing():
             self.voice_client.stop()
         
-        # Clear the queue and disconnect
+        # Clear the queue and disconnect if requested
         self.queue.clear()
-        if self.voice_client and self.voice_client.is_connected():
-            await self.voice_client.disconnect()
+        if disconnect_voice:
+            if self.voice_client and self.voice_client.is_connected():
+                await self.voice_client.disconnect()
             
-        # Reset the music bot state
-        self.current_song = None
-        self.is_playing = False
-        await update_activity(self.bot, self.current_song, self.is_playing)
+            # Reset the music bot state
+            self.current_song = None
+            self.is_playing = False
+            await update_activity(self.bot, self.current_song, self.is_playing)
 
     def _download_hook(self, d):
         """Custom download hook that checks for cancellation"""
