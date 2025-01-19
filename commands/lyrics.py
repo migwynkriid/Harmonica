@@ -30,6 +30,70 @@ def clean_song_title(title):
     # Remove extra whitespace and trim
     return ' '.join(cleaned.split())
 
+def clean_lyrics(lyrics):
+    """Remove text within brackets from lyrics"""
+    import re
+    # Remove text within parentheses () and square brackets []
+    cleaned = re.sub(r'\([^)]*\)|\[[^\]]*\]', '', lyrics)
+    # Remove extra whitespace and empty lines
+    lines = [line.strip() for line in cleaned.split('\n')]
+    return '\n'.join(line for line in lines if line)
+
+def split_into_chunks(text, max_size):
+    """
+    Split text into chunks without breaking words.
+    Each chunk will be at most max_size characters.
+    """
+    # Split text into lines first to preserve line breaks
+    lines = text.split('\n')
+    chunks = []
+    current_chunk = []
+    current_length = 0
+    
+    for line in lines:
+        # If adding this line would exceed max_size
+        if current_length + len(line) + 1 > max_size:  # +1 for newline
+            # If current chunk has content, add it to chunks
+            if current_chunk:
+                chunks.append('\n'.join(current_chunk))
+                current_chunk = []
+                current_length = 0
+            
+            # If single line is longer than max_size, split it at word boundaries
+            if len(line) > max_size:
+                words = line.split()
+                temp_line = []
+                for word in words:
+                    if current_length + len(' '.join(temp_line + [word])) <= max_size:
+                        temp_line.append(word)
+                        current_length = len(' '.join(temp_line))
+                    else:
+                        if temp_line:
+                            current_chunk.append(' '.join(temp_line))
+                            chunks.append('\n'.join(current_chunk))
+                            current_chunk = []
+                            temp_line = [word]
+                            current_length = len(word)
+                        else:
+                            # Word itself is too long, split it (rare case)
+                            chunks.append(word[:max_size])
+                            word = word[max_size:]
+                if temp_line:
+                    current_chunk.append(' '.join(temp_line))
+                    current_length = len(current_chunk[-1])
+            else:
+                current_chunk.append(line)
+                current_length = len(line)
+        else:
+            current_chunk.append(line)
+            current_length += len(line) + 1  # +1 for newline
+
+    # Add any remaining content
+    if current_chunk:
+        chunks.append('\n'.join(current_chunk))
+    
+    return chunks
+
 async def setup(bot):
     """Setup function that runs when the extension is loaded"""
     bot.add_command(lyrics)
@@ -42,20 +106,23 @@ async def setup(bot):
 
 async def send_lyrics_embed(ctx, title, artist, lyrics, source=""):
     """Helper function to send lyrics in an embed"""
+    # Clean the lyrics before displaying
+    cleaned_lyrics = clean_lyrics(lyrics)
+    
     embed = discord.Embed(
         title=f"Lyrics for: {title}",
         description=f"Artist: {artist}\nSource: {source}",
         color=0x3498db
     )
     
-    # Split lyrics into chunks (Discord has a 4096 character limit for embed fields)
-    chunk_size = 1024  # Discord's field value limit
-    chunks = [lyrics[i:i + chunk_size] for i in range(0, len(lyrics), chunk_size)]
+    # Use a slightly smaller chunk size to be safe
+    chunk_size = 900  # Discord's field value limit is 1024, but we'll use less
+    chunks = split_into_chunks(cleaned_lyrics, chunk_size)
     
     # Add chunks as separate fields
-    for i, chunk in enumerate(chunks, 1):
+    for chunk in chunks:
         embed.add_field(
-            name=f"Part {i}" if i > 1 else "\u200b",
+            name="\u200b",
             value=chunk,
             inline=False
         )
