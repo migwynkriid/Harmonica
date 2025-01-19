@@ -109,8 +109,8 @@ YTDLP_PATH = get_ytdlp_path()
 # Get config for volume
 config = load_config()
 DEFAULT_VOLUME = config.get('VOICE', {}).get('DEFAULT_VOLUME', 100)
-# Convert DEFAULT_VOLUME from percentage (0-100) to float (0.0-2.0)
-volume_float = DEFAULT_VOLUME / 50.0  # This makes 100% = 2.0, 50% = 1.0, etc.
+# Convert DEFAULT_VOLUME from percentage (0-100) to float (0.0-1.0)
+volume_float = DEFAULT_VOLUME / 100.0  # This makes 100% = 1.0, 75% = 0.75, 50% = 0.5, etc.
 
 # Base yt-dlp options for downloading content
 BASE_YTDL_OPTIONS = {
