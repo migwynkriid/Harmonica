@@ -15,7 +15,7 @@ class QueueCog(commands.Cog):
         from bot import music_bot
         
         if not music_bot.current_song and not music_bot.queue and music_bot.download_queue.empty():
-            await ctx.send(embed=create_embed("Queue Empty", "No songs in queue", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Queue is empty", "Nothing is in the queue", color=0xe74c3c, ctx=ctx))
             return
 
         queue_text = ""

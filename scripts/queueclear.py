@@ -34,6 +34,7 @@ async def clear_queue_command(ctx, music_bot, position: int = None):
             
         # Remove specific song (convert to 0-based index)
         removed_song = music_bot.queue.pop(position - 1)
+        await music_bot.cancel_downloads(disconnect_voice=False)
         embed = create_embed(
             "Song Removed",
             f"Removed song at position {position}: {removed_song['title']}",
@@ -44,8 +45,9 @@ async def clear_queue_command(ctx, music_bot, position: int = None):
         # Clear entire queue
         queue_length = len(music_bot.queue)
         music_bot.queue.clear()
+        await music_bot.cancel_downloads(disconnect_voice=False)
         embed = create_embed(
-            "Queue Cleared",
+            "Queue cleared",
             f"Successfully cleared {queue_length} songs from the queue!",
             discord.Color.green(),
             ctx=ctx
