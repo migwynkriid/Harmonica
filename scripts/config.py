@@ -154,7 +154,7 @@ YTDL_OPTIONS = BASE_YTDL_OPTIONS
 FFMPEG_OPTIONS = {
     'executable': FFMPEG_PATH,
     'options': (
-        f'-loglevel {config["LOG_LEVEL"].lower()} '
+        f'-loglevel {config["LOG_LEVEL"].lower()} -v quiet -hide_banner '
         '-vn '
         '-reconnect 1 '
         '-reconnect_streamed 1 '
