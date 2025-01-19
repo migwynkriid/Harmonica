@@ -111,7 +111,7 @@ async def play_next(ctx):
 
                 try:
                     if music_bot.voice_client and music_bot.voice_client.is_connected():
-                        audio_source = discord.FFmpegPCMAudio(
+                        audio_source = discord.FFmpegOpusAudio(
                             music_bot.current_song['file_path'],
                             **FFMPEG_OPTIONS
                         )

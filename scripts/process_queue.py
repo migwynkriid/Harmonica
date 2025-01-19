@@ -84,7 +84,7 @@ async def process_queue(music_bot):
         
         await music_bot.bot.change_presence(activity=discord.Game(name=f"{song['title']}"))
         
-        audio_source = discord.FFmpegPCMAudio(
+        audio_source = discord.FFmpegOpusAudio(
             song['file_path'],
             **FFMPEG_OPTIONS
         )
