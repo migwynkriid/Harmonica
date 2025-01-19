@@ -114,7 +114,7 @@ volume_float = DEFAULT_VOLUME / 50.0  # This makes 100% = 2.0, 50% = 1.0, etc.
 
 # Base yt-dlp options for downloading content
 BASE_YTDL_OPTIONS = {
-    'format': 'bestaudio[ext=m4a][abr<=128]/bestaudio[abr<=128]/bestaudio/best/bestaudio*',
+    'format': 'bestaudio/best',
     'outtmpl': '%(id)s.%(ext)s',
     'extract_audio': True,
     'concurrent_fragments': 8,
