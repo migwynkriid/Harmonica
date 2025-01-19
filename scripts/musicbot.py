@@ -470,10 +470,12 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
                         if is_live:
                             print(f"Livestream detected: {query}")
-                            # Clean up the title by removing date and time suffix if present
+                            # Clean up the title by removing date, time and (live) suffix if present
                             title = info_dict.get('title', 'Livestream')
                             if title.endswith(datetime.now().strftime("%Y-%m-%d %H:%M")):
                                 title = title.rsplit(' ', 2)[0]  # Remove the date and time
+                            if title.endswith('(live)'):
+                                title = title[:-6].strip()  # Remove (live) suffix
                             result = {
                                 'title': title,
                                 'url': query,
