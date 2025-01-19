@@ -88,6 +88,8 @@ async def process_queue(music_bot):
             song['file_path'],
             **FFMPEG_OPTIONS
         )
+        # Call read() on the audio source before playing to prevent speed-up issue
+        audio_source.read()
 
         current_message = music_bot.now_playing_message
         current_song_info = {

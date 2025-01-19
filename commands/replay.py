@@ -44,6 +44,9 @@ class ReplayCog(commands.Cog):
         # Create a new FFmpeg audio source with the same file
         source = discord.FFmpegOpusAudio(current_song['file_path'], **FFMPEG_OPTIONS)
         
+        # Call read() on the audio source before playing to prevent speed-up issue
+        source.read()
+        
         # Play the audio
         ctx.voice_client.play(source, after=lambda e: music_bot.bot_loop.create_task(music_bot.after_playing_coro(e, ctx)))
         
