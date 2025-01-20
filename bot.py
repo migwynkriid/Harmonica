@@ -83,7 +83,7 @@ intents.voice_states = True
 bot = commands.Bot(
     command_prefix=PREFIX,
     intents=intents,
-    help_command=None,
+    command_sync_flags=commands.CommandSyncFlags.none(),  # Disable slash command sync
     case_insensitive=True,
     owner_id=int(OWNER_ID)
 )
