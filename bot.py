@@ -85,8 +85,7 @@ bot = commands.Bot(
     intents=intents,
     help_command=None,
     case_insensitive=True,
-    owner_id=int(OWNER_ID),
-    sync_commands=False  # Disable slash commands
+    owner_id=int(OWNER_ID)
 )
 
 command_logger = CommandLogger()
