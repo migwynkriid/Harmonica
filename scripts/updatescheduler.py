@@ -37,17 +37,44 @@ async def check_updates(bot):
             updates = result.stdout.split('\n')
             update_msg = '\n'.join(line for line in updates if "Would install" in line)
             
-            embed = create_embed(
-                "Updates available!",
-                f"```\n{update_msg}\n```",
-                color=0x2ecc71
-            )
-            embed.add_field(
-                name="\u200b",
-                value=f"Consider updating with `{bot.command_prefix}update` and doing a restart with `{bot.command_prefix}restart`",
-                inline=False
-            )
-            await owner.send(embed=embed)
+            # Check if bot is in voice chat
+            from bot import music_bot
+            is_in_voice = music_bot and music_bot.voice_client and music_bot.voice_client.is_connected()
+            
+            if not is_in_voice:
+                # Automatically update and restart if not in voice chat
+                try:
+                    # Run actual update command
+                    subprocess.run(
+                        [sys.executable, '-m', 'pip', 'install', '--upgrade', '--pre', '-r', 'requirements.txt', '--break-system-packages'],
+                        check=True,
+                        capture_output=True,
+                        text=True
+                    )
+                    
+                    # Import and call restart function
+                    from scripts.restart import restart_bot
+                    restart_bot()
+                except Exception as e:
+                    error_embed = create_embed(
+                        "Auto-Update Error",
+                        f"Failed to auto-update: {str(e)}",
+                        color=0xe74c3c
+                    )
+                    await owner.send(embed=error_embed)
+            else:
+                # Just notify owner about updates if in voice chat
+                embed = create_embed(
+                    "Updates available!",
+                    f"```\n{update_msg}\n```",
+                    color=0x2ecc71
+                )
+                embed.add_field(
+                    name="\u200b",
+                    value=f"Bot is currently in a voice chat.\nPlease update manually with `{bot.command_prefix}update` and restart with `{bot.command_prefix}restart` when convenient.",
+                    inline=False
+                )
+                await owner.send(embed=embed)
         
     except Exception as e:
         error_embed = create_embed(
