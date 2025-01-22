@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 import psutil
 import json
 import os
@@ -13,7 +13,7 @@ class StatsCog(commands.Cog):
         self.bandwidth_file = 'bandwidth.json'
         self.current_bytes = psutil.net_io_counters()
         
-        # Initialize memory storage
+        # Load or create bandwidth data
         if os.path.exists(self.bandwidth_file):
             with open(self.bandwidth_file, 'r') as f:
                 self.bandwidth_data = json.load(f)
@@ -25,27 +25,11 @@ class StatsCog(commands.Cog):
                 'last_bytes_recv': self.current_bytes.bytes_recv
             }
             self._save_bandwidth_data()
-        
-        # Start the hourly save task
-        self.hourly_save.start()
-    
-    def cog_unload(self):
-        """Called when the cog is unloaded"""
-        self.hourly_save.cancel()
-        self._save_bandwidth_data()  # Save data before unloading
-    
-    @tasks.loop(hours=24)
-    async def hourly_save(self):
-        """Save bandwidth data every hour"""
-        self._save_bandwidth_data()
     
     def _save_bandwidth_data(self):
         """Save bandwidth data to JSON file"""
-        try:
-            with open(self.bandwidth_file, 'w') as f:
-                json.dump(self.bandwidth_data, f, indent=4)
-        except Exception as e:
-            print(f"Failed to save bandwidth data: {str(e)}")
+        with open(self.bandwidth_file, 'w') as f:
+            json.dump(self.bandwidth_data, f, indent=4)
     
     def _update_bandwidth_stats(self):
         """Update bandwidth statistics"""
@@ -62,6 +46,9 @@ class StatsCog(commands.Cog):
         # Update last bytes
         self.bandwidth_data['last_bytes_sent'] = current_bytes.bytes_sent
         self.bandwidth_data['last_bytes_recv'] = current_bytes.bytes_recv
+        
+        # Save updated data
+        self._save_bandwidth_data()
         
         return self.bandwidth_data['total_bytes_sent'], self.bandwidth_data['total_bytes_recv']
 
