@@ -42,7 +42,6 @@ async def check_updates(bot):
             is_in_voice = music_bot and music_bot.voice_client and music_bot.voice_client.is_connected()
             
             if not is_in_voice:
-                # Automatically update and restart if not in voice chat
                 try:
                     # Run actual update command
                     subprocess.run(
@@ -56,12 +55,7 @@ async def check_updates(bot):
                     from scripts.restart import restart_bot
                     restart_bot()
                 except Exception as e:
-                    error_embed = create_embed(
-                        "Auto-Update Error",
-                        f"Failed to auto-update: {str(e)}",
-                        color=0xe74c3c
-                    )
-                    await owner.send(embed=error_embed)
+                    print(f"\033[91mWarning: Failed to auto-update: {str(e)}\033[0m")
             else:
                 # Just notify owner about updates if in voice chat
                 embed = create_embed(
