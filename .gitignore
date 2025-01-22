@@ -37,4 +37,5 @@ config.json
 /config.json
 ./config.json
 .geniuslyrics
+bandwidth.json
 commandlog.txt

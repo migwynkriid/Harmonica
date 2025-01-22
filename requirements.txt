@@ -12,3 +12,4 @@ spotipy
 lyricsgenius
 azapi
 yt-dlp
+psutil
