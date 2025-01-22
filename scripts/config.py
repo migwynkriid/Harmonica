@@ -114,7 +114,7 @@ volume_float = DEFAULT_VOLUME / 100.0  # This makes 100% = 1.0, 75% = 0.75, 50% 
 
 # Base yt-dlp options for downloading content
 BASE_YTDL_OPTIONS = {
-    'format': 'bestaudio/best',
+    'format': 'bestaudio[abr<=96]/bestaudio',
     'outtmpl': '%(id)s.%(ext)s',
     'extract_audio': True,
     'concurrent_fragments': 8,
@@ -156,6 +156,7 @@ FFMPEG_OPTIONS = {
     'options': (
         f'-loglevel {config["LOG_LEVEL"].lower()} -v quiet -hide_banner '
         '-vn '
+        '-b:a 96k '
         '-reconnect 1 '
         '-reconnect_streamed 1 '
         '-reconnect_delay_max 5 '
