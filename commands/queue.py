@@ -2,6 +2,18 @@ import discord
 from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
+from scripts.duration import get_audio_duration
+
+def format_duration(duration):
+    """Format duration in seconds to mm:ss or hh:mm:ss"""
+    hours = int(duration // 3600)
+    minutes = int((duration % 3600) // 60)
+    seconds = int(duration % 60)
+    
+    if hours > 0:
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    else:
+        return f"{minutes:02d}:{seconds:02d}"
 
 class QueueCog(commands.Cog):
     def __init__(self, bot):
@@ -25,7 +37,15 @@ class QueueCog(commands.Cog):
             queue_text += "**Now playing:**\n"
             loop_cog = self.bot.get_cog('Loop')
             is_looping = loop_cog and music_bot.current_song['url'] in loop_cog.looped_songs
-            queue_text += f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})"
+            
+            # Get duration for current song
+            if not music_bot.current_song.get('is_stream'):
+                duration = get_audio_duration(music_bot.current_song['file_path'])
+                duration_str = f" `[{format_duration(duration)}]`" if duration > 0 else ""
+            else:
+                duration_str = " `[LIVE]`"
+                
+            queue_text += f"[{music_bot.current_song['title']}]({music_bot.current_song['url']}){duration_str}"
             if is_looping:
                 queue_text += " - :repeat:"
             queue_text += "\n\n"
@@ -55,14 +75,36 @@ class QueueCog(commands.Cog):
                     song_title = song['title']
                     if song_title not in shown_songs:
                         if position <= 10:  # Only show first 10 songs
-                            queue_text += f"`{position}.` [{song_title}]({song['url']})\n"
+                            # Get duration for queued song
+                            if not song.get('is_stream'):
+                                duration = get_audio_duration(song['file_path'])
+                                duration_str = f" `[{format_duration(duration)}]`" if duration > 0 else ""
+                            else:
+                                duration_str = " `[LIVE]`"
+                                
+                            queue_text += f"`{position}.` [{song_title}]({song['url']}){duration_str}\n"
                         shown_songs.add(song_title)
                         position += 1
                 
                 # If there are more than 10 songs, show the count of remaining songs
                 if len(shown_songs) > 10:
                     remaining_songs = len(shown_songs) - 10
-                    queue_text += f"\n+`{remaining_songs}` more in queue waiting to play\n"
+                    queue_text += f"\n+`{remaining_songs}` more in queue waiting to play"
+                    
+                # Calculate total duration of all songs
+                total_duration = 0
+                for song in music_bot.queue:
+                    if not song.get('is_stream') and not (is_looping and song['url'] == current_song_url):
+                        duration = get_audio_duration(song['file_path'])
+                        total_duration += duration
+                
+                # Add current song duration if it exists and isn't a stream
+                if music_bot.current_song and not music_bot.current_song.get('is_stream'):
+                    duration = get_audio_duration(music_bot.current_song['file_path'])
+                    total_duration += duration
+                
+                if total_duration > 0:
+                    queue_text += f"\nTotal duration: `{format_duration(total_duration)}`\n"
 
         if not music_bot.download_queue.empty():
             queue_text += "\n**Downloading:**\n"
