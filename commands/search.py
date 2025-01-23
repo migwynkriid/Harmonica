@@ -42,7 +42,7 @@ class SearchCog(commands.Cog):
             usage_embed = create_embed(
                 "Usage",
                 "Usage: !search <song name/artist>\nExample: !search never gonna give you up",
-                color=0x3498db,
+                color=0xe74c3c,
                 ctx=ctx
             )
             await ctx.send(embed=usage_embed)
