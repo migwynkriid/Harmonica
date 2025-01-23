@@ -3,6 +3,7 @@ from discord.ext import commands
 import time
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
+from scripts.voice_checks import check_voice_state
 
 class SkipCog(commands.Cog):
     def __init__(self, bot):
@@ -57,19 +58,31 @@ class SkipCog(commands.Cog):
         """Skip one or multiple songs in the queue
         Usage: !skip [amount]
         amount: number of songs to skip (default: 1)"""
-        success, result = await self._skip_song(amount, ctx)
+        from bot import music_bot
         
-        if not success:
-            await ctx.send(embed=create_embed("Error", result, color=0xe74c3c, ctx=ctx))
-            return
+        try:
+            # Check voice state
+            is_valid, error_embed = await check_voice_state(ctx, music_bot)
+            if not is_valid:
+                await ctx.send(embed=error_embed)
+                return
 
-        # Store ctx in current_song for footer information
-        if isinstance(result, dict):
-            result['ctx'] = ctx
+            success, result = await self._skip_song(amount, ctx)
+            
+            if not success:
+                await ctx.send(embed=create_embed("Error", result, color=0xe74c3c, ctx=ctx))
+                return
 
-        # Don't send a skip message here since it's handled by the after_playing callback
-        if isinstance(result, dict) and amount > 1:  # Only show message for multiple skips
-            await ctx.send(embed=create_embed("Skipped", f"Skipped current song and {amount - 1} songs from queue", color=0x3498db, ctx=ctx))
+            # Store ctx in current_song for footer information
+            if isinstance(result, dict):
+                result['ctx'] = ctx
+
+            # Don't send a skip message here since it's handled by the after_playing callback
+            if isinstance(result, dict) and amount > 1:  # Only show message for multiple skips
+                await ctx.send(embed=create_embed("Skipped", f"Skipped current song and {amount - 1} songs from queue", color=0x3498db, ctx=ctx))
+
+        except Exception as e:
+            await ctx.send(embed=create_embed("Error", f"An error occurred while skipping: {str(e)}", color=0xe74c3c, ctx=ctx))
 
 async def setup(bot):
     await bot.add_cog(SkipCog(bot))

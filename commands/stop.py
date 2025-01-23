@@ -3,6 +3,7 @@ from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 from scripts.clear_queue import clear_queue
+from scripts.voice_checks import check_voice_state
 
 class StopCog(commands.Cog):
     def __init__(self, bot):
@@ -16,6 +17,12 @@ class StopCog(commands.Cog):
         from bot import music_bot
         
         try:
+            # Check voice state
+            is_valid, error_embed = await check_voice_state(ctx, music_bot)
+            if not is_valid:
+                await ctx.send(embed=error_embed)
+                return
+
             # Cancel any active downloads first
             await music_bot.cancel_downloads()
             
