@@ -49,7 +49,7 @@ class ReplayCog(commands.Cog):
             music_bot.playback_start_time = None
             
             # Send confirmation message
-            embed = create_embed("Replay", f"Restarted: {current_song['title']}", color=0x3498db, ctx=ctx)
+            embed = create_embed("Replay", f"[{current_song['title']}]({current_song['url']})", color=0x3498db, ctx=ctx)
             if 'thumbnail' in current_song:
                 embed.set_thumbnail(url=current_song['thumbnail'])
             await ctx.send(embed=embed)
