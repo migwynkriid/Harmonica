@@ -34,7 +34,6 @@ async def clear_queue_command(ctx, music_bot, position: int = None):
             
         # Remove specific song (convert to 0-based index)
         removed_song = music_bot.queue.pop(position - 1)
-        await music_bot.cancel_downloads(disconnect_voice=False)
         embed = create_embed(
             "Song Removed",
             f"Removed song at position {position}: {removed_song['title']}",
@@ -42,10 +41,24 @@ async def clear_queue_command(ctx, music_bot, position: int = None):
             ctx=ctx
         )
     else:
-        # Clear entire queue
+        # Clear entire queue except current song
         queue_length = len(music_bot.queue)
+        
+        # Clear download queue without canceling current downloads
+        items_removed = 0
+        while not music_bot.download_queue.empty():
+            try:
+                music_bot.download_queue.get_nowait()
+                items_removed += 1
+            except asyncio.QueueEmpty:
+                break
+        
+        for _ in range(items_removed):
+            music_bot.download_queue.task_done()
+        
+        # Clear the queue
         music_bot.queue.clear()
-        await music_bot.cancel_downloads(disconnect_voice=False)
+        
         embed = create_embed(
             "Queue cleared",
             f"Successfully cleared {queue_length} songs from the queue!",
