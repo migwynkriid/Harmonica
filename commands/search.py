@@ -34,12 +34,18 @@ class SearchCog(commands.Cog):
             return []
 
     @commands.command(name='search')
-    async def search(self, ctx, *, query: str):
+    async def search(self, ctx, *, query: str = None):
         """Search for a song on YouTube and select from results"""
         from bot import music_bot
 
         if not query:
-            await ctx.send(embed=create_embed("Error", "Please provide a search term!", color=0xe74c3c, ctx=ctx))
+            usage_embed = create_embed(
+                "Usage",
+                "Usage: !search <song name/artist>\nExample: !search never gonna give you up",
+                color=0x3498db,
+                ctx=ctx
+            )
+            await ctx.send(embed=usage_embed)
             return
 
         # Only show typing during search
