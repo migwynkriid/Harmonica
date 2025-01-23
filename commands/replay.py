@@ -14,7 +14,7 @@ class ReplayCog(commands.Cog):
     @commands.command(name='replay')
     @check_dj_role()
     async def replay(self, ctx):
-        """Restart the currently playing song"""
+        """Restart the currently playing song from the beginning"""
         from bot import music_bot
         
         try:
@@ -29,34 +29,27 @@ class ReplayCog(commands.Cog):
                 await ctx.send(embed=create_embed("Error", "No song is currently playing!", color=0xe74c3c, ctx=ctx))
                 return
 
-            # Stop current playback
-            ctx.voice_client.stop()
-            
-            # Store current song info and ensure it stays as current song
+            # Get current song info
             current_song = music_bot.current_song
-            music_bot.current_song = current_song  # Reassign to ensure it's maintained
             
-            # If this is the last song, add it back to queue to prevent queue from appearing empty
-            if len(music_bot.queue) == 0:
-                music_bot.queue.append(current_song)
+            # Create a new FFmpeg audio source with seek set to beginning
+            ffmpeg_options = FFMPEG_OPTIONS.copy()
+            ffmpeg_options['options'] = ffmpeg_options.get('options', '') + ' -ss 0'
             
-            # Reset playback start time and set status
-            music_bot.playback_start_time = None
-            music_bot.is_playing = True
-            
-            # Create a new FFmpeg audio source with the same file
-            source = discord.FFmpegOpusAudio(current_song['file_path'], **FFMPEG_OPTIONS)
+            # Create new source with seek
+            source = discord.FFmpegOpusAudio(current_song['file_path'], **ffmpeg_options)
             
             # Call read() on the audio source before playing to prevent speed-up issue
             source.read()
             
-            # Play the audio
-            ctx.voice_client.play(source, after=lambda e: music_bot.bot_loop.create_task(music_bot.after_playing_coro(e, ctx)))
+            # Replace the audio source without stopping playback
+            ctx.voice_client._player.source = source
             
-            # Update bot activity using the bot instance
-            await self.bot.change_presence(activity=discord.Game(name=f" {current_song['title']}"))
+            # Reset playback start time
+            music_bot.playback_start_time = None
             
-            embed = create_embed("Replay", f" Restarted: {current_song['title']}", color=0x3498db, ctx=ctx)
+            # Send confirmation message
+            embed = create_embed("Replay", f"Restarted: {current_song['title']}", color=0x3498db, ctx=ctx)
             if 'thumbnail' in current_song:
                 embed.set_thumbnail(url=current_song['thumbnail'])
             await ctx.send(embed=embed)
