@@ -145,7 +145,7 @@ async def on_ready():
     print(f"----------------------------------------")
     print(f"{GREEN}Logged in as {RESET}{BLUE}{bot.user.name}")
     print(f"{GREEN}Bot ID: {RESET}{BLUE}{bot.user.id}")
-    print(f"{GREEN}Bot Invite URL: {RESET}{BLUE}{discord.utils.oauth_url(bot.user.id)}")
+    print(f"{GREEN}Bot Invite URL: {RESET}{BLUE}{discord.utils.oauth_url(bot.user.id)}{RESET}")
     print(f"----------------------------------------")
     print(f"{GREEN}Loaded configuration:{RESET}")
     print(f"{GREEN}Owner ID:{RESET} {BLUE}{OWNER_ID}{RESET} ")
