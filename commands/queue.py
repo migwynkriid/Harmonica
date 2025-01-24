@@ -113,7 +113,7 @@ class QueueCog(commands.Cog):
 
         total_songs = (1 if music_bot.current_song else 0) + len(music_bot.queue)
         embed = create_embed(
-            f"Waiting in queue",
+            f"Queue",
             queue_text if queue_text else "Queue is empty",
             color=0x3498db,
             ctx=ctx
