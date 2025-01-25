@@ -3,7 +3,7 @@ from discord.ui import Button, View
 import asyncio
 import os
 import time
-from scripts.messages import create_embed
+from scripts.messages import create_embed, should_send_now_playing
 from scripts.config import load_config, FFMPEG_OPTIONS
 from scripts.ui_components import create_now_playing_view
 
@@ -89,20 +89,22 @@ async def play_next(ctx):
                 current_requester = music_bot.current_song.get('requester', ctx.author)
                 ctx_with_requester = DummyCtx(current_requester) if current_requester else ctx
 
-                now_playing_embed = create_embed(
-                    "Now playing 🎵",
-                    f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})",
-                    color=0x00ff00,
-                    thumbnail_url=music_bot.current_song.get('thumbnail'),
-                    ctx=ctx_with_requester
-                )
-                # Create view with buttons if enabled
-                view = create_now_playing_view()
-                # Only pass the view if it's not None
-                kwargs = {'embed': now_playing_embed}
-                if view is not None:
-                    kwargs['view'] = view
-                music_bot.now_playing_message = await ctx.send(**kwargs)
+                # Check if we should send the now playing message
+                if should_send_now_playing(music_bot, music_bot.current_song['title']):
+                    now_playing_embed = create_embed(
+                        "Now playing 🎵",
+                        f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})",
+                        color=0x00ff00,
+                        thumbnail_url=music_bot.current_song.get('thumbnail'),
+                        ctx=ctx_with_requester
+                    )
+                    # Create view with buttons if enabled
+                    view = create_now_playing_view()
+                    # Only pass the view if it's not None
+                    kwargs = {'embed': now_playing_embed}
+                    if view is not None:
+                        kwargs['view'] = view
+                    music_bot.now_playing_message = await ctx.send(**kwargs)
                 
                 await music_bot.bot.change_presence(activity=discord.Game(name=f"{music_bot.current_song['title']}"))
                 

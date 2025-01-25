@@ -3,7 +3,7 @@ import asyncio
 import time
 from pathlib import Path
 from scripts.duration import get_audio_duration
-from scripts.messages import create_embed
+from scripts.messages import create_embed, should_send_now_playing
 from scripts.config import FFMPEG_OPTIONS, load_config
 from scripts.ui_components import create_now_playing_view
 
@@ -66,21 +66,23 @@ async def process_queue(music_bot):
             duration = get_audio_duration(song['file_path'])
             music_bot.current_song['duration'] = duration
         
-        now_playing_embed = create_embed(
-            "Now playing 🎵",
-            f"[{song['title']}]({song['url']})",
-            color=0x00ff00,
-            thumbnail_url=song.get('thumbnail'),
-            ctx=ctx
-        )
+        # Only send now playing message if we should
+        if should_send_now_playing(music_bot, song['title']):
+            now_playing_embed = create_embed(
+                "Now playing 🎵",
+                f"[{song['title']}]({song['url']})",
+                color=0x00ff00,
+                thumbnail_url=song.get('thumbnail'),
+                ctx=ctx
+            )
 
-        # Create and send the message with the view if buttons are enabled
-        view = create_now_playing_view()
-        # Only pass the view if it's not None
-        kwargs = {'embed': now_playing_embed}
-        if view is not None:
-            kwargs['view'] = view
-        music_bot.now_playing_message = await ctx.send(**kwargs)
+            # Create and send the message with the view if buttons are enabled
+            view = create_now_playing_view()
+            # Only pass the view if it's not None
+            kwargs = {'embed': now_playing_embed}
+            if view is not None:
+                kwargs['view'] = view
+            music_bot.now_playing_message = await ctx.send(**kwargs)
         
         await music_bot.bot.change_presence(activity=discord.Game(name=f"{song['title']}"))
         
