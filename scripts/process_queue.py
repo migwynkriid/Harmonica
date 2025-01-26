@@ -108,18 +108,26 @@ async def process_queue(music_bot):
             async def update_now_playing():
                 try:
                     if current_message:
-                        # Determine the title based on whether the song was skipped
-                        title = "Skipped song" if music_bot.was_skipped else "Finished playing"
-                        
-                        finished_embed = create_embed(
-                            title,
-                            f"[{current_song_info['title']}]({current_song_info['url']})",
-                            color=0x808080,
-                            thumbnail_url=current_song_info.get('thumbnail'),
-                            ctx=ctx
-                        )
-                        # Remove buttons when song is finished
-                        await current_message.edit(embed=finished_embed, view=None)
+                        # Check if the song is looped
+                        loop_cog = music_bot.bot.get_cog('Loop')
+                        is_looped = loop_cog and current_song_info['url'] in loop_cog.looped_songs
+
+                        # For looped songs that weren't skipped, just delete the message
+                        if is_looped and not music_bot.was_skipped:
+                            await current_message.delete()
+                        else:
+                            # For non-looped songs or skipped songs, show appropriate message
+                            title = "Skipped song" if music_bot.was_skipped else "Finished playing"
+                            
+                            finished_embed = create_embed(
+                                title,
+                                f"[{current_song_info['title']}]({current_song_info['url']})",
+                                color=0x808080,
+                                thumbnail_url=current_song_info.get('thumbnail'),
+                                ctx=ctx
+                            )
+                            # Remove buttons when song is finished
+                            await current_message.edit(embed=finished_embed, view=None)
                     
                     music_bot.is_playing = False
                     music_bot.waiting_for_song = False

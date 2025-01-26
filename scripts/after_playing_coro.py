@@ -30,18 +30,26 @@ class AfterPlayingHandler:
             print("All songs finished, updating activity...")
             if self.now_playing_message and self.current_song and isinstance(self.current_song, dict):
                 try:
-                    # Determine the title based on whether the song was skipped
-                    title = "Skipped song" if hasattr(self, 'was_skipped') and self.was_skipped else "Finished playing"
-                    
-                    finished_embed = create_embed(
-                        title,
-                        f"[{self.current_song['title']}]({self.current_song['url']})",
-                        color=0x808080,
-                        thumbnail_url=self.current_song.get('thumbnail'),
-                        ctx=ctx
-                    )
-                    # Remove buttons when song is finished
-                    await self.now_playing_message.edit(embed=finished_embed, view=None)
+                    # Check if the song is looped
+                    loop_cog = self.bot.get_cog('Loop')
+                    is_looped = loop_cog and self.current_song['url'] in loop_cog.looped_songs
+
+                    # For looped songs that weren't skipped, just delete the message
+                    if is_looped and not (hasattr(self, 'was_skipped') and self.was_skipped):
+                        await self.now_playing_message.delete()
+                    else:
+                        # For non-looped songs or skipped songs, show appropriate message
+                        title = "Skipped song" if hasattr(self, 'was_skipped') and self.was_skipped else "Finished playing"
+                        
+                        finished_embed = create_embed(
+                            title,
+                            f"[{self.current_song['title']}]({self.current_song['url']})",
+                            color=0x808080,
+                            thumbnail_url=self.current_song.get('thumbnail'),
+                            ctx=ctx
+                        )
+                        # Remove buttons when song is finished
+                        await self.now_playing_message.edit(embed=finished_embed, view=None)
                 except Exception as e:
                     print(f"Error updating finished message: {str(e)}")
             

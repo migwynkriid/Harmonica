@@ -44,13 +44,6 @@ def should_send_now_playing(music_bot, song_title):
     Determine if we should send a "now playing" message for this song.
     Returns True if we should send the message, False otherwise.
     """
-    # Get the Loop cog to check if song is looped
-    loop_cog = music_bot.bot.get_cog('Loop')
-    if loop_cog and music_bot.current_song['url'] in loop_cog.looped_songs:
-        # If song is looped, never send the message after first play
-        if hasattr(music_bot, 'previous_song_title') and music_bot.previous_song_title == song_title:
-            return False
-
-    # Store current title for next comparison
+    # Store current title for next comparison (needed for looped songs)
     music_bot.previous_song_title = song_title
     return True
