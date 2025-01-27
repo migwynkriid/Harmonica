@@ -25,7 +25,7 @@ async def ytdlp_version(ctx):
                 stderr=asyncio.subprocess.PIPE
             )
             stdout, stderr = await process.communicate()
-            
+
             if process.returncode == 0:
                 version = stdout.decode().strip()
                 embed = create_embed("yt-dlp Version", f"yt-dlp: {version}", color=0x3498db)
