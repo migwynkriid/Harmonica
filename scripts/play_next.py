@@ -1,5 +1,4 @@
 import discord
-from discord.ui import Button, View
 import asyncio
 import os
 import time

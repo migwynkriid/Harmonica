@@ -1,11 +1,9 @@
-import discord
 from discord.ext import commands
 import sys
 import os
 import time
 from scripts.messages import create_embed
-from scripts.duration import get_audio_duration
-from scripts.ui_components import create_now_playing_view, NowPlayingView
+from scripts.ui_components import create_now_playing_view
 from scripts.permissions import check_dj_role
 
 # Add the parent directory to sys.path to allow importing from bot

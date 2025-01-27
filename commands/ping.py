@@ -1,8 +1,5 @@
-import discord
 from discord.ext import commands
 import time
-import platform
-import asyncio
 from scripts.messages import create_embed
 
 class PingCog(commands.Cog):

@@ -1,55 +1,23 @@
 import os
 import discord
 import yt_dlp
-import asyncio
-import re
 import subprocess
-import unicodedata
-import sys
-import locale
-import time
-import shutil
-import json
-import pytz
-import logging
-import urllib.request
-import spotipy
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from pathlib import Path
-from discord.ext import tasks
-from collections import deque
-from datetime import datetime
-from pytz import timezone
 from scripts.commandlogger import CommandLogger
-from scripts.downloadprogress import DownloadProgress
 from scripts.constants import RED, GREEN, BLUE, RESET
 from scripts.musicbot import MusicBot, PlaylistHandler, AfterPlayingHandler, SpotifyHandler
-from scripts.play_next import play_next
-from scripts.ui_components import NowPlayingView
-from scripts.process_queue import process_queue
-from scripts.clear_queue import clear_queue
-from scripts.format_size import format_size
-from scripts.duration import get_audio_duration
-from scripts.url_identifier import is_url, is_playlist_url, is_radio_stream
-from scripts.handle_playlist import PlaylistHandler
-from scripts.after_playing_coro import AfterPlayingHandler
-from scripts.handle_spotify import SpotifyHandler
-from scripts.config import load_config, YTDL_OPTIONS, FFMPEG_OPTIONS
-from scripts.logging import setup_logging, get_ytdlp_logger
-from scripts.updatescheduler import check_updates, update_checker
-from scripts.voice import join_voice_channel, leave_voice_channel, handle_voice_state_update
-from scripts.inactivity import start_inactivity_checker, check_inactivity
-from scripts.messages import update_or_send_message, create_embed
-from spotipy.oauth2 import SpotifyClientCredentials
-from scripts.ytdlp import get_ytdlp_path, ytdlp_version
-from scripts.ffmpeg import check_ffmpeg_in_path, install_ffmpeg_windows, install_ffmpeg_macos, install_ffmpeg_linux, get_ffmpeg_path
+from scripts.config import load_config
+from scripts.logging import setup_logging
+from scripts.updatescheduler import update_checker
+from scripts.voice import handle_voice_state_update
+from scripts.messages import create_embed
+from scripts.ytdlp import get_ytdlp_path
+from scripts.ffmpeg import get_ffmpeg_path
 from scripts.cleardownloads import clear_downloads_folder
-from scripts.restart import restart_bot
 from scripts.load_commands import load_commands
 from scripts.load_scripts import load_scripts
-from scripts.activity import update_activity
-from scripts.spotify import get_spotify_album_details, get_spotify_track_details, get_spotify_playlist_details
 
 # Load environment variables
 load_dotenv()

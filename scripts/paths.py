@@ -2,7 +2,6 @@
 Path management for external executables.
 """
 import os
-import sys
 import platform
 
 def _is_executable(path):

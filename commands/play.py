@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-import time
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 from scripts.process_queue import process_queue

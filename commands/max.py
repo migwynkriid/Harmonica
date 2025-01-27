@@ -1,4 +1,3 @@
-import discord
 from discord.ext import commands
 from scripts.messages import create_embed
 
@@ -10,7 +9,6 @@ class MaxCog(commands.Cog):
     @commands.command(name='max')
     async def max(self, ctx):
         """Play Radio Max stream"""
-        from bot import music_bot
         
         try:
             play_cog = self.bot.get_cog('PlayCog')

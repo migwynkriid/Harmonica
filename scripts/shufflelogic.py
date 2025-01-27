@@ -1,5 +1,4 @@
 import random
-from discord.ext import commands
 
 async def shuffle_queue(ctx, music_bot):
     """

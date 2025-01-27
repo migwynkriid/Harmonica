@@ -1,12 +1,8 @@
 import asyncio
-import discord
 import yt_dlp
-import os
-import json
-from pathlib import Path
 from scripts.play_next import play_next
-from scripts.config import load_config, BASE_YTDL_OPTIONS
-from scripts.messages import update_or_send_message, create_embed
+from scripts.config import BASE_YTDL_OPTIONS
+from scripts.messages import create_embed
 from scripts.duration import get_audio_duration
 
 class PlaylistHandler:

@@ -1,5 +1,3 @@
-import re
-from urllib.parse import urlparse
 
 def is_radio_stream(url):
     """Check if the URL is a radio stream"""
