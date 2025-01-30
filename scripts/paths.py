@@ -19,20 +19,5 @@ def get_ytdlp_path():
 
 def get_ffmpeg_path():
     """Get the path to the FFmpeg executable."""
-    if platform.system() == "Windows":
-        return os.path.join(os.getcwd(), "ffmpeg.exe")
-    elif platform.system() == "Darwin":  # macOS
-        # Check common FFmpeg locations on macOS
-        macos_paths = [
-            "/opt/homebrew/bin/ffmpeg",
-            "/usr/local/bin/ffmpeg",
-            "/opt/local/bin/ffmpeg"
-        ]
-        for path in macos_paths:
-            if _is_executable(path):
-                return path
-        # If FFmpeg not found, return default path (will trigger installation)
-        return "ffmpeg"
-    else:
-        # For other Unix-like systems
-        return "ffmpeg"
+    # Use ffmpeg from PATH for all platforms
+    return "ffmpeg"
