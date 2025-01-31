@@ -5,6 +5,7 @@ from scripts.permissions import check_dj_role
 from scripts.config import FFMPEG_OPTIONS
 from scripts.activity import update_activity
 from scripts.voice_checks import check_voice_state
+import time
 
 class ReplayCog(commands.Cog):
     def __init__(self, bot):
@@ -45,8 +46,8 @@ class ReplayCog(commands.Cog):
             # Replace the audio source without stopping playback
             ctx.voice_client._player.source = source
             
-            # Reset playback start time
-            music_bot.playback_start_time = None
+            # Reset playback start time to current time
+            music_bot.playback_start_time = time.time()
             
             # Send confirmation message
             embed = create_embed("Replay", f"[{current_song['title']}]({current_song['url']})", color=0x3498db, ctx=ctx)
