@@ -3,7 +3,7 @@ import asyncio
 import time
 from pathlib import Path
 from scripts.duration import get_audio_duration
-from scripts.messages import create_embed
+from scripts.messages import create_embed, should_send_now_playing
 from scripts.config import FFMPEG_OPTIONS, load_config
 from scripts.ui_components import create_now_playing_view
 
@@ -66,21 +66,23 @@ async def process_queue(music_bot):
             duration = get_audio_duration(song['file_path'])
             music_bot.current_song['duration'] = duration
         
-        now_playing_embed = create_embed(
-            "Now playing 🎵",
-            f"[{song['title']}]({song['url']})",
-            color=0x00ff00,
-            thumbnail_url=song.get('thumbnail'),
-            ctx=ctx
-        )
+        # Only send now playing message if we should
+        if should_send_now_playing(music_bot, song['title']):
+            now_playing_embed = create_embed(
+                "Now playing 🎵",
+                f"[{song['title']}]({song['url']})",
+                color=0x00ff00,
+                thumbnail_url=song.get('thumbnail'),
+                ctx=ctx
+            )
 
-        # Create and send the message with the view if buttons are enabled
-        view = create_now_playing_view()
-        # Only pass the view if it's not None
-        kwargs = {'embed': now_playing_embed}
-        if view is not None:
-            kwargs['view'] = view
-        music_bot.now_playing_message = await ctx.send(**kwargs)
+            # Create and send the message with the view if buttons are enabled
+            view = create_now_playing_view()
+            # Only pass the view if it's not None
+            kwargs = {'embed': now_playing_embed}
+            if view is not None:
+                kwargs['view'] = view
+            music_bot.now_playing_message = await ctx.send(**kwargs)
         
         await music_bot.bot.change_presence(activity=discord.Game(name=f"{song['title']}"))
         
@@ -106,18 +108,26 @@ async def process_queue(music_bot):
             async def update_now_playing():
                 try:
                     if current_message:
-                        # Determine the title based on whether the song was skipped
-                        title = "Skipped song" if music_bot.was_skipped else "Finished playing"
-                        
-                        finished_embed = create_embed(
-                            title,
-                            f"[{current_song_info['title']}]({current_song_info['url']})",
-                            color=0x808080,
-                            thumbnail_url=current_song_info.get('thumbnail'),
-                            ctx=ctx
-                        )
-                        # Remove buttons when song is finished
-                        await current_message.edit(embed=finished_embed, view=None)
+                        # Check if the song is looped
+                        loop_cog = music_bot.bot.get_cog('Loop')
+                        is_looped = loop_cog and current_song_info['url'] in loop_cog.looped_songs
+
+                        # For looped songs that weren't skipped, just delete the message
+                        if is_looped and not music_bot.was_skipped:
+                            await current_message.delete()
+                        else:
+                            # For non-looped songs or skipped songs, show appropriate message
+                            title = "Skipped song" if music_bot.was_skipped else "Finished playing"
+                            
+                            finished_embed = create_embed(
+                                title,
+                                f"[{current_song_info['title']}]({current_song_info['url']})",
+                                color=0x808080,
+                                thumbnail_url=current_song_info.get('thumbnail'),
+                                ctx=ctx
+                            )
+                            # Remove buttons when song is finished
+                            await current_message.edit(embed=finished_embed, view=None)
                     
                     music_bot.is_playing = False
                     music_bot.waiting_for_song = False

@@ -3,7 +3,7 @@ from discord.ui import Button, View
 import asyncio
 import os
 import time
-from scripts.messages import create_embed
+from scripts.messages import create_embed, should_send_now_playing
 from scripts.config import load_config, FFMPEG_OPTIONS
 from scripts.ui_components import create_now_playing_view
 
@@ -55,28 +55,37 @@ async def play_next(ctx):
             else:
                 if music_bot.now_playing_message:
                     try:
-                        title = "Skipped song" if hasattr(music_bot, 'was_skipped') and music_bot.was_skipped else "Finished playing"
-                        description = f"[🎵 {previous_song['title']}]({previous_song['url']})"
-                        
-                        # Create a context-like object with the requester information
-                        class DummyCtx:
-                            def __init__(self, author):
-                                self.author = author
-                        
-                        # Use the original requester if available, otherwise use the context
-                        # For playlist songs, the requester is stored in the song info
-                        requester = previous_song.get('requester', ctx.author)
-                        ctx_with_requester = DummyCtx(requester) if requester else ctx
-                        
-                        finished_embed = create_embed(
-                            title,
-                            description,
-                            color=0x808080,  # Gray color for finished
-                            thumbnail_url=previous_song.get('thumbnail'),
-                            ctx=ctx_with_requester
-                        )
-                        # Don't include view for status messages
-                        await music_bot.now_playing_message.edit(embed=finished_embed, view=None)
+                        # Check if the song is looped
+                        loop_cog = music_bot.bot.get_cog('Loop')
+                        is_looped = loop_cog and previous_song['url'] in loop_cog.looped_songs
+
+                        # For looped songs that weren't skipped, just delete the message
+                        if is_looped and not (hasattr(music_bot, 'was_skipped') and music_bot.was_skipped):
+                            await music_bot.now_playing_message.delete()
+                        else:
+                            # For non-looped songs or skipped songs, show appropriate message
+                            title = "Skipped song" if hasattr(music_bot, 'was_skipped') and music_bot.was_skipped else "Finished playing"
+                            description = f"[🎵 {previous_song['title']}]({previous_song['url']})"
+                            
+                            # Create a context-like object with the requester information
+                            class DummyCtx:
+                                def __init__(self, author):
+                                    self.author = author
+                            
+                            # Use the original requester if available, otherwise use the context
+                            # For playlist songs, the requester is stored in the song info
+                            requester = previous_song.get('requester', ctx.author)
+                            ctx_with_requester = DummyCtx(requester) if requester else ctx
+                            
+                            finished_embed = create_embed(
+                                title,
+                                description,
+                                color=0x808080,  # Gray color for finished
+                                thumbnail_url=previous_song.get('thumbnail'),
+                                ctx=ctx_with_requester
+                            )
+                            # Don't include view for status messages
+                            await music_bot.now_playing_message.edit(embed=finished_embed, view=None)
                     except Exception as e:
                         print(f"Error updating previous now playing message: {str(e)}")
 
@@ -89,20 +98,22 @@ async def play_next(ctx):
                 current_requester = music_bot.current_song.get('requester', ctx.author)
                 ctx_with_requester = DummyCtx(current_requester) if current_requester else ctx
 
-                now_playing_embed = create_embed(
-                    "Now playing 🎵",
-                    f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})",
-                    color=0x00ff00,
-                    thumbnail_url=music_bot.current_song.get('thumbnail'),
-                    ctx=ctx_with_requester
-                )
-                # Create view with buttons if enabled
-                view = create_now_playing_view()
-                # Only pass the view if it's not None
-                kwargs = {'embed': now_playing_embed}
-                if view is not None:
-                    kwargs['view'] = view
-                music_bot.now_playing_message = await ctx.send(**kwargs)
+                # Check if we should send the now playing message
+                if should_send_now_playing(music_bot, music_bot.current_song['title']):
+                    now_playing_embed = create_embed(
+                        "Now playing 🎵",
+                        f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})",
+                        color=0x00ff00,
+                        thumbnail_url=music_bot.current_song.get('thumbnail'),
+                        ctx=ctx_with_requester
+                    )
+                    # Create view with buttons if enabled
+                    view = create_now_playing_view()
+                    # Only pass the view if it's not None
+                    kwargs = {'embed': now_playing_embed}
+                    if view is not None:
+                        kwargs['view'] = view
+                    music_bot.now_playing_message = await ctx.send(**kwargs)
                 
                 await music_bot.bot.change_presence(activity=discord.Game(name=f"{music_bot.current_song['title']}"))
                 

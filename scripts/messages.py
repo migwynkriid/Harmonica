@@ -38,3 +38,12 @@ def create_embed(title, description, color=0x3498db, thumbnail_url=None, ctx=Non
                 icon_url=ctx.author.display_avatar.url
             )
         return embed
+
+def should_send_now_playing(music_bot, song_title):
+    """
+    Determine if we should send a "now playing" message for this song.
+    Returns True if we should send the message, False otherwise.
+    """
+    # Store current title for next comparison (needed for looped songs)
+    music_bot.previous_song_title = song_title
+    return True
