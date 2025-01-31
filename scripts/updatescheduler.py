@@ -56,30 +56,9 @@ async def check_updates(bot):
                     restart_bot()
                 except Exception as e:
                     print(f"\033[91mWarning: Failed to auto-update: {str(e)}\033[0m")
-            else:
-                # Just notify owner about updates if in voice chat
-                embed = create_embed(
-                    "Updates available!",
-                    f"```\n{update_msg}\n```",
-                    color=0x2ecc71
-                )
-                embed.add_field(
-                    name="\u200b",
-                    value=f"Bot is currently in a voice chat.\nPlease update manually with `{bot.command_prefix}update` and restart with `{bot.command_prefix}restart` when convenient.",
-                    inline=False
-                )
-                await owner.send(embed=embed)
-        
+            # If in voice chat, do nothing and let the hourly check try again
     except Exception as e:
-        error_embed = create_embed(
-            "Update Check Error",
-            f"Error checking for updates: {str(e)}",
-            color=0xe74c3c
-        )
-        try:
-            await owner.send(embed=error_embed)
-        except:
-            print(f"\033[91mWarning: Could not send update error notification to owner.\033[0m")
+        print(f"\033[91mWarning: Error checking for updates: {str(e)}\033[0m")
 
 @tasks.loop(hours=1)
 async def update_checker(bot):
