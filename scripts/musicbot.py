@@ -461,8 +461,14 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     self.current_ydl = None
 
             try:
-                # First, extract info without downloading to check if it's a livestream
-                with yt_dlp.YoutubeDL({**BASE_YTDL_OPTIONS, 'extract_flat': True}) as ydl:
+                # Check if the URL is a YouTube Mix playlist
+                is_youtube_mix = 'youtube.com' in query.lower() and 'list=RD' in query
+                
+                # First, extract info without downloading to check if it's a livestream or mix
+                with yt_dlp.YoutubeDL({**BASE_YTDL_OPTIONS, 
+                    'extract_flat': True,
+                    'noplaylist': not is_youtube_mix  # Allow playlist only for Mix
+                }) as ydl:
                     self.current_download_task = asyncio.create_task(extract_info(ydl, query, download=False))
                     try:
                         info_dict = await self.current_download_task
@@ -488,6 +494,60 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             if status_msg:
                                 await status_msg.delete()
                             return result
+
+                        # Handle YouTube Mix playlist
+                        if is_youtube_mix and info_dict.get('_type') == 'playlist':
+                            print(f"YouTube Mix playlist detected: {query}")
+                            entries = info_dict.get('entries', [])
+                            if entries:
+                                total_videos = len(entries)
+                                playlist_title = info_dict.get('title', 'YouTube Mix')
+                                playlist_url = info_dict.get('webpage_url', query)
+                                
+                                if status_msg:
+                                    description = f"Mix Playlist: [{playlist_title}]({playlist_url})\nEntries: {total_videos}\n\nThis might take a while..."
+                                    playlist_embed = create_embed(
+                                        "Processing YouTube Mix",
+                                        description,
+                                        color=0x3498db,
+                                        ctx=progress.ctx
+                                    )
+                                    # Try different thumbnail sources
+                                    thumbnail_url = info_dict.get('thumbnails', [{}])[0].get('url') if info_dict.get('thumbnails') else None
+                                    if not thumbnail_url:
+                                        thumbnail_url = info_dict.get('thumbnail')
+                                    if thumbnail_url:
+                                        playlist_embed.set_thumbnail(url=thumbnail_url)
+                                    await status_msg.edit(embed=playlist_embed)
+                                    await status_msg.delete(delay=10)
+
+                                # Process the first song immediately
+                                first_entry = entries[0]
+                                first_video_url = f"https://youtube.com/watch?v={first_entry['id']}"
+                                first_song = await self.download_song(first_video_url, status_msg=None)
+                                
+                                if first_song:
+                                    first_song['is_from_playlist'] = True
+                                    # Process remaining songs in the background
+                                    async def process_remaining_songs():
+                                        try:
+                                            for entry in entries[1:]:
+                                                if entry:
+                                                    video_url = f"https://youtube.com/watch?v={entry['id']}"
+                                                    song_info = await self.download_song(video_url, status_msg=None)
+                                                    if song_info:
+                                                        song_info['is_from_playlist'] = True
+                                                        async with self.queue_lock:
+                                                            self.queue.append(song_info)
+                                                            if not self.is_playing and not self.voice_client.is_playing() and len(self.queue) == 1:
+                                                                await play_next(progress.ctx)
+                                        except Exception as e:
+                                            print(f"Error processing Mix playlist: {str(e)}")
+                                    
+                                    # Start background processing
+                                    asyncio.create_task(process_remaining_songs())
+                                    return first_song
+                            raise Exception("No songs found in the Mix playlist")
 
                     except asyncio.CancelledError:
                         print("Info extraction cancelled")
