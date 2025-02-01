@@ -462,10 +462,21 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
             try:
                 # Check if the URL is a YouTube Mix playlist
-                is_youtube_mix = 'youtube.com' in query.lower() and 'list=RD' in query
+                is_youtube_mix = 'start_radio=1' in query or 'list=RD' in query
+                
+                # Add playlist limit for mix playlists
+                if is_youtube_mix:
+                    ydl_opts = {
+                        **BASE_YTDL_OPTIONS,
+                        'playlistend': 50
+                    }
+                else:
+                    ydl_opts = {
+                        **BASE_YTDL_OPTIONS
+                    }
                 
                 # First, extract info without downloading to check if it's a livestream or mix
-                with yt_dlp.YoutubeDL({**BASE_YTDL_OPTIONS, 
+                with yt_dlp.YoutubeDL({**ydl_opts, 
                     'extract_flat': True,
                     'noplaylist': not is_youtube_mix  # Allow playlist only for Mix
                 }) as ydl:
