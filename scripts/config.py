@@ -31,6 +31,7 @@ def load_config():
         },
         "DOWNLOADS": {
             "AUTO_CLEAR": True,
+            "MIX_PLAYLIST_LIMIT": 50,  # Maximum number of songs to download from YouTube Mix playlists
         },
         "MESSAGES": {
             "SHOW_PROGRESS_BAR": True,
@@ -92,6 +93,7 @@ def load_config():
         'AUTO_LEAVE_EMPTY': config.get('VOICE', {}).get('AUTO_LEAVE_EMPTY', default_config['VOICE']['AUTO_LEAVE_EMPTY']),
         'DEFAULT_VOLUME': config.get('VOICE', {}).get('DEFAULT_VOLUME', default_config['VOICE']['DEFAULT_VOLUME']),
         'AUTO_CLEAR_DOWNLOADS': config.get('DOWNLOADS', {}).get('AUTO_CLEAR', default_config['DOWNLOADS']['AUTO_CLEAR']),
+        'MIX_PLAYLIST_LIMIT': config.get('DOWNLOADS', {}).get('MIX_PLAYLIST_LIMIT', default_config['DOWNLOADS']['MIX_PLAYLIST_LIMIT']),
         'SHOW_PROGRESS_BAR': config.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', default_config['MESSAGES']['SHOW_PROGRESS_BAR']),
     }
     

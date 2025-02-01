@@ -468,7 +468,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 if is_youtube_mix:
                     ydl_opts = {
                         **BASE_YTDL_OPTIONS,
-                        'playlistend': 50
+                        'playlistend': config_vars.get('MIX_PLAYLIST_LIMIT', 50)  # Get limit from config, default to 50
                     }
                 else:
                     ydl_opts = {
