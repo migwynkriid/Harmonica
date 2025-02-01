@@ -498,16 +498,36 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         # Handle YouTube Mix playlist
                         if is_youtube_mix and info_dict.get('_type') == 'playlist':
                             print(f"YouTube Mix playlist detected: {query}")
-                            # Get the entries from the playlist
                             entries = info_dict.get('entries', [])
                             if entries:
+                                total_videos = len(entries)
+                                playlist_title = info_dict.get('title', 'YouTube Mix')
+                                playlist_url = info_dict.get('webpage_url', query)
+                                
+                                if status_msg:
+                                    description = f"Mix Playlist: [{playlist_title}]({playlist_url})\nEntries: {total_videos}"
+                                    playlist_embed = create_embed(
+                                        "Processing YouTube Mix",
+                                        description,
+                                        color=0x3498db,
+                                        ctx=progress.ctx
+                                    )
+                                    # Try different thumbnail sources
+                                    thumbnail_url = info_dict.get('thumbnails', [{}])[0].get('url') if info_dict.get('thumbnails') else None
+                                    if not thumbnail_url:
+                                        thumbnail_url = info_dict.get('thumbnail')
+                                    if thumbnail_url:
+                                        playlist_embed.set_thumbnail(url=thumbnail_url)
+                                    await status_msg.edit(embed=playlist_embed)
+                                    await status_msg.delete(delay=10)
+
                                 # Process the first song immediately
                                 first_entry = entries[0]
                                 first_video_url = f"https://youtube.com/watch?v={first_entry['id']}"
-                                # Download first song
-                                first_song = await self.download_song(first_video_url, status_msg=status_msg)
+                                first_song = await self.download_song(first_video_url, status_msg=None)
                                 
                                 if first_song:
+                                    first_song['is_from_playlist'] = True
                                     # Process remaining songs in the background
                                     async def process_remaining_songs():
                                         try:
