@@ -505,7 +505,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 playlist_url = info_dict.get('webpage_url', query)
                                 
                                 if status_msg:
-                                    description = f"Mix Playlist: [{playlist_title}]({playlist_url})\nEntries: {total_videos}"
+                                    description = f"Mix Playlist: [{playlist_title}]({playlist_url})\nEntries: {total_videos}\n\nThis might take a while..."
                                     playlist_embed = create_embed(
                                         "Processing YouTube Mix",
                                         description,
