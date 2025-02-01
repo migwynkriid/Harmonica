@@ -523,12 +523,14 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                         color=0x3498db,
                                         ctx=progress.ctx
                                     )
-                                    # Try different thumbnail sources
-                                    thumbnail_url = info_dict.get('thumbnails', [{}])[0].get('url') if info_dict.get('thumbnails') else None
-                                    if not thumbnail_url:
-                                        thumbnail_url = info_dict.get('thumbnail')
-                                    if thumbnail_url:
-                                        playlist_embed.set_thumbnail(url=thumbnail_url)
+                                    # Get thumbnail from first entry
+                                    if entries and entries[0]:
+                                        first_entry = entries[0]
+                                        thumbnail_url = first_entry.get('thumbnails', [{}])[0].get('url') if first_entry.get('thumbnails') else None
+                                        if not thumbnail_url:
+                                            thumbnail_url = first_entry.get('thumbnail')
+                                        if thumbnail_url:
+                                            playlist_embed.set_thumbnail(url=thumbnail_url)
                                     await status_msg.edit(embed=playlist_embed)
                                     await status_msg.delete(delay=10)
 
