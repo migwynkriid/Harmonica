@@ -135,6 +135,9 @@ async def play_next(ctx):
                             music_bot.voice_client.stop()
                             await asyncio.sleep(0.5)  # Small delay to ensure clean stop
                             
+                        # Add delay before starting new song to ensure clean state
+                        await asyncio.sleep(0.5)
+                            
                         if music_bot.voice_client and music_bot.voice_client.is_connected():
                             audio_source = discord.FFmpegOpusAudio(
                                 music_bot.current_song['file_path'],
