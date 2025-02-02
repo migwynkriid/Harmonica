@@ -133,10 +133,6 @@ async def play_next(ctx):
                         if music_bot.voice_client and music_bot.voice_client.is_playing():
                             print("Already playing audio, stopping current playback")
                             music_bot.voice_client.stop()
-                            await asyncio.sleep(0.5)  # Small delay to ensure clean stop
-                            
-                        # Add delay before starting new song to ensure clean state
-                        await asyncio.sleep(0.5)
                             
                         if music_bot.voice_client and music_bot.voice_client.is_connected():
                             audio_source = discord.FFmpegOpusAudio(
@@ -147,6 +143,7 @@ async def play_next(ctx):
                             audio_source.read()
                             # Set the playback start time right before starting playback
                             music_bot.playback_start_time = time.time()
+                            music_bot.playback_state = "playing"
                             music_bot.voice_client.play(
                                 audio_source,
                                 after=lambda e: asyncio.run_coroutine_threadsafe(
