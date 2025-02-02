@@ -82,7 +82,7 @@ class RandomCommand(commands.Cog):
             music_bot.voice_client = ctx.guild.voice_client
             
             # Show single status message
-            status_msg = await ctx.send(embed=create_embed("Random Song", "Searching for something...", discord.Color.blue(), ctx=ctx))
+            status_msg = await ctx.send(embed=create_embed("Feeling lucky?", "Searching for something...", discord.Color.blue(), ctx=ctx))
             
             # Fetch random word
             word = await self.fetch_random_word()
