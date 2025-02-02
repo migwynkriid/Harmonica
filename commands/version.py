@@ -9,7 +9,6 @@ async def setup(bot):
     return None
 
 @commands.command(name='version')
-@commands.is_owner()
 async def ytdlp(ctx):
     """Check the version of the locally installed yt-dlp"""
     try:
