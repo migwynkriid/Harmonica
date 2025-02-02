@@ -444,8 +444,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
             if not self.downloads_dir.exists():
                 self.downloads_dir.mkdir()
-            if not is_url(query):
-                query = f"ytsearch1:{query}"
                 
             # Create DownloadProgress instance with ctx
             progress = DownloadProgress(status_msg, None)
@@ -474,101 +472,106 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     ydl_opts = {
                         **BASE_YTDL_OPTIONS
                     }
-                
-                # First, extract info without downloading to check if it's a livestream or mix
-                with yt_dlp.YoutubeDL({**ydl_opts, 
-                    'extract_flat': True,
-                    'noplaylist': not is_youtube_mix  # Allow playlist only for Mix
-                }) as ydl:
-                    self.current_download_task = asyncio.create_task(extract_info(ydl, query, download=False))
-                    try:
-                        info_dict = await self.current_download_task
-                        is_live = info_dict.get('is_live', False) or info_dict.get('live_status') in ['is_live', 'post_live', 'is_upcoming']
 
-                        if is_live:
-                            print(f"Livestream detected: {query}")
-                            # Clean up the title by removing date, time and (live) suffix if present
-                            title = info_dict.get('title', 'Livestream')
-                            if title.endswith(datetime.now().strftime("%Y-%m-%d %H:%M")):
-                                title = title.rsplit(' ', 2)[0]  # Remove the date and time
-                            if title.endswith('(live)'):
-                                title = title[:-6].strip()  # Remove (live) suffix
-                            result = {
-                                'title': title,
-                                'url': query,
-                                'file_path': info_dict.get('url', query),
-                                'is_stream': True,
-                                'is_live': True,
-                                'thumbnail': info_dict.get('thumbnail'),
-                                'duration': None
-                            }
-                            if status_msg:
-                                await status_msg.delete()
-                            return result
+                # Only do pre-check for actual URLs, not search terms
+                if is_url(query):
+                    # First, extract info without downloading to check if it's a livestream or mix
+                    with yt_dlp.YoutubeDL({**ydl_opts, 
+                        'extract_flat': True,
+                        'noplaylist': not is_youtube_mix  # Allow playlist only for Mix
+                    }) as ydl:
+                        self.current_download_task = asyncio.create_task(extract_info(ydl, query, download=False))
+                        try:
+                            info_dict = await self.current_download_task
+                            is_live = info_dict.get('is_live', False) or info_dict.get('live_status') in ['is_live', 'post_live', 'is_upcoming']
 
-                        # Handle YouTube Mix playlist
-                        if is_youtube_mix and info_dict.get('_type') == 'playlist':
-                            print(f"YouTube Mix playlist detected: {query}")
-                            entries = info_dict.get('entries', [])
-                            if entries:
-                                total_videos = len(entries)
-                                playlist_title = info_dict.get('title', 'YouTube Mix')
-                                playlist_url = info_dict.get('webpage_url', query)
-                                
+                            if is_live:
+                                print(f"Livestream detected: {query}")
+                                # Clean up the title by removing date, time and (live) suffix if present
+                                title = info_dict.get('title', 'Livestream')
+                                if title.endswith(datetime.now().strftime("%Y-%m-%d %H:%M")):
+                                    title = title.rsplit(' ', 2)[0]  # Remove the date and time
+                                if title.endswith('(live)'):
+                                    title = title[:-6].strip()  # Remove (live) suffix
+                                result = {
+                                    'title': title,
+                                    'url': query,
+                                    'file_path': info_dict.get('url', query),
+                                    'is_stream': True,
+                                    'is_live': True,
+                                    'thumbnail': info_dict.get('thumbnail'),
+                                    'duration': None
+                                }
                                 if status_msg:
-                                    description = f"Mix Playlist: [{playlist_title}]({playlist_url})\nEntries: {total_videos}\n\nThis might take a while..."
-                                    playlist_embed = create_embed(
-                                        "Processing YouTube Mix",
-                                        description,
-                                        color=0x3498db,
-                                        ctx=progress.ctx
-                                    )
-                                    # Get thumbnail from first entry
-                                    if entries and entries[0]:
-                                        first_entry = entries[0]
-                                        thumbnail_url = first_entry.get('thumbnails', [{}])[0].get('url') if first_entry.get('thumbnails') else None
-                                        if not thumbnail_url:
-                                            thumbnail_url = first_entry.get('thumbnail')
-                                        if thumbnail_url:
-                                            playlist_embed.set_thumbnail(url=thumbnail_url)
-                                    await status_msg.edit(embed=playlist_embed)
-                                    await status_msg.delete(delay=10)
+                                    await status_msg.delete()
+                                return result
 
-                                # Process the first song immediately
-                                first_entry = entries[0]
-                                first_video_url = f"https://youtube.com/watch?v={first_entry['id']}"
-                                first_song = await self.download_song(first_video_url, status_msg=None)
-                                
-                                if first_song:
-                                    first_song['is_from_playlist'] = True
-                                    # Process remaining songs in the background
-                                    async def process_remaining_songs():
-                                        try:
-                                            for entry in entries[1:]:
-                                                if entry:
-                                                    video_url = f"https://youtube.com/watch?v={entry['id']}"
-                                                    song_info = await self.download_song(video_url, status_msg=None)
-                                                    if song_info:
-                                                        song_info['is_from_playlist'] = True
-                                                        async with self.queue_lock:
-                                                            self.queue.append(song_info)
-                                                            if not self.is_playing and not self.voice_client.is_playing() and len(self.queue) == 1:
-                                                                await play_next(progress.ctx)
-                                        except Exception as e:
-                                            print(f"Error processing Mix playlist: {str(e)}")
+                            # Handle YouTube Mix playlist
+                            if is_youtube_mix and info_dict.get('_type') == 'playlist':
+                                print(f"YouTube Mix playlist detected: {query}")
+                                entries = info_dict.get('entries', [])
+                                if entries:
+                                    total_videos = len(entries)
+                                    playlist_title = info_dict.get('title', 'YouTube Mix')
+                                    playlist_url = info_dict.get('webpage_url', query)
                                     
-                                    # Start background processing
-                                    asyncio.create_task(process_remaining_songs())
-                                    return first_song
-                            raise Exception("No songs found in the Mix playlist")
+                                    if status_msg:
+                                        description = f"Mix Playlist: [{playlist_title}]({playlist_url})\nEntries: {total_videos}\n\nThis might take a while..."
+                                        playlist_embed = create_embed(
+                                            "Processing YouTube Mix",
+                                            description,
+                                            color=0x3498db,
+                                            ctx=progress.ctx
+                                        )
+                                        # Get thumbnail from first entry
+                                        if entries and entries[0]:
+                                            first_entry = entries[0]
+                                            thumbnail_url = first_entry.get('thumbnails', [{}])[0].get('url') if first_entry.get('thumbnails') else None
+                                            if not thumbnail_url:
+                                                thumbnail_url = first_entry.get('thumbnail')
+                                            if thumbnail_url:
+                                                playlist_embed.set_thumbnail(url=thumbnail_url)
+                                        await status_msg.edit(embed=playlist_embed)
+                                        await status_msg.delete(delay=10)
 
-                    except asyncio.CancelledError:
-                        print("Info extraction cancelled")
-                        raise Exception("Download cancelled")
-                    except Exception as e:
-                        print(f"Error checking livestream status: {e}")
-                        is_live = False
+                                    # Process the first song immediately
+                                    first_entry = entries[0]
+                                    first_video_url = f"https://youtube.com/watch?v={first_entry['id']}"
+                                    first_song = await self.download_song(first_video_url, status_msg=None)
+                                    
+                                    if first_song:
+                                        first_song['is_from_playlist'] = True
+                                        # Process remaining songs in the background
+                                        async def process_remaining_songs():
+                                            try:
+                                                for entry in entries[1:]:
+                                                    if entry:
+                                                        video_url = f"https://youtube.com/watch?v={entry['id']}"
+                                                        song_info = await self.download_song(video_url, status_msg=None)
+                                                        if song_info:
+                                                            song_info['is_from_playlist'] = True
+                                                            async with self.queue_lock:
+                                                                self.queue.append(song_info)
+                                                                if not self.is_playing and not self.voice_client.is_playing() and len(self.queue) == 1:
+                                                                    await play_next(progress.ctx)
+                                            except Exception as e:
+                                                print(f"Error processing Mix playlist: {str(e)}")
+                                        
+                                        # Start background processing
+                                        asyncio.create_task(process_remaining_songs())
+                                        return first_song
+                                raise Exception("No songs found in the Mix playlist")
 
+                        except asyncio.CancelledError:
+                            print("Info extraction cancelled")
+                            raise Exception("Download cancelled")
+                        except Exception as e:
+                            print(f"Error checking livestream status: {e}")
+                            is_live = False
+                else:
+                    # For search terms, just proceed with the download directly
+                    query = f"ytsearch1:{query}"
+                
                 # For non-livestream content, proceed with normal download
                 ydl_opts = {
                     **BASE_YTDL_OPTIONS,
