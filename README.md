@@ -102,6 +102,7 @@ A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, 
 - `!stop` - Stop and clear queue
 - `!skip` - Skip current track
 - `!replay` - Replay current track
+- `!random` - Searches for a random song on YouTube
 - `!loop [count]` - Toggle loop mode (optional count)
 - `!nowplaying` - Show current track info
 

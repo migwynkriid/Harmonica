@@ -100,7 +100,7 @@ class RandomCommand(commands.Cog):
                 return
             
             # Download the song using the URL
-            download_result = await music_bot.download_song(result['url'], status_msg=status_msg, ctx=ctx)
+            download_result = await music_bot.download_song(result['url'], status_msg=status_msg, ctx=ctx, skip_url_check=True)
             if not download_result:
                 return
 

@@ -358,89 +358,90 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         bar = '█' * filled + '░' * (length - filled)
         return f"[{bar}] {percentage}%"
 
-    async def download_song(self, query, status_msg=None, ctx=None):
+    async def download_song(self, query, status_msg=None, ctx=None, skip_url_check=False):
         """Download a song from YouTube, Spotify, or handle radio stream"""
         try:
             self._last_progress = -1
-            if is_playlist_url(query):
-                ctx = ctx or status_msg.channel if status_msg else None
-                await self._handle_playlist(query, ctx, status_msg)
-                return None
-            if 'open.spotify.com/' in query:
-                if 'track/' in query:
-                    spotify_details = await get_spotify_track_details(query)
-                    if spotify_details:
-                        query = spotify_details
-                    else:
+            if not skip_url_check:
+                if is_playlist_url(query):
+                    ctx = ctx or status_msg.channel if status_msg else None
+                    await self._handle_playlist(query, ctx, status_msg)
+                    return None
+                if 'open.spotify.com/' in query:
+                    if 'track/' in query:
+                        spotify_details = await get_spotify_track_details(query)
+                        if spotify_details:
+                            query = spotify_details
+                        else:
+                            if status_msg:
+                                await status_msg.edit(
+                                    embed=create_embed(
+                                        "Error",
+                                        "Could not retrieve details from Spotify URL.",
+                                        color=0xe74c3c,
+                                        ctx=status_msg.channel
+                                    )
+                                )
+                            return None
+                    elif 'album/' in query:
+                        tracks = await get_spotify_album_details(query)
+                        first_song = None
+                        for track in tracks:
+                            print(f"Processing track: {track}")
+                            song_info = await self.download_song(track, status_msg, ctx)
+                            if song_info:
+                                # Set requester information for each track
+                                song_info['requester'] = ctx.author if ctx else None
+                                if not first_song:
+                                    first_song = song_info
+                                else:
+                                    async with self.queue_lock:
+                                        self.queue.append(song_info)
+                                        print(f"Added to queue: {song_info['title']}")
+                        return first_song
+                    elif 'playlist/' in query:
+                        tracks = await get_spotify_playlist_details(query)
+                        first_song = None
+                        for track in tracks:
+                            print(f"Processing track: {track}")
+                            song_info = await self.download_song(track, status_msg, ctx)
+                            if song_info:
+                                # Set requester information for each track
+                                song_info['requester'] = ctx.author if ctx else None
+                                if not first_song:
+                                    first_song = song_info
+                                else:
+                                    async with self.queue_lock:
+                                        self.queue.append(song_info)
+                                        print(f"Added to queue: {song_info['title']}")
+                        return first_song
+
+                if is_radio_stream(query):
+                    print("Radio stream detected")
+                    try:
+                        stream_name = query.split('/')[-1].split('.')[0]
+                        result = {
+                            'title': stream_name,
+                            'url': query,
+                            'file_path': query,  
+                            'is_stream': True,
+                            'thumbnail': None
+                        }
+                        if status_msg:
+                            await status_msg.delete()
+                        return result
+                    except Exception as e:
+                        print(f"Error processing radio stream: {str(e)}")
                         if status_msg:
                             await status_msg.edit(
                                 embed=create_embed(
                                     "Error",
-                                    "Could not retrieve details from Spotify URL.",
+                                    f"Failed to process radio stream: {str(e)}",
                                     color=0xe74c3c,
                                     ctx=status_msg.channel
                                 )
                             )
                         return None
-                elif 'album/' in query:
-                    tracks = await get_spotify_album_details(query)
-                    first_song = None
-                    for track in tracks:
-                        print(f"Processing track: {track}")
-                        song_info = await self.download_song(track, status_msg, ctx)
-                        if song_info:
-                            # Set requester information for each track
-                            song_info['requester'] = ctx.author if ctx else None
-                            if not first_song:
-                                first_song = song_info
-                            else:
-                                async with self.queue_lock:
-                                    self.queue.append(song_info)
-                                    print(f"Added to queue: {song_info['title']}")
-                    return first_song
-                elif 'playlist/' in query:
-                    tracks = await get_spotify_playlist_details(query)
-                    first_song = None
-                    for track in tracks:
-                        print(f"Processing track: {track}")
-                        song_info = await self.download_song(track, status_msg, ctx)
-                        if song_info:
-                            # Set requester information for each track
-                            song_info['requester'] = ctx.author if ctx else None
-                            if not first_song:
-                                first_song = song_info
-                            else:
-                                async with self.queue_lock:
-                                    self.queue.append(song_info)
-                                    print(f"Added to queue: {song_info['title']}")
-                    return first_song
-
-            if is_radio_stream(query):
-                print("Radio stream detected")
-                try:
-                    stream_name = query.split('/')[-1].split('.')[0]
-                    result = {
-                        'title': stream_name,
-                        'url': query,
-                        'file_path': query,  
-                        'is_stream': True,
-                        'thumbnail': None
-                    }
-                    if status_msg:
-                        await status_msg.delete()
-                    return result
-                except Exception as e:
-                    print(f"Error processing radio stream: {str(e)}")
-                    if status_msg:
-                        await status_msg.edit(
-                            embed=create_embed(
-                                "Error",
-                                f"Failed to process radio stream: {str(e)}",
-                                color=0xe74c3c,
-                                ctx=status_msg.channel
-                            )
-                        )
-                    return None
 
             if not self.downloads_dir.exists():
                 self.downloads_dir.mkdir()
