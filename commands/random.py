@@ -59,7 +59,7 @@ class RandomCommand(commands.Cog):
         try:
             # Check if user is in a voice channel
             if not ctx.author.voice:
-                embed = create_embed("Error", "You must be in a voice channel to use this command!", discord.Color.red())
+                embed = create_embed("Error", "You must be in a voice channel to use this command!", discord.Color.red(), ctx=ctx)
                 await ctx.send(embed=embed)
                 return
 
@@ -81,22 +81,21 @@ class RandomCommand(commands.Cog):
 
             music_bot.voice_client = ctx.guild.voice_client
             
+            # Show single status message
+            status_msg = await ctx.send(embed=create_embed("Random Song", "Searching for something...", discord.Color.blue(), ctx=ctx))
+            
             # Fetch random word
-            status_msg = await ctx.send(embed=create_embed("Random Song", "Fetching a random word...", discord.Color.blue()))
             word = await self.fetch_random_word()
             
             if not word:
-                await status_msg.edit(embed=create_embed("Error", "Failed to fetch a random word. Please try again.", discord.Color.red()))
+                await status_msg.edit(embed=create_embed("Error", "Failed to fetch a random word. Please try again.", discord.Color.red(), ctx=ctx))
                 return
 
-            # Update status message
+            # Search using the word
             search_query = f"{word} music"
-            await status_msg.edit(embed=create_embed("Random Song", f"Searching for music with: {search_query}", discord.Color.blue()))
-
-            # Search for the song
             result = await self.search_youtube(search_query)
             if not result:
-                await status_msg.edit(embed=create_embed("Error", f"No results found for '{search_query}'. Trying another word...", discord.Color.orange()))
+                await status_msg.edit(embed=create_embed("Error", f"No results found for '{search_query}'. Trying another word...", discord.Color.orange(), ctx=ctx))
                 return
             
             # Download the song using the URL
@@ -148,7 +147,7 @@ class RandomCommand(commands.Cog):
 
         except Exception as e:
             logger.error(f"Error in random command: {str(e)}")
-            embed = create_embed("Error", f"An error occurred: {str(e)}", discord.Color.red())
+            embed = create_embed("Error", f"An error occurred: {str(e)}", discord.Color.red(), ctx=ctx)
             await ctx.send(embed=embed)
 
 async def setup(bot):

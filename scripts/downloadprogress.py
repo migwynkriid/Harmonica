@@ -38,7 +38,8 @@ class DownloadProgress:
                 total_size = format_size(total)
                 info = d.get('info_dict', {})
                 video_title = info.get('title', self.title)
-                status = f"Downloading: {video_title}\n"
+                video_url = info.get('webpage_url', '')
+                status = f"Downloading: [{video_title}]({video_url})\n"
                 
                 if SHOW_PROGRESS_BAR:
                     progress_bar = self.create_progress_bar(percentage)
