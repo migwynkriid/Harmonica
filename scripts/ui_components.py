@@ -37,9 +37,25 @@ class NowPlayingView(discord.ui.View):
         )
         return embed
 
+    def _check_user_in_voice(self, interaction: discord.Interaction) -> bool:
+        """Check if user is in the same voice channel as the bot"""
+        if not interaction.guild.voice_client:  # Bot not in any voice channel
+            return False
+        
+        member = interaction.guild.get_member(interaction.user.id)
+        if not member or not member.voice:  # User not in any voice channel
+            return False
+            
+        return member.voice.channel == interaction.guild.voice_client.channel
+
     @discord.ui.button(label="Next ⏭️", style=discord.ButtonStyle.primary, custom_id="skip_button", row=0)
     async def skip_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Skip the current song"""
+        # Check if user is in the same voice channel
+        if not self._check_user_in_voice(interaction):
+            await interaction.response.defer()
+            return
+            
         skip_cog = interaction.client.get_cog('SkipCog')
         if skip_cog:
             success, result = await skip_cog._skip_song()
@@ -69,6 +85,11 @@ class NowPlayingView(discord.ui.View):
     @discord.ui.button(label="Loop 🔁", style=discord.ButtonStyle.secondary, custom_id="repeat_button", row=0)
     async def repeat_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Toggle loop mode for the current song"""
+        # Check if user is in the same voice channel
+        if not self._check_user_in_voice(interaction):
+            await interaction.response.defer()
+            return
+            
         loop_cog = interaction.client.get_cog('Loop')
         if loop_cog:
             success, result = await loop_cog._toggle_loop()
@@ -116,6 +137,11 @@ class NowPlayingView(discord.ui.View):
     @discord.ui.button(label="Stop ⛔", style=discord.ButtonStyle.danger, custom_id="stop_button", row=0)
     async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Stop playback and leave voice channel"""
+        # Check if user is in the same voice channel
+        if not self._check_user_in_voice(interaction):
+            await interaction.response.defer()
+            return
+            
         # Acknowledge the button press without sending a visible response
         await interaction.response.defer()
         
