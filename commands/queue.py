@@ -40,7 +40,12 @@ class QueueCog(commands.Cog):
             
             # Get duration for current song
             if not music_bot.current_song.get('is_stream'):
-                duration = get_audio_duration(music_bot.current_song['file_path'])
+                file_path = music_bot.current_song['file_path']
+                duration = music_bot.duration_cache.get(file_path)
+                if duration is None:
+                    duration = get_audio_duration(file_path)
+                    if duration > 0:
+                        music_bot.duration_cache[file_path] = duration
                 duration_str = f" `[{format_duration(duration)}]`" if duration > 0 else ""
             else:
                 duration_str = " `[LIVE]`"
@@ -77,7 +82,12 @@ class QueueCog(commands.Cog):
                         if position <= 10:  # Only show first 10 songs
                             # Get duration for queued song
                             if not song.get('is_stream'):
-                                duration = get_audio_duration(song['file_path'])
+                                file_path = song['file_path']
+                                duration = music_bot.duration_cache.get(file_path)
+                                if duration is None:
+                                    duration = get_audio_duration(file_path)
+                                    if duration > 0:
+                                        music_bot.duration_cache[file_path] = duration
                                 duration_str = f" `[{format_duration(duration)}]`" if duration > 0 else ""
                             else:
                                 duration_str = " `[LIVE]`"
@@ -95,12 +105,22 @@ class QueueCog(commands.Cog):
                 total_duration = 0
                 for song in music_bot.queue:
                     if not song.get('is_stream') and not (is_looping and song['url'] == current_song_url):
-                        duration = get_audio_duration(song['file_path'])
+                        file_path = song['file_path']
+                        duration = music_bot.duration_cache.get(file_path)
+                        if duration is None:
+                            duration = get_audio_duration(file_path)
+                            if duration > 0:
+                                music_bot.duration_cache[file_path] = duration
                         total_duration += duration
                 
                 # Add current song duration if it exists and isn't a stream
                 if music_bot.current_song and not music_bot.current_song.get('is_stream'):
-                    duration = get_audio_duration(music_bot.current_song['file_path'])
+                    file_path = music_bot.current_song['file_path']
+                    duration = music_bot.duration_cache.get(file_path)
+                    if duration is None:
+                        duration = get_audio_duration(file_path)
+                        if duration > 0:
+                            music_bot.duration_cache[file_path] = duration
                     total_duration += duration
                 
                 if total_duration > 0:

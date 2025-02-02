@@ -91,6 +91,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.should_stop_downloads = False  # Flag to control download cancellation
         self.current_download_task = None  # Track current download task
         self.current_ydl = None  # Track current YoutubeDL instance
+        self.duration_cache = {}  # Cache for storing audio durations
         
         # Create cache directories if they don't exist
         self.cache_dir.mkdir(exist_ok=True)
@@ -672,6 +673,11 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     if ctx:
                         info['requester'] = ctx.author
                     
+                    # Get and cache the duration
+                    duration = get_audio_duration(file_path)
+                    if duration > 0:
+                        self.duration_cache[file_path] = duration
+
                     return {
                         'title': info['title'],
                         'url': info['webpage_url'] if info.get('webpage_url') else info['url'],
