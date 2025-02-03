@@ -134,6 +134,62 @@ class NowPlayingView(discord.ui.View):
             )
             await interaction.channel.send(embed=embed)
 
+    @discord.ui.button(label="Pause ⏸️", style=discord.ButtonStyle.primary, custom_id="pause_resume_button", row=0)
+    async def pause_resume_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Toggle between pause and resume states"""
+        # Check if user is in the same voice channel
+        if not self._check_user_in_voice(interaction):
+            await interaction.response.defer()
+            return
+            
+        voice_client = interaction.guild.voice_client
+        if not voice_client:
+            await interaction.response.defer()
+            embed = self._create_embed_with_footer(
+                "Error",
+                "Not in a voice channel",
+                0xe74c3c,
+                None,
+                interaction
+            )
+            await interaction.channel.send(embed=embed)
+            return
+
+        # Toggle between pause and resume
+        try:
+            # Get the current message embed
+            message = interaction.message
+            embed = message.embeds[0] if message.embeds else None
+            
+            if voice_client.is_paused():
+                voice_client.resume()
+                button.label = "Pause ⏸️"
+                button.style = discord.ButtonStyle.primary
+                # Remove "Paused" text if it exists
+                if embed and embed.description:
+                    embed.description = embed.description.replace("\n*Paused*", "")
+            else:
+                voice_client.pause()
+                button.label = "Resume ▶️"
+                button.style = discord.ButtonStyle.primary
+                # Add "Paused" text if embed exists
+                if embed and embed.description:
+                    embed.description = f"{embed.description}\n*Paused*"
+
+            # Update the message with modified embed and button
+            await interaction.response.edit_message(embed=embed, view=self)
+
+        except Exception as e:
+            await interaction.response.defer()
+            embed = self._create_embed_with_footer(
+                "Error",
+                f"Failed to toggle playback: {str(e)}",
+                0xe74c3c,
+                None,
+                interaction
+            )
+            await interaction.channel.send(embed=embed)
+
     @discord.ui.button(label="Stop ⛔", style=discord.ButtonStyle.danger, custom_id="stop_button", row=0)
     async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Stop playback and leave voice channel"""
