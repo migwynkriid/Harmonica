@@ -4,12 +4,14 @@ import json
 import os
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
+from scripts.config import load_config
 
 class AliasCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.aliases_file = 'alias.json'
         self.aliases = self.load_aliases()
+        self.config = load_config()
 
     def load_aliases(self):
         """Load aliases from the JSON file"""
@@ -30,12 +32,13 @@ class AliasCog(commands.Cog):
     async def alias(self, ctx):
         """Manage command aliases"""
         if ctx.invoked_subcommand is None:
+            prefix = self.config['PREFIX']
             embed = create_embed(
                 'Alias Commands',
                 'Use these commands to manage aliases:\n'
-                '`!alias add <command> <alias>` - Add an alias for a command\n'
-                '`!alias remove <alias>` - Remove an alias\n'
-                '`!alias list` - List all aliases',
+                f'\n`{prefix}alias add <command> <alias>` - Add an alias for a command\n'
+                f'`{prefix}alias remove <alias>` - Remove an alias\n'
+                f'`{prefix}alias list` - List all aliases',
                 ctx=ctx
             )
             await ctx.send(embed=embed)
@@ -44,8 +47,9 @@ class AliasCog(commands.Cog):
     @check_dj_role()
     async def alias_add(self, ctx, command: str = None, alias: str = None):
         """Add an alias for a command"""
+        prefix = self.config['PREFIX']
         if command is None or alias is None:
-            embed = create_embed('Error', 'Usage: `!alias add <command> <alias>`\nExample: `!alias add play p`', ctx=ctx)
+            embed = create_embed('Error', f'Usage: `{prefix}alias add <command> <alias>`\nExample: `{prefix}alias add play p`', ctx=ctx)
             await ctx.send(embed=embed)
             return
 
@@ -75,8 +79,9 @@ class AliasCog(commands.Cog):
     @check_dj_role()
     async def alias_remove(self, ctx, alias: str = None):
         """Remove an alias"""
+        prefix = self.config['PREFIX']
         if alias is None:
-            embed = create_embed('Error', 'Usage: `!alias remove <alias>`\nExample: `!alias remove p`', ctx=ctx)
+            embed = create_embed('Error', f'Usage: `{prefix}alias remove <alias>`\nExample: `{prefix}alias remove p`', ctx=ctx)
             await ctx.send(embed=embed)
             return
 
@@ -100,7 +105,22 @@ class AliasCog(commands.Cog):
             await ctx.send(embed=embed)
             return
 
-        alias_list = '\n'.join([f'`{alias}` → `{command}`' for alias, command in self.aliases.items()])
+        # Group aliases by their commands
+        command_groups = {}
+        for alias, command in self.aliases.items():
+            if command not in command_groups:
+                command_groups[command] = []
+            command_groups[command].append(alias)
+
+        # Format each command group
+        prefix = self.config['PREFIX']
+        formatted_groups = []
+        for command, aliases in sorted(command_groups.items()):
+            aliases.sort()  # Sort aliases alphabetically
+            # Add configured prefix to both command and aliases
+            formatted_groups.append(f'`{prefix}{command}` > {", ".join(f"`{prefix}{alias}`" for alias in aliases)}')
+
+        alias_list = '\n'.join(formatted_groups)
         embed = create_embed('Aliases', alias_list, ctx=ctx)
         await ctx.send(embed=embed)
 
@@ -113,18 +133,24 @@ class AliasCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if not message.content.startswith('!'):
+        prefix = self.config['PREFIX']
+        if not message.content.startswith(prefix):
             return
 
         if message.author.bot or not message.guild:
             return
 
-        cmd_name = message.content[1:].split()[0].lower()
+        # Handle empty prefix case
+        content_after_prefix = message.content[len(prefix):]
+        if not content_after_prefix.strip():  # If there's nothing after the prefix
+            return
+
+        cmd_name = content_after_prefix.split()[0].lower()
         if cmd_name in self.aliases:
             ctx = await self.bot.get_context(message)
             actual_command = self.bot.get_command(self.aliases[cmd_name])
             if actual_command:
-                message.content = f"!{self.aliases[cmd_name]}{message.content[len(cmd_name)+1:]}"
+                message.content = f"{prefix}{self.aliases[cmd_name]}{message.content[len(cmd_name)+len(prefix):]}"
                 ctx = await self.bot.get_context(message)
                 await self.bot.invoke(ctx)
 
