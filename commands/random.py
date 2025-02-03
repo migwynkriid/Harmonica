@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class RandomCommand(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.random_word_api = "https://random-word-api.herokuapp.com/all"
+        self.random_word_api = "https://random-word-api.herokuapp.com/word"
 
     async def fetch_random_word(self):
         """Fetch a random word from the Random Word API"""
@@ -22,7 +22,7 @@ class RandomCommand(commands.Cog):
                 async with session.get(self.random_word_api) as response:
                     if response.status == 200:
                         words = await response.json()
-                        return random.choice(words)
+                        return words[0] if words else None
                     else:
                         logger.error(f"Failed to fetch random word. Status: {response.status}")
                         return None
