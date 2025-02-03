@@ -4,7 +4,7 @@ import logging
 import yt_dlp
 from discord.ext import commands
 from scripts.messages import create_embed, update_or_send_message
-from scripts.config import BASE_YTDL_OPTIONS
+from scripts.config import BASE_YTDL_OPTIONS, load_config
 from scripts.voice import join_voice_channel
 from scripts.process_queue import process_queue
 
@@ -12,6 +12,7 @@ class SearchCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self._last_member = None
+        self.config = load_config()
 
     async def search_youtube(self, query):
         """Search YouTube for videos using yt-dlp"""
@@ -39,9 +40,10 @@ class SearchCog(commands.Cog):
         from bot import music_bot
 
         if not query:
+            prefix = self.config['PREFIX']
             usage_embed = create_embed(
                 "Usage",
-                "Usage: !search <song name/artist>\nExample: !search never gonna give you up",
+                f"Usage: {prefix}search <song name/artist>\nExample: {prefix}search never gonna give you up",
                 color=0xe74c3c,
                 ctx=ctx
             )

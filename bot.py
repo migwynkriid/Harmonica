@@ -128,7 +128,8 @@ async def on_ready():
     """Called when the bot is ready"""
     global music_bot 
     clear_downloads_folder()
-    await bot.change_presence(activity=discord.Game(name="nothing! use !play "))
+    prefix = config_vars.get('PREFIX', '!')  # Get prefix from config
+    await bot.change_presence(activity=discord.Game(name=f"nothing! use {prefix}play"))
     owner_name = f"{RED}Not found.\nOwner could not be fetched. Do you share a server with the bot?\nPlease check your config.json{RESET}"
     try:
         owner = await bot.fetch_user(OWNER_ID)

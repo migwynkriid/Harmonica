@@ -10,6 +10,12 @@ class AfterPlayingHandler:
             print(f"Error in playback: {error}")
         
         print("Song ended, checking queue...")
+        # Update playback state
+        if hasattr(self, 'playback_state'):
+            self.playback_state = "stopped"
+
+        # Add delay after song ends to ensure clean state
+        await asyncio.sleep(0.5)
 
         # Check if there's an after_song_callback (for loop mode)
         if hasattr(self, 'after_song_callback') and self.after_song_callback:

@@ -134,7 +134,9 @@ async def process_queue(music_bot):
                     music_bot.current_song = None
                     music_bot.now_playing_message = None
                     music_bot.was_skipped = False  # Reset the skipped flag
-                    await music_bot.bot.change_presence(activity=discord.Game(name="nothing! use !play "))
+                    from scripts.config import load_config
+                    prefix = load_config()['PREFIX']
+                    await music_bot.bot.change_presence(activity=discord.Game(name=f"nothing! use {prefix}play"))
                     await process_queue(music_bot)
                 except Exception as e:
                     print(f"Error updating finished message: {str(e)}")

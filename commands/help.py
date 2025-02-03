@@ -36,6 +36,7 @@ class HelpCog(commands.Cog):
         
         # Utility commands
         help_embed.add_field(name=f"{prefix}ping", value="Show bot latency and connection info.", inline=True)
+        help_embed.add_field(name=f"{prefix}alias", value="Manage aliases", inline=True)
         
         # Admin commands (Owner Only)
         user_id = str(ctx.author.id)

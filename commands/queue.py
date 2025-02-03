@@ -19,19 +19,59 @@ class QueueCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self._last_member = None
+        self.page_size = 10
+        self.queue_messages = {}
+        self.queue_contexts = {}  # Store original contexts
 
-    @commands.command(name='queue', aliases=['playing'])
-    @check_dj_role()
-    async def queue(self, ctx):
-        """Show the current queue"""
+    def create_queue_buttons(self, current_page, total_pages):
+        """Create navigation buttons for queue pagination"""
+        view = discord.ui.View()
+        
+        # Previous page button
+        prev_button = discord.ui.Button(
+            style=discord.ButtonStyle.primary,
+            emoji="⬅️",
+            custom_id="prev_page",
+            disabled=(current_page == 1)
+        )
+        
+        # Next page button
+        next_button = discord.ui.Button(
+            style=discord.ButtonStyle.primary,
+            emoji="➡️",
+            custom_id="next_page",
+            disabled=(current_page == total_pages)
+        )
+        
+        async def prev_callback(interaction):
+            original_ctx = self.queue_contexts.get(interaction.message.id)
+            if original_ctx:
+                await self.update_queue_page(interaction, current_page - 1, original_ctx)
+            
+        async def next_callback(interaction):
+            original_ctx = self.queue_contexts.get(interaction.message.id)
+            if original_ctx:
+                await self.update_queue_page(interaction, current_page + 1, original_ctx)
+            
+        prev_button.callback = prev_callback
+        next_button.callback = next_callback
+        
+        if total_pages > 1:
+            view.add_item(prev_button)
+            view.add_item(next_button)
+            
+        return view
+
+    def get_queue_embed(self, ctx, page=1):
+        """Get the queue embed for a specific page"""
         from bot import music_bot
         
         if not music_bot.current_song and not music_bot.queue and music_bot.download_queue.empty():
-            await ctx.send(embed=create_embed("Queue is empty", "Nothing is in the queue", color=0xe74c3c, ctx=ctx))
-            return
+            return create_embed("Queue is empty", "Nothing is in the queue", color=0xe74c3c, ctx=ctx), 0
 
         queue_text = ""
-        position = 1
+        shown_songs = set()
+        total_songs = 0
 
         if music_bot.current_song:
             queue_text += "**Now playing:**\n"
@@ -40,7 +80,12 @@ class QueueCog(commands.Cog):
             
             # Get duration for current song
             if not music_bot.current_song.get('is_stream'):
-                duration = get_audio_duration(music_bot.current_song['file_path'])
+                file_path = music_bot.current_song['file_path']
+                duration = music_bot.duration_cache.get(file_path)
+                if duration is None:
+                    duration = get_audio_duration(file_path)
+                    if duration > 0:
+                        music_bot.duration_cache[file_path] = duration
                 duration_str = f" `[{format_duration(duration)}]`" if duration > 0 else ""
             else:
                 duration_str = " `[LIVE]`"
@@ -64,8 +109,9 @@ class QueueCog(commands.Cog):
             
             if has_non_looping_songs:
                 queue_text += "**Up Next:**\n"
-                shown_songs = set()  # Track which songs we've already shown
                 position = 1
+                start_idx = (page - 1) * self.page_size
+                end_idx = start_idx + self.page_size
                 
                 for song in music_bot.queue:
                     # Skip showing the looped song in queue
@@ -74,33 +120,48 @@ class QueueCog(commands.Cog):
                         
                     song_title = song['title']
                     if song_title not in shown_songs:
-                        if position <= 10:  # Only show first 10 songs
+                        total_songs += 1
+                        if start_idx <= total_songs - 1 < end_idx:
                             # Get duration for queued song
                             if not song.get('is_stream'):
-                                duration = get_audio_duration(song['file_path'])
+                                file_path = song['file_path']
+                                duration = music_bot.duration_cache.get(file_path)
+                                if duration is None:
+                                    duration = get_audio_duration(file_path)
+                                    if duration > 0:
+                                        music_bot.duration_cache[file_path] = duration
                                 duration_str = f" `[{format_duration(duration)}]`" if duration > 0 else ""
                             else:
                                 duration_str = " `[LIVE]`"
                                 
-                            queue_text += f"`{position}.` [{song_title}]({song['url']}){duration_str}\n"
+                            queue_text += f"`{total_songs}.` [{song_title}]({song['url']}){duration_str}\n"
                         shown_songs.add(song_title)
-                        position += 1
                 
-                # If there are more than 10 songs, show the count of remaining songs
-                if len(shown_songs) > 10:
-                    remaining_songs = len(shown_songs) - 10
+                # If there are more songs on later pages, show the count
+                remaining_songs = len(music_bot.queue) - len(shown_songs)
+                if remaining_songs > 0:
                     queue_text += f"\n+`{remaining_songs}` more in queue waiting to play"
                     
                 # Calculate total duration of all songs
                 total_duration = 0
                 for song in music_bot.queue:
                     if not song.get('is_stream') and not (is_looping and song['url'] == current_song_url):
-                        duration = get_audio_duration(song['file_path'])
+                        file_path = song['file_path']
+                        duration = music_bot.duration_cache.get(file_path)
+                        if duration is None:
+                            duration = get_audio_duration(file_path)
+                            if duration > 0:
+                                music_bot.duration_cache[file_path] = duration
                         total_duration += duration
                 
                 # Add current song duration if it exists and isn't a stream
                 if music_bot.current_song and not music_bot.current_song.get('is_stream'):
-                    duration = get_audio_duration(music_bot.current_song['file_path'])
+                    file_path = music_bot.current_song['file_path']
+                    duration = music_bot.duration_cache.get(file_path)
+                    if duration is None:
+                        duration = get_audio_duration(file_path)
+                        if duration > 0:
+                            music_bot.duration_cache[file_path] = duration
                     total_duration += duration
                 
                 if total_duration > 0:
@@ -111,14 +172,34 @@ class QueueCog(commands.Cog):
             downloading_count = music_bot.download_queue.qsize()
             queue_text += f"{downloading_count} song(s) in download queue\n"
 
-        total_songs = (1 if music_bot.current_song else 0) + len(music_bot.queue)
         embed = create_embed(
             f"Queue",
             queue_text if queue_text else "Queue is empty",
             color=0x3498db,
             ctx=ctx
         )
-        await ctx.send(embed=embed)
+        return embed, total_songs
+
+    async def update_queue_page(self, interaction, new_page, original_ctx):
+        """Update the queue message with a new page"""
+        embed, total_songs = self.get_queue_embed(original_ctx, new_page)
+        total_pages = (total_songs + self.page_size - 1) // self.page_size
+        view = self.create_queue_buttons(new_page, total_pages)
+        await interaction.response.edit_message(embed=embed, view=view)
+
+    @commands.command(name='queue', aliases=['playing'])
+    @check_dj_role()
+    async def queue(self, ctx):
+        """Show the current queue"""
+        page = 1
+        embed, total_songs = self.get_queue_embed(ctx, page)
+        total_pages = (total_songs + self.page_size - 1) // self.page_size
+        view = self.create_queue_buttons(page, total_pages)
+        
+        # Send the initial message with buttons
+        message = await ctx.send(embed=embed, view=view)
+        self.queue_messages[ctx.channel.id] = message
+        self.queue_contexts[message.id] = ctx  # Store the original context
 
 async def setup(bot):
     await bot.add_cog(QueueCog(bot))
