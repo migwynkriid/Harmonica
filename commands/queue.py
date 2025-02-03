@@ -165,7 +165,7 @@ class QueueCog(commands.Cog):
                     total_duration += duration
                 
                 if total_duration > 0:
-                    queue_text += f"\nTotal duration: `{format_duration(total_duration)}`\n"
+                    queue_text += f"\nTotal duration: `{format_duration(total_duration)}`"
 
         if not music_bot.download_queue.empty():
             queue_text += "\n**Downloading:**\n"
