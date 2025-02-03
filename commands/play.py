@@ -9,6 +9,8 @@ class PlayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self._last_member = None
+        from scripts.config import load_config
+        self.config = load_config()
 
     @commands.command(name='play')
     @check_dj_role()
@@ -18,9 +20,10 @@ class PlayCog(commands.Cog):
         
         # First check if user provided a query
         if not query:
+            prefix = self.config['PREFIX']
             usage_embed = create_embed(
-                "Usage",
-                "Usage: !play YouTube Link/Youtube Search/Spotify Link",
+                "Error",
+                f"Usage: {prefix}play YouTube Link/Youtube Search/Spotify Link",
                 color=0xe74c3c,
                 ctx=ctx
             )

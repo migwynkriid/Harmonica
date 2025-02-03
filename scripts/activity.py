@@ -1,4 +1,5 @@
 import discord
+from scripts.config import load_config
 
 async def update_activity(bot, current_song=None, is_playing=False):
     """Update the bot's activity status"""
@@ -10,9 +11,10 @@ async def update_activity(bot, current_song=None, is_playing=False):
                     name=f"🎵 {current_song['title']}"
                 )
             else:
+                prefix = load_config()['PREFIX']
                 activity = discord.Activity(
                     type=discord.ActivityType.playing,
-                    name="nothing! use !play "
+                    name=f"nothing! use {prefix}play "
                 )
             await bot.change_presence(activity=activity)
     except Exception as e:

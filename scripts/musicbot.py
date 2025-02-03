@@ -158,7 +158,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 command_info = await self.command_queue.get()
                 self.last_activity = time.time()
                 ctx, query = command_info
-                print(f"Processing command: !play {query}")
+                print(f"Processing command: {load_config()['PREFIX']}play {query}")
 
                 try:
                     await self._handle_play_command(ctx, query)

@@ -162,7 +162,9 @@ async def play_next(ctx):
         else:
             music_bot.current_song = None
             music_bot.update_activity()
-            await music_bot.bot.change_presence(activity=discord.Game(name="nothing! use !play "))
+            from scripts.config import load_config
+            prefix = load_config()['PREFIX']
+            await music_bot.bot.change_presence(activity=discord.Game(name=f"nothing! use {prefix}play"))
             if music_bot.download_queue.empty():
                 if music_bot.voice_client and music_bot.voice_client.is_connected():
                     await music_bot.voice_client.disconnect()
