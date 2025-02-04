@@ -42,7 +42,7 @@ from scripts.restart import restart_bot
 from scripts.spotify import get_spotify_album_details, get_spotify_track_details, get_spotify_playlist_details
 from scripts.ui_components import NowPlayingView
 from scripts.updatescheduler import check_updates, update_checker
-from scripts.url_identifier import is_url, is_playlist_url, is_radio_stream
+from scripts.url_identifier import is_url, is_playlist_url, is_radio_stream, is_youtube_channel
 from scripts.voice import join_voice_channel, leave_voice_channel, handle_voice_state_update
 from scripts.ytdlp import get_ytdlp_path, ytdlp_version
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -361,6 +361,16 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
     async def download_song(self, query, status_msg=None, ctx=None, skip_url_check=False):
         """Download a song from YouTube, Spotify, or handle radio stream"""
+        if not skip_url_check and is_url(query):
+            if is_youtube_channel(query):
+                if status_msg:
+                    await status_msg.edit(embed=create_embed(
+                        "Error",
+                        "Channel links are not supported.",
+                        color=0xe74c3c,
+                        ctx=ctx
+                    ))
+                return None
         try:
             self._last_progress = -1
             if not skip_url_check:
