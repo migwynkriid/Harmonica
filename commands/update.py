@@ -38,7 +38,7 @@ async def updateytdlp(ctx):
         
         # Git pull from repository
         try:
-            subprocess.run(["git", "pull", "https://github.com/migwynkriid/Harmonica-DiscordBot-Ytdlp"], check=True, capture_output=True, text=True)
+            subprocess.run(["git", "pull", "https://github.com/migwynkriid/Harmonica"], check=True, capture_output=True, text=True)
             # Get new commit hash and count after pull
             new_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
             new_count = subprocess.run(["git", "rev-list", "--count", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
