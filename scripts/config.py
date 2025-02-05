@@ -116,7 +116,7 @@ volume_float = DEFAULT_VOLUME / 100.0  # This makes 100% = 1.0, 75% = 0.75, 50% 
 
 # Base yt-dlp options for downloading content
 BASE_YTDL_OPTIONS = {
-    'format': 'bestaudio[abr<=64]/bestaudio[abr<=72]/bestaudio[abr<=80]/bestaudio[abr<=88]/bestaudio[abr<=96]/bestaudio',
+    'format': 'bestaudio[abr<=64]/bestaudio[abr<=72]/bestaudio[abr<=80]/bestaudio[abr<=88]/bestaudio[abr<=96]/bestaudio/worst', #using worst if everything else fails, some extractors do not offer audio only.
     'outtmpl': '%(id)s.%(ext)s',
     'extract_audio': True,
     'concurrent_fragments': 8,
