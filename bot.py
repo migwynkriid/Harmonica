@@ -129,7 +129,8 @@ async def on_ready():
     global music_bot 
     clear_downloads_folder()
     prefix = config_vars.get('PREFIX', '!')  # Get prefix from config
-    await bot.change_presence(activity=discord.Game(name=f"nothing! use {prefix}play"))
+    from scripts.activity import update_activity
+    await update_activity(bot)
     owner_name = f"{RED}Not found.\nOwner could not be fetched. Do you share a server with the bot?\nPlease check your config.json{RESET}"
     try:
         owner = await bot.fetch_user(OWNER_ID)
