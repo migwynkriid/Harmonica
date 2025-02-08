@@ -20,25 +20,25 @@ for subdir in ['youtube-sigfuncs', 'youtube-nsig']:
 def load_config():
     """Load or create the configuration file."""
     default_config = {
-        "OWNER_ID": "220301180562046977",
-        "PREFIX": "!",
-        "LOG_LEVEL": "INFO",
+        "OWNER_ID": "220301180562046977",               # Owner ID
+        "PREFIX": "!",                                  # Prefix for commands
+        "LOG_LEVEL": "INFO",                            # Logging level
         "VOICE": {
-            "INACTIVITY_LEAVE": False,
-            "INACTIVITY_TIMEOUT": 60,
-            "AUTO_LEAVE_EMPTY": True,
-            "DEFAULT_VOLUME": 100,
+            "INACTIVITY_LEAVE": False,                  # if True, leave voice channel when bot is inactive
+            "INACTIVITY_TIMEOUT": 60,                   # in seconds
+            "AUTO_LEAVE_EMPTY": True,                   # if True, leave voice channel when it is empty
+            "DEFAULT_VOLUME": 100,                      # default volume for voice connections
         },
         "DOWNLOADS": {
-            "AUTO_CLEAR": True,
-            "MIX_PLAYLIST_LIMIT": 50,  # Maximum number of songs to download from YouTube Mix playlists
+            "AUTO_CLEAR": True,                         # if True, clear download directory on startup
+            "MIX_PLAYLIST_LIMIT": 50,                   # Maximum number of songs to download from YouTube Mix playlists
         },
         "MESSAGES": {
-            "SHOW_PROGRESS_BAR": True,
-            "DISCORD_UI_BUTTONS": False,
+            "SHOW_PROGRESS_BAR": True,                  # if True, show download progress bar in Discord messages
+            "DISCORD_UI_BUTTONS": False,                # if True, show Discord UI buttons
         },
         "PERMISSIONS": {
-            "REQUIRES_DJ_ROLE": False,
+            "REQUIRES_DJ_ROLE": False,                  # if True, require a DJ role to use certain commands
         }
     }
 
