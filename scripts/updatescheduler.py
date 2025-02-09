@@ -90,7 +90,7 @@ async def check_updates(bot):
 
         # Only restart if either git or pip updates were applied
         if needs_restart:
-            # Import and call restart function #test
+            # Import and call restart function
             from scripts.restart import restart_bot
             restart_bot()
     except Exception as e:
