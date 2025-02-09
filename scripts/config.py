@@ -1,7 +1,7 @@
 import os
 import json
 from scripts.logging import get_ytdlp_logger
-from scripts.paths import get_ytdlp_path, get_ffmpeg_path
+from scripts.paths import get_ytdlp_path, get_ffmpeg_path, get_ffprobe_path
 
 # Get the absolute path to the cache directory
 CACHE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.cache'))
@@ -108,6 +108,7 @@ def load_config():
         
 # Get paths
 FFMPEG_PATH = get_ffmpeg_path()
+FFPROBE_PATH = get_ffprobe_path()
 YTDLP_PATH = get_ytdlp_path()
 
 # Get config for volume
@@ -138,18 +139,32 @@ BASE_YTDL_OPTIONS = {
     'verbose': True,
     'source_address': '0.0.0.0',
     'ffmpeg_location': FFMPEG_PATH,
+    'ffprobe_location': FFPROBE_PATH,
     'yt_dlp_filename': YTDLP_PATH,
     'buffersize': 8192,
     'http_chunk_size': 1048576,
-    'cachedir': CACHE_DIR,  # Use absolute path for cache directory
-    'write_download_archive': True,  # Keep track of downloaded videos
-    'player_client': 'web',  # Use only web player API
-    'player_skip': ['mweb', 'android', 'ios'],  # Skip other player APIs
-    'extractor_retries': 3,  # Number of retries for extractors
-    'geo_bypass': True,  # Bypass geographical restrictions
-    'socket_timeout': 10,  # Timeout for socket operations
-    'ignore_no_formats_error': True,  # Skip videos with no available formats
-    'ignore_unavailable_video': True  # Skip unavailable videos
+    'cachedir': CACHE_DIR,
+    'write_download_archive': True,
+    'player_client': 'web',
+    'player_skip': ['mweb', 'android', 'ios'],
+    'extractor_retries': 3,
+    'geo_bypass': True,
+    'socket_timeout': 10,
+    'ignore_no_formats_error': True,
+    'ignore_unavailable_video': True,
+
+    # Enable SponsorBlock
+    'sponsorblock_remove': ['sponsor', 'intro', 'outro', 'selfpromo', 'interaction', 'music_offtopic'],
+    'sponsorblock_api': 'https://sponsor.ajay.app',
+    'postprocessors': [{
+        'key': 'SponsorBlock',
+        'when': 'before_dl',
+        'api': 'https://sponsor.ajay.app',
+        'categories': ['sponsor', 'intro', 'outro', 'selfpromo', 'interaction', 'music_offtopic']
+    }, {
+        'key': 'ModifyChapters',
+        'remove_sponsor_segments': ['sponsor', 'intro', 'outro', 'selfpromo', 'interaction', 'music_offtopic']
+    }],
 }
 
 # For backward compatibility

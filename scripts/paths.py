@@ -19,5 +19,18 @@ def get_ytdlp_path():
 
 def get_ffmpeg_path():
     """Get the path to the FFmpeg executable."""
-    # Use ffmpeg from PATH for all platforms
-    return "ffmpeg"
+    try:
+        import subprocess
+        result = subprocess.run(['which', 'ffmpeg'], capture_output=True, text=True, check=True)
+        return result.stdout.strip()
+    except:
+        return "ffmpeg"  # Fallback to PATH
+
+def get_ffprobe_path():
+    """Get the path to the FFprobe executable."""
+    try:
+        import subprocess
+        result = subprocess.run(['which', 'ffprobe'], capture_output=True, text=True, check=True)
+        return result.stdout.strip()
+    except:
+        return "ffprobe"  # Fallback to PATH
