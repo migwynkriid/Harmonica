@@ -4,6 +4,7 @@ from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 from scripts.clear_queue import clear_queue
 from scripts.voice_checks import check_voice_state
+import asyncio
 
 class StopCog(commands.Cog):
     def __init__(self, bot):
@@ -29,6 +30,15 @@ class StopCog(commands.Cog):
             # Stop any current playback
             if music_bot.voice_client and music_bot.voice_client.is_playing():
                 music_bot.voice_client.stop()
+            
+            # Clean up all queued messages with 1-second delay between each
+            for message in list(music_bot.queued_messages.values()):
+                try:
+                    await message.delete()
+                    await asyncio.sleep(0.1)  # Add 1-second delay between deletions
+                except:
+                    pass  # Message might already be deleted
+            music_bot.queued_messages.clear()
             
             # Clear the queue and disconnect
             clear_queue()
