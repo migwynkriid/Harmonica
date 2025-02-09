@@ -153,6 +153,11 @@ async def on_ready():
     print(f"{GREEN}Owner ID:{RESET} {BLUE}{OWNER_ID}{RESET} ")
     print(f"{GREEN}Owner name:{RESET} {BLUE}{owner_name}{RESET}")
     print(f"{GREEN}Command Prefix:{RESET} {BLUE}{PREFIX}{RESET} ")
+    config = load_config()
+    auto_update = config.get('AUTO_UPDATE', True)
+    status_color = GREEN if auto_update else RED
+    update_msg = f"{GREEN}Auto update: {BLUE if auto_update else RED}{'Enabled' if auto_update else f'Disabled.\nTo update your instance - use {PREFIX}update'}{RESET}"
+    print(update_msg)
     
     # Load scripts and commands
     load_scripts()

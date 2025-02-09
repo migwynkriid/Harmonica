@@ -6,6 +6,7 @@ import os
 import sys
 from datetime import datetime
 import pytz
+import json
 
 def create_embed(title, description, color=0x3498db):
     embed = discord.Embed(
@@ -16,7 +17,15 @@ def create_embed(title, description, color=0x3498db):
     )
     return embed
 
+def load_config():
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
 async def check_updates(bot):
+    config = load_config()
+    if not config.get('AUTO_UPDATE', True):
+        return
+
     try:
         owner = await bot.fetch_user(bot.owner_id)
     except discord.NotFound:

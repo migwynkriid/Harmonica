@@ -23,6 +23,7 @@ def load_config():
         "OWNER_ID": "220301180562046977",               # Owner ID
         "PREFIX": "!",                                  # Prefix for commands
         "LOG_LEVEL": "INFO",                            # Logging level
+        "AUTO_UPDATE": True,                            # Enable/disable automatic updates
         "VOICE": {
             "INACTIVITY_LEAVE": False,                  # if True, leave voice channel when bot is inactive
             "INACTIVITY_TIMEOUT": 60,                   # in seconds
@@ -95,6 +96,7 @@ def load_config():
         'AUTO_CLEAR_DOWNLOADS': config.get('DOWNLOADS', {}).get('AUTO_CLEAR', default_config['DOWNLOADS']['AUTO_CLEAR']),
         'MIX_PLAYLIST_LIMIT': config.get('DOWNLOADS', {}).get('MIX_PLAYLIST_LIMIT', default_config['DOWNLOADS']['MIX_PLAYLIST_LIMIT']),
         'SHOW_PROGRESS_BAR': config.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', default_config['MESSAGES']['SHOW_PROGRESS_BAR']),
+        'AUTO_UPDATE': config.get('AUTO_UPDATE', default_config['AUTO_UPDATE']),
     }
     
     # Add the nested structure to the flattened config
