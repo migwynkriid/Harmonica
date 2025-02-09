@@ -12,6 +12,11 @@ A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, 
 - Livestream support
 - Playlist support
 
+### 📢 Sponsorblock
+- Intergrated Sponsorblock
+- Remove sponsor, intro, outro, selfpromo, interaction, and music offtopic from the audio
+- Configurable via the config.json, by default it is disabled
+
 ### 🎚️ Playback Control
 - Basic controls (play, pause, skip)
 - Queue management
@@ -71,6 +76,7 @@ A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, 
      - Auto Clear Downloads
      - Log Level
      - UI Buttons
+     - Sponsorblock
 
 ### Optional Features
 
