@@ -41,7 +41,7 @@ def load_config():
         "PERMISSIONS": {
             "REQUIRES_DJ_ROLE": False,                  # if True, require a DJ role to use certain commands
         },
-        "SPONSORBLOCK": True,                          # if True, enable SponsorBlock
+        "SPONSORBLOCK": False,                          # if True, enable SponsorBlock
     }
 
     # Create default config if it doesn't exist
