@@ -21,21 +21,6 @@ def load_config():
     with open('config.json', 'r') as f:
         return json.load(f)
 
-def check_git_updates():
-    try:
-        # Get current commit hash
-        current_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
-        
-        # Fetch latest changes
-        subprocess.run(["git", "fetch", "https://github.com/migwynkriid/Harmonica"], check=True, capture_output=True, text=True)
-        
-        # Get the commit hash of origin/main
-        remote_commit = subprocess.run(["git", "rev-parse", "--short", "origin/main"], check=True, capture_output=True, text=True).stdout.strip()
-        
-        return current_commit != remote_commit
-    except subprocess.CalledProcessError:
-        return False
-
 async def check_updates(bot):
     config = load_config()
     if not config.get('AUTO_UPDATE', True):
@@ -49,38 +34,32 @@ async def check_updates(bot):
     except Exception as e:
         print(f"\033[91mWarning: Could not send update notification. Error: {str(e)}\033[0m")
         return
-    
+
     try:
-        # Check for pip updates
         result = subprocess.run(
             [sys.executable, '-m', 'pip', 'install', '--upgrade', '--dry-run', '--pre', '-r', 'requirements.txt', '--break-system-packages'],
             capture_output=True,
             text=True
         )
-        
-        has_pip_updates = "Would install" in result.stdout
-        has_git_updates = check_git_updates()
-        
-        if has_pip_updates or has_git_updates:
+
+        if "Would install" in result.stdout:
+            updates = result.stdout.split('\n')
+            update_msg = '\n'.join(line for line in updates if "Would install" in line)
+            
             # Check if bot is in voice chat
             from bot import music_bot
             is_in_voice = music_bot and music_bot.voice_client and music_bot.voice_client.is_connected()
-            
+
             if not is_in_voice:
                 try:
-                    if has_pip_updates:
-                        # Run actual update command
-                        subprocess.run(
-                            [sys.executable, '-m', 'pip', 'install', '--upgrade', '--pre', '-r', 'requirements.txt', '--break-system-packages'],
-                            check=True,
-                            capture_output=True,
-                            text=True
-                        )
-                    
-                    if has_git_updates:
-                        # Pull latest changes
-                        subprocess.run(["git", "pull", "https://github.com/migwynkriid/Harmonica"], check=True, capture_output=True, text=True)
-                    
+                    # Run actual update command
+                    subprocess.run(
+                        [sys.executable, '-m', 'pip', 'install', '--upgrade', '--pre', '-r', 'requirements.txt', '--break-system-packages'],
+                        check=True,
+                        capture_output=True,
+                        text=True
+                    )
+
                     # Import and call restart function
                     from scripts.restart import restart_bot
                     restart_bot()
