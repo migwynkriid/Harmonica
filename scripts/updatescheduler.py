@@ -36,6 +36,31 @@ async def check_updates(bot):
         return
 
     try:
+        # First check for git updates
+        current_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+        # Fetch updates from remote
+        subprocess.run(["git", "fetch"], check=True, capture_output=True, text=True)
+        # Check if we're behind the remote
+        status = subprocess.run(["git", "status", "-uno"], check=True, capture_output=True, text=True).stdout
+        
+        needs_restart = False
+        if "Your branch is behind" in status:
+            # Only proceed with update if not in voice chat
+            from bot import music_bot
+            is_in_voice = music_bot and music_bot.voice_client and music_bot.voice_client.is_connected()
+            
+            if not is_in_voice:
+                try:
+                    # Pull updates
+                    subprocess.run(["git", "pull"], check=True, capture_output=True, text=True)
+                    new_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+                    
+                    if current_commit != new_commit:
+                        needs_restart = True
+                except Exception as e:
+                    print(f"\033[91mWarning: Failed to pull git updates: {str(e)}\033[0m")
+
+        # Continue with pip package updates check
         result = subprocess.run(
             [sys.executable, '-m', 'pip', 'install', '--upgrade', '--dry-run', '--pre', '-r', 'requirements.txt', '--break-system-packages'],
             capture_output=True,
@@ -59,13 +84,15 @@ async def check_updates(bot):
                         capture_output=True,
                         text=True
                     )
-
-                    # Import and call restart function
-                    from scripts.restart import restart_bot
-                    restart_bot()
+                    needs_restart = True
                 except Exception as e:
                     print(f"\033[91mWarning: Failed to auto-update: {str(e)}\033[0m")
-            # If in voice chat, do nothing and let the hourly check try again
+
+        # Only restart if either git or pip updates were applied
+        if needs_restart:
+            # Import and call restart function
+            from scripts.restart import restart_bot
+            restart_bot()
     except Exception as e:
         print(f"\033[91mWarning: Error checking for updates: {str(e)}\033[0m")
 
