@@ -158,7 +158,6 @@ async def on_ready():
     status_color = GREEN if auto_update else RED
     update_msg = f"{GREEN}Auto update: {BLUE if auto_update else RED}{'Enabled' if auto_update else 'Disabled. To update your instance - use {PREFIX}update'}{RESET}"
     print(update_msg)
-    #test
     # Load scripts and commands
     load_scripts()
     await load_commands(bot)
