@@ -40,7 +40,8 @@ def load_config():
         },
         "PERMISSIONS": {
             "REQUIRES_DJ_ROLE": False,                  # if True, require a DJ role to use certain commands
-        }
+        },
+        "SPONSORBLOCK": True,                          # if True, enable SponsorBlock
     }
 
     # Create default config if it doesn't exist
@@ -97,6 +98,7 @@ def load_config():
         'MIX_PLAYLIST_LIMIT': config.get('DOWNLOADS', {}).get('MIX_PLAYLIST_LIMIT', default_config['DOWNLOADS']['MIX_PLAYLIST_LIMIT']),
         'SHOW_PROGRESS_BAR': config.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', default_config['MESSAGES']['SHOW_PROGRESS_BAR']),
         'AUTO_UPDATE': config.get('AUTO_UPDATE', default_config['AUTO_UPDATE']),
+        'SPONSORBLOCK': config.get('SPONSORBLOCK', default_config['SPONSORBLOCK']),
     }
     
     # Add the nested structure to the flattened config
@@ -152,20 +154,24 @@ BASE_YTDL_OPTIONS = {
     'socket_timeout': 10,
     'ignore_no_formats_error': True,
     'ignore_unavailable_video': True,
-
-    # Enable SponsorBlock
-    'sponsorblock_remove': ['sponsor', 'intro', 'outro', 'selfpromo', 'interaction', 'music_offtopic'],
-    'sponsorblock_api': 'https://sponsor.ajay.app',
-    'postprocessors': [{
-        'key': 'SponsorBlock',
-        'when': 'before_dl',
-        'api': 'https://sponsor.ajay.app',
-        'categories': ['sponsor', 'intro', 'outro', 'selfpromo', 'interaction', 'music_offtopic']
-    }, {
-        'key': 'ModifyChapters',
-        'remove_sponsor_segments': ['sponsor', 'intro', 'outro', 'selfpromo', 'interaction', 'music_offtopic']
-    }],
 }
+
+# Add SponsorBlock configuration if enabled in config
+if config.get('SPONSORBLOCK', False):
+    sponsorblock_config = {
+        'sponsorblock_remove': ['sponsor', 'intro', 'outro', 'selfpromo', 'interaction', 'music_offtopic'],
+        'sponsorblock_api': 'https://sponsor.ajay.app',
+        'postprocessors': [{
+            'key': 'SponsorBlock',
+            'when': 'before_dl',
+            'api': 'https://sponsor.ajay.app',
+            'categories': ['sponsor', 'intro', 'outro', 'selfpromo', 'interaction', 'music_offtopic']
+        }, {
+            'key': 'ModifyChapters',
+            'remove_sponsor_segments': ['sponsor', 'intro', 'outro', 'selfpromo', 'interaction', 'music_offtopic']
+        }]
+    }
+    BASE_YTDL_OPTIONS.update(sponsorblock_config)
 
 # For backward compatibility
 YTDL_OPTIONS = BASE_YTDL_OPTIONS
