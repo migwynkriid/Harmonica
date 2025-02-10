@@ -71,7 +71,8 @@ class SpotifyHandler:
                 # If not currently playing, start playback
                 from bot import music_bot
                 if not music_bot.is_playing and not music_bot.voice_client.is_playing():
-                    await play_next(ctx)
+                    from scripts.process_queue import process_queue
+                    await process_queue(music_bot)
                 else:
                     # Send "Added to Queue" message if we're not starting playback immediately
                     queue_pos = len(self.queue)
