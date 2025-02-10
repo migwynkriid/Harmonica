@@ -39,11 +39,22 @@ async def play_next(ctx):
                         print(f"Error deleting queued message: {str(e)}")
 
                 if not music_bot.current_song.get('is_stream'):
+                    # Check if file exists and download is complete
                     if not os.path.exists(music_bot.current_song['file_path']):
                         print(f"Error: File not found: {music_bot.current_song['file_path']}")
                         if len(music_bot.queue) > 0:
                             await play_next(ctx)
                         return
+                        
+                    # If we have a download progress object, wait for download to complete
+                    if hasattr(music_bot, 'download_progress') and music_bot.download_progress:
+                        max_wait = 5  # Maximum seconds to wait
+                        start_time = time.time()
+                        while not music_bot.download_progress.download_complete:
+                            if time.time() - start_time > max_wait:
+                                print("Warning: Download taking too long, proceeding anyway")
+                                break
+                            await asyncio.sleep(0.1)
 
                 if not music_bot.voice_client or not music_bot.voice_client.is_connected():
                     print("Voice client not connected, attempting to reconnect...")

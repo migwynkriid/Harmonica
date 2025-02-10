@@ -5,6 +5,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import os
 from scripts.play_next import play_next
+from scripts.process_queue import process_queue
 from dotenv import load_dotenv
 from scripts.messages import create_embed
 from scripts.duration import get_audio_duration
@@ -78,10 +79,8 @@ class SpotifyHandler:
                 self.queue.append(song_info)
                 
                 # If not currently playing, start playback
-                from bot import music_bot
-                if not music_bot.is_playing and not music_bot.voice_client.is_playing():
-                    from scripts.process_queue import process_queue
-                    await process_queue(music_bot)
+                if not self.is_playing and not self.voice_client.is_playing():
+                    await process_queue(self)
                 else:
                     # Send "Added to Queue" message if we're not starting playback immediately
                     queue_pos = len(self.queue)
@@ -153,7 +152,7 @@ class SpotifyHandler:
                     first_song['duration'] = get_audio_duration(first_song['file_path'])
                     self.queue.append(first_song)
                     if not self.is_playing and not self.voice_client.is_playing():
-                        await play_next(ctx)
+                        await process_queue(self)
 
             if len(tracks) > 1:
                 asyncio.create_task(self._process_spotify_tracks(
@@ -219,7 +218,7 @@ class SpotifyHandler:
                     
                     self.queue.append(queue_entry)
                     if not self.is_playing and not self.voice_client.is_playing():
-                        await play_next(ctx)
+                        await process_queue(self)
 
             if len(tracks) > 1:
                 asyncio.create_task(self._process_spotify_tracks(
@@ -268,7 +267,7 @@ class SpotifyHandler:
                     self.queue.append(queue_entry)
                     
                     if not self.is_playing and not self.voice_client.is_playing():
-                        await play_next(ctx)
+                        await process_queue(self)
                 processed += 1
                 if status_msg and processed % 5 == 0:
                     try:
