@@ -14,6 +14,7 @@ class DownloadProgress:
         self.last_update = 0
         self.title = ""
         self.ctx = None  # Store ctx for footer info
+        self.download_complete = False  # Track if download is complete
         
     def create_progress_bar(self, percentage, width=20):
         filled = int(width * (percentage / 100))
@@ -29,6 +30,10 @@ class DownloadProgress:
             self.last_update = current_time
             
             try:
+                if d['status'] == 'finished':
+                    self.download_complete = True
+                    return
+                    
                 downloaded = d.get('downloaded_bytes', 0)
                 total = d.get('total_bytes', 0) or d.get('total_bytes_estimate', 0)
                 if total == 0:
@@ -39,7 +44,7 @@ class DownloadProgress:
                 info = d.get('info_dict', {})
                 video_title = info.get('title', self.title)
                 video_url = info.get('webpage_url', '')
-                status = f"Downloading: [{video_title}]({video_url})\n"
+                status = f"[{video_title}]({video_url})\n"
                 
                 if SHOW_PROGRESS_BAR:
                     progress_bar = self.create_progress_bar(percentage)

@@ -5,6 +5,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import os
 from scripts.play_next import play_next
+from scripts.process_queue import process_queue
 from dotenv import load_dotenv
 from scripts.messages import create_embed
 from scripts.duration import get_audio_duration
@@ -65,13 +66,21 @@ class SpotifyHandler:
                 song_info['requester'] = ctx.author
                 # Get duration using ffprobe
                 song_info['duration'] = get_audio_duration(song_info['file_path'])
+                # Create a context-like object with the requester information
+                class DummyCtx:
+                    def __init__(self, author):
+                        self.author = author
+                        self.send = ctx.send  # Pass through the send method
+                        self.channel = ctx.channel  # Pass through the channel
+                
+                # Create a new context with the requester information
+                song_info['ctx'] = DummyCtx(ctx.author)
                 # Add to queue
                 self.queue.append(song_info)
                 
                 # If not currently playing, start playback
-                from bot import music_bot
-                if not music_bot.is_playing and not music_bot.voice_client.is_playing():
-                    await play_next(ctx)
+                if not self.is_playing and not self.voice_client.is_playing():
+                    await process_queue(self)
                 else:
                     # Send "Added to Queue" message if we're not starting playback immediately
                     queue_pos = len(self.queue)
@@ -137,17 +146,25 @@ class SpotifyHandler:
                 search_query = f"{first_track['name']} {artists}"
                 first_song = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
                 if first_song:
-                    first_song['is_from_playlist'] = True
-                    first_song['requester'] = ctx.author
-                    # Get duration using ffprobe
-                    first_song['duration'] = get_audio_duration(first_song['file_path'])
-                    self.queue.append(first_song)
+                    # Create a proper queue entry for the first song
+                    queue_entry = {
+                        'title': first_song['title'],
+                        'url': first_song['url'],
+                        'file_path': first_song['file_path'],
+                        'thumbnail': first_song.get('thumbnail'),
+                        'duration': get_audio_duration(first_song['file_path']),
+                        'is_stream': first_song.get('is_stream', False),
+                        'is_from_playlist': True,
+                        'requester': ctx.author,
+                        'ctx': ctx
+                    }
+                    self.queue.append(queue_entry)
                     if not self.is_playing and not self.voice_client.is_playing():
-                        await play_next(ctx)
+                        await process_queue(self)
 
             if len(tracks) > 1:
                 asyncio.create_task(self._process_spotify_tracks(
-                    tracks[1:],
+                    [{'artists': t['artists'], 'name': t['name']} for t in tracks[1:]],
                     ctx,
                     status_msg,
                     f"Album: {album['name']}"
@@ -209,7 +226,7 @@ class SpotifyHandler:
                     
                     self.queue.append(queue_entry)
                     if not self.is_playing and not self.voice_client.is_playing():
-                        await play_next(ctx)
+                        await process_queue(self)
 
             if len(tracks) > 1:
                 asyncio.create_task(self._process_spotify_tracks(
@@ -258,7 +275,7 @@ class SpotifyHandler:
                     self.queue.append(queue_entry)
                     
                     if not self.is_playing and not self.voice_client.is_playing():
-                        await play_next(ctx)
+                        await process_queue(self)
                 processed += 1
                 if status_msg and processed % 5 == 0:
                     try:

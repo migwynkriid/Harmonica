@@ -16,10 +16,13 @@ async def process_queue(music_bot):
     if not music_bot:
         return
         
+    # Don't process if we're already handling a song or queue is empty
     if music_bot.waiting_for_song or not music_bot.queue:
         return
 
+    # Set the flag to prevent multiple simultaneous playbacks
     music_bot.waiting_for_song = True
+    music_bot.is_playing = False  # Reset playing state
 
     try:
         song = music_bot.queue.pop(0)
@@ -40,14 +43,22 @@ async def process_queue(music_bot):
 
         if not music_bot.voice_client or not music_bot.voice_client.is_connected():
             try:
-                # Clear the current song and reset states
-                music_bot.current_song = None
-                music_bot.is_playing = False
-                music_bot.voice_client = None
-                music_bot.waiting_for_song = False
+                # Try to join the voice channel
+                if hasattr(music_bot, 'join_voice_channel'):
+                    connected = await music_bot.join_voice_channel(ctx)
+                    if not connected:
+                        print("Failed to connect to voice channel")
+                        music_bot.current_song = None
+                        music_bot.is_playing = False
+                        music_bot.voice_client = None
+                        music_bot.waiting_for_song = False
+                        return
+                else:
+                    print("No join_voice_channel method available")
+                    return
             except Exception as e:
-                print(f"Error during voice connection cleanup: {str(e)}")
-            return
+                print(f"Error during voice connection: {str(e)}")
+                return
 
         if song['url'] in music_bot.queued_messages:
             try:
@@ -104,8 +115,11 @@ async def process_queue(music_bot):
             """Callback after song finishes"""
             if error:
                 print(f"Error in playback: {error}")
+            music_bot.is_playing = False  # Mark that we're done playing
             
             async def update_now_playing():
+                # Small delay to ensure proper state transitions
+                await asyncio.sleep(0.2)
                 try:
                     if current_message:
                         # Check if the song is looped
@@ -142,14 +156,43 @@ async def process_queue(music_bot):
             
             asyncio.run_coroutine_threadsafe(update_now_playing(), music_bot.bot_loop)
 
-        music_bot.voice_client.play(audio_source, after=after_playing)
+        try:
+            # If we're already playing, stop and wait a moment
+            if music_bot.voice_client and music_bot.voice_client.is_playing():
+                music_bot.voice_client.stop()
+                music_bot.is_playing = False
+                # Give time for the previous playback to fully stop
+                await asyncio.sleep(0.5)
+
+            # Check voice client is still valid
+            if not music_bot.voice_client or not music_bot.voice_client.is_connected():
+                print("Voice client lost before playback could start")
+                music_bot.waiting_for_song = False
+                return
+
+            # Start new playback
+            music_bot.voice_client.play(audio_source, after=after_playing)
+            music_bot.is_playing = True
+            
+            # Small delay to ensure playback started
+            await asyncio.sleep(0.2)
+            if not music_bot.voice_client.is_playing():
+                print("Playback failed to start")
+                music_bot.waiting_for_song = False
+                music_bot.is_playing = False
+                return
+                
+        except Exception as e:
+            print(f"Error starting playback: {str(e)}")
+            music_bot.waiting_for_song = False
+            music_bot.is_playing = False
+            return
 
     except Exception as e:
         print(f"Error in process_queue: {str(e)}")
         music_bot.waiting_for_song = False
-        if not music_bot.is_playing:
-            await process_queue(music_bot)
+        
     finally:
-        music_bot.waiting_for_song = False
+        # Only reset waiting_for_song if we're not playing
         if not music_bot.is_playing:
-            await process_queue(music_bot)
+            music_bot.waiting_for_song = False
