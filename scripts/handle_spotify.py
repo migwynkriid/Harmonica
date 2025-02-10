@@ -146,17 +146,25 @@ class SpotifyHandler:
                 search_query = f"{first_track['name']} {artists}"
                 first_song = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
                 if first_song:
-                    first_song['is_from_playlist'] = True
-                    first_song['requester'] = ctx.author
-                    # Get duration using ffprobe
-                    first_song['duration'] = get_audio_duration(first_song['file_path'])
-                    self.queue.append(first_song)
+                    # Create a proper queue entry for the first song
+                    queue_entry = {
+                        'title': first_song['title'],
+                        'url': first_song['url'],
+                        'file_path': first_song['file_path'],
+                        'thumbnail': first_song.get('thumbnail'),
+                        'duration': get_audio_duration(first_song['file_path']),
+                        'is_stream': first_song.get('is_stream', False),
+                        'is_from_playlist': True,
+                        'requester': ctx.author,
+                        'ctx': ctx
+                    }
+                    self.queue.append(queue_entry)
                     if not self.is_playing and not self.voice_client.is_playing():
                         await process_queue(self)
 
             if len(tracks) > 1:
                 asyncio.create_task(self._process_spotify_tracks(
-                    tracks[1:],
+                    [{'artists': t['artists'], 'name': t['name']} for t in tracks[1:]],
                     ctx,
                     status_msg,
                     f"Album: {album['name']}"
