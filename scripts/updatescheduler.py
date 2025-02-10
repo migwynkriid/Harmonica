@@ -44,6 +44,9 @@ async def check_updates(bot):
         status = subprocess.run(["git", "status", "-uno"], check=True, capture_output=True, text=True).stdout
         
         needs_restart = False
+        git_updated = False
+        pip_updated = False
+
         if "Your branch is behind" in status:
             # Only proceed with update if not in voice chat
             from bot import music_bot
@@ -57,6 +60,7 @@ async def check_updates(bot):
                     
                     if current_commit != new_commit:
                         needs_restart = True
+                        git_updated = True
                 except Exception as e:
                     print(f"\033[91mWarning: Failed to pull git updates: {str(e)}\033[0m")
 
@@ -85,11 +89,20 @@ async def check_updates(bot):
                         text=True
                     )
                     needs_restart = True
+                    pip_updated = True
                 except Exception as e:
                     print(f"\033[91mWarning: Failed to auto-update: {str(e)}\033[0m")
 
         # Only restart if either git or pip updates were applied
         if needs_restart:
+            print("\n")
+            update_message = "Updates found:"
+            if git_updated:
+                update_message += "\n- Git repository update"
+            if pip_updated:
+                update_message += "\n- Python package updates"
+            print(update_message)
+            print("The bot will restart to apply these updates")
             # Import and call restart function
             from scripts.restart import restart_bot
             restart_bot()
