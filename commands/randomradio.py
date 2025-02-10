@@ -124,6 +124,16 @@ class RandomRadioCog(commands.Cog):
     @commands.command(name='randomradio')
     async def randomradio(self, ctx):
         """Play a random radio station from Radio Browser"""
+        # Check if user is in voice chat
+        if not ctx.author.voice:
+            await ctx.send(embed=create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c, ctx=ctx))
+            return
+            
+        # Check if bot is in same voice chat
+        if ctx.voice_client and ctx.author.voice.channel != ctx.voice_client.channel:
+            await ctx.send(embed=create_embed("Error", "You must be in the same voice channel as the bot to use this command!", color=0xe74c3c, ctx=ctx))
+            return
+
         max_retries = 3
         retry_count = 0
 
