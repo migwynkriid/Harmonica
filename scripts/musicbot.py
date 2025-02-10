@@ -1,3 +1,4 @@
+import aiohttp
 import asyncio
 import discord
 import json
@@ -433,13 +434,34 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     if await is_radio_stream(query):
                         print("Radio stream detected")
                         stream_name = query.split('/')[-1].split('.')[0]
+                        # Try to get radio station info from API
                         result = {
                             'title': stream_name,
                             'url': query,
-                            'file_path': query,  
+                            'file_path': query,
                             'is_stream': True,
                             'thumbnail': None
                         }
+                        
+                        try:
+                            async with aiohttp.ClientSession() as session:
+                                params = {
+                                    'url': query,
+                                    'hidebroken': 'true'
+                                }
+                                async with session.get("https://de1.api.radio-browser.info/json/stations/byurl", params=params) as response:
+                                    if response.status == 200:
+                                        stations = await response.json()
+                                        if stations:
+                                            # Use the first match
+                                            station = stations[0]
+                                            result.update({
+                                                'title': station.get('name', stream_name),
+                                                'thumbnail': station.get('favicon')
+                                            })
+                        except Exception as e:
+                            print(f"Error fetching radio station info: {str(e)}")
+                            # Continue with default result
                         if status_msg:
                             await status_msg.delete()
                         return result

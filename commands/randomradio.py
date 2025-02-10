@@ -10,22 +10,44 @@ class RandomRadioCog(commands.Cog):
         self._last_member = None
         self.api_base = "https://de1.api.radio-browser.info/json/stations"
 
-    async def get_random_station(self):
+    async def get_random_station(self, retry_count=0):
         """Fetch a random radio station from the Radio Browser API"""
         async with aiohttp.ClientSession() as session:
-            # Get stations that are not broken and have a working stream
+            # Adjust parameters based on retry count
             params = {
-                'hidebroken': 'true',
-                'has_extended_info': 'true'
+                'hidebroken': 'true',  # Only working stations
+                'has_extended_info': 'true',  # Stations with complete info
+                'limit': 5,  # Get multiple stations in case some fail
+                'order': 'random'  # Random order from the API
             }
+            
+            # First try: High quality stations with random offset
+            if retry_count == 0:
+                params.update({
+                    'offset': random.randint(0, 1000),
+                    'bitrateMin': 64
+                })
+            # Second try: Any quality stations with random offset
+            elif retry_count == 1:
+                params.update({
+                    'offset': random.randint(0, 1000)
+                })
+            # Last try: Get more stations without quality filters
+            else:
+                params.update({
+                    'limit': 20
+                })
+            
             async with session.get(f"{self.api_base}/search", params=params) as response:
                 if response.status == 200:
                     stations = await response.json()
-                    if stations:
-                        # Filter out stations without a valid stream URL
-                        valid_stations = [s for s in stations if s.get('url_resolved')]
-                        if valid_stations:
-                            return random.choice(valid_stations)
+                    # Filter stations with valid URLs and shuffle them
+                    valid_stations = [s for s in stations if s.get('url_resolved')]
+                    if valid_stations:
+                        random.shuffle(valid_stations)  # Extra randomization
+                        return valid_stations[0]  # Return the first valid station
+                    elif retry_count < 2:  # Try again with different parameters
+                        return await self.get_random_station(retry_count + 1)
         return None
 
     async def try_play_station(self, ctx, station, status_msg):
@@ -68,13 +90,13 @@ class RandomRadioCog(commands.Cog):
             if not result:
                 return False
                 
-            # Add to queue with correct title from the API
+            # Add to queue with correct title and favicon from the API
             async with music_bot.queue_lock:
                 music_bot.queue.append({
                     'title': station['name'],  # Use station name from API
                     'url': result['url'],
                     'file_path': result['file_path'],
-                    'thumbnail': result.get('thumbnail'),
+                    'thumbnail': station.get('favicon'),  # Use station favicon as thumbnail
                     'ctx': ctx,
                     'is_stream': True,
                     'is_from_playlist': False,
@@ -120,7 +142,7 @@ class RandomRadioCog(commands.Cog):
                 if not station:
                     await status_msg.edit(embed=create_embed(
                         "Error",
-                        "Could not find any available radio stations. Please try again later.",
+                        "Could not find any available radio stations after multiple attempts. The radio service might be experiencing issues. Please try again in a moment.",
                         color=0xe74c3c,
                         ctx=ctx
                     ))
