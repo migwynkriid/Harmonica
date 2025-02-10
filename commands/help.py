@@ -22,6 +22,7 @@ class HelpCog(commands.Cog):
         help_embed.add_field(name=f"{prefix}join", value="Join a voice channel.", inline=True)
         help_embed.add_field(name=f"{prefix}ping", value="Show bot latency and connection info.", inline=True)
         help_embed.add_field(name=f"{prefix}random", value="Searches for a random song on YouTube.", inline=True)
+        help_embed.add_field(name=f"{prefix}randomradio", value="Play a random radio station.", inline=True)
         help_embed.add_field(name=f"{prefix}search", value="Searches for a song on YouTube.", inline=True)
         help_embed.add_field(name=f"{prefix}shuffle", value="Shuffle the queue.", inline=True)
         help_embed.add_field(name=f"{prefix}resume", value="Resume playback.", inline=True)
