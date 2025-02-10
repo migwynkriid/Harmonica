@@ -65,6 +65,15 @@ class SpotifyHandler:
                 song_info['requester'] = ctx.author
                 # Get duration using ffprobe
                 song_info['duration'] = get_audio_duration(song_info['file_path'])
+                # Create a context-like object with the requester information
+                class DummyCtx:
+                    def __init__(self, author):
+                        self.author = author
+                        self.send = ctx.send  # Pass through the send method
+                        self.channel = ctx.channel  # Pass through the channel
+                
+                # Create a new context with the requester information
+                song_info['ctx'] = DummyCtx(ctx.author)
                 # Add to queue
                 self.queue.append(song_info)
                 
