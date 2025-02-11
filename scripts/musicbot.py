@@ -507,8 +507,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         **BASE_YTDL_OPTIONS
                     }
 
-                # Only do pre-check for actual URLs, not search terms
-                if is_url(query):
+                # Skip pre-check only for direct YouTube watch URLs (no playlist/mix)
+                is_direct_watch = ('youtube.com/watch' in query or 'youtu.be/' in query) and not any(x in query for x in ['list=', 'start_radio='])
+                if is_url(query) and not is_direct_watch:
                     # First, extract info without downloading to check if it's a livestream or mix
                     with yt_dlp.YoutubeDL({**ydl_opts, 
                         'extract_flat': True,
