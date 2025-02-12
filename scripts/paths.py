@@ -20,7 +20,6 @@ def get_ffmpeg_path():
     """Get the path to the FFmpeg executable."""
     try:
         import subprocess
-        import platform
         command = ['where' if platform.system() == 'Windows' else 'which', 'ffmpeg']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         return result.stdout.strip().split('\n')[0]  # Take first result on Windows
@@ -31,7 +30,6 @@ def get_ffprobe_path():
     """Get the path to the FFprobe executable."""
     try:
         import subprocess
-        import platform
         command = ['where' if platform.system() == 'Windows' else 'which', 'ffprobe']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         return result.stdout.strip().split('\n')[0]  # Take first result on Windows

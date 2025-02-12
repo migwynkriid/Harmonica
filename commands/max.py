@@ -9,7 +9,6 @@ class MaxCog(commands.Cog):
     @commands.command(name='max')
     async def max(self, ctx):
         """Play Radio Max stream"""
-        
         try:
             play_cog = self.bot.get_cog('PlayCog')
             if play_cog:

@@ -2,12 +2,12 @@ import os
 import discord
 import yt_dlp
 import subprocess
-from discord.ext import commands, tasks
+from discord.ext import commands
 from dotenv import load_dotenv
 from pathlib import Path
 from scripts.commandlogger import CommandLogger
 from scripts.constants import RED, GREEN, BLUE, RESET
-from scripts.musicbot import MusicBot, PlaylistHandler, AfterPlayingHandler, SpotifyHandler
+from scripts.musicbot import MusicBot
 from scripts.config import load_config
 from scripts.logging import setup_logging
 from scripts.updatescheduler import update_checker
@@ -98,7 +98,6 @@ async def on_ready():
     global music_bot 
     clear_downloads_folder()
     prefix = config_vars.get('PREFIX', '!')  # Get prefix from config
-    from scripts.activity import update_activity
     await update_activity(bot)
     owner_name = f"{RED}Not found.\nOwner could not be fetched. Do you share a server with the bot?\nPlease check your config.json{RESET}"
     try:
