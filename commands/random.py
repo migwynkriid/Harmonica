@@ -1,10 +1,9 @@
 import discord
 import logging
 import aiohttp
-import random
 import yt_dlp
 from discord.ext import commands
-from scripts.config import YTDL_OPTIONS, BASE_YTDL_OPTIONS
+from scripts.config import BASE_YTDL_OPTIONS
 from scripts.messages import create_embed
 from scripts.process_queue import process_queue
 

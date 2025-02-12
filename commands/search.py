@@ -3,9 +3,8 @@ import asyncio
 import logging
 import yt_dlp
 from discord.ext import commands
-from scripts.messages import create_embed, update_or_send_message
+from scripts.messages import create_embed
 from scripts.config import BASE_YTDL_OPTIONS, load_config
-from scripts.voice import join_voice_channel
 from scripts.process_queue import process_queue
 
 class SearchCog(commands.Cog):

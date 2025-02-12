@@ -1,7 +1,6 @@
 import asyncio
-import discord
 from scripts.play_next import play_next
-from scripts.messages import update_or_send_message, create_embed
+from scripts.messages import create_embed
 
 class AfterPlayingHandler:
     async def after_playing_coro(self, error, ctx):

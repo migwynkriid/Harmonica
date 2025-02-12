@@ -1,4 +1,3 @@
-import discord
 from scripts.messages import create_embed
 
 async def check_voice_state(ctx, music_bot):

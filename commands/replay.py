@@ -3,7 +3,6 @@ from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 from scripts.config import FFMPEG_OPTIONS
-from scripts.activity import update_activity
 from scripts.voice_checks import check_voice_state
 import time
 

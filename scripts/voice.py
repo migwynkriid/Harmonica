@@ -1,4 +1,3 @@
-import discord
 import time
 import asyncio
 import json

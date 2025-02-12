@@ -1,12 +1,6 @@
 import asyncio
-import discord
 import re
-import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
-import os
-from scripts.play_next import play_next
 from scripts.process_queue import process_queue
-from dotenv import load_dotenv
 from scripts.messages import create_embed
 from scripts.duration import get_audio_duration
 

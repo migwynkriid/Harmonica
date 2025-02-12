@@ -1,8 +1,6 @@
-import asyncio
 import discord
-from discord.ext import tasks, commands
+from discord.ext import tasks
 import subprocess
-import os
 import sys
 from datetime import datetime
 import pytz

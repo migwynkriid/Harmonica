@@ -1,5 +1,4 @@
 import discord
-from discord.ext import commands
 from datetime import datetime
 
 async def update_or_send_message(bot_instance, ctx, embed, view=None, force_new=False):

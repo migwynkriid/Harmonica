@@ -1,8 +1,5 @@
 import os
-import sys
-import urllib.request
-import platform
-from scripts.messages import update_or_send_message, create_embed
+from scripts.messages import create_embed
 
 def get_ytdlp_path():
     local_path = os.path.join(os.getcwd(), 'yt-dlp')

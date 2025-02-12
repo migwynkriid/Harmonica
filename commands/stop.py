@@ -1,4 +1,3 @@
-import discord
 from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role

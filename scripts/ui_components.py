@@ -1,9 +1,6 @@
 import discord
-from discord.ui import Button, View
 from scripts.config import load_config
-from scripts.messages import create_embed
 from datetime import datetime
-from scripts.voice import leave_voice_channel
 
 def should_show_buttons():
     """Check if UI buttons should be shown based on config"""

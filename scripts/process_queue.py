@@ -1,7 +1,6 @@
 import discord
 import asyncio
 import time
-from pathlib import Path
 from scripts.duration import get_audio_duration
 from scripts.messages import create_embed, should_send_now_playing
 from scripts.config import FFMPEG_OPTIONS, load_config
