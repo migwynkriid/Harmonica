@@ -86,19 +86,19 @@ class RandomRadioCog(commands.Cog):
             music_bot.voice_client = ctx.guild.voice_client
             
             # Try to play the station
-            result = await music_bot.download_song(station['url_resolved'], status_msg=None, ctx=ctx)
-            if not result:
-                return False
-                
+            result = {
+                'title': station['name'],
+                'url': station['url_resolved'],
+                'file_path': station['url_resolved'],
+                'is_stream': True,
+                'thumbnail': station.get('favicon')
+            }
+            
             # Add to queue with correct title and favicon from the API
             async with music_bot.queue_lock:
                 music_bot.queue.append({
-                    'title': station['name'],  # Use station name from API
-                    'url': result['url'],
-                    'file_path': result['file_path'],
-                    'thumbnail': station.get('favicon'),  # Use station favicon as thumbnail
+                    **result,
                     'ctx': ctx,
-                    'is_stream': True,
                     'is_from_playlist': False,
                     'requester': ctx.author
                 })
