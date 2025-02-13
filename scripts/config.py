@@ -1,7 +1,9 @@
-import os
 import json
+import os
+from time import sleep
 from scripts.logging import get_ytdlp_logger
 from scripts.paths import get_ytdlp_path, get_ffmpeg_path, get_ffprobe_path
+from scripts.constants import RED, GREEN, BLUE, RESET
 
 # Get the absolute path to the cache directory
 CACHE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.cache'))
@@ -44,13 +46,21 @@ def load_config():
         "SPONSORBLOCK": False,                          # if True, enable SponsorBlock
     }
 
+    # Get absolute path to config.json in root directory
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.json')
+
     # Create default config if it doesn't exist
-    if not os.path.exists('config.json'):
-        with open('config.json', 'w') as f:
+    if not os.path.exists(config_path):
+        with open(config_path, 'w') as f:
             json.dump(default_config, f, indent=4)
+        print(f"\n{RED}A new config file has created using default values.{RESET}")
+        sleep(1.5)
+        print(f"{GREEN}Config file location: {BLUE}{config_path}{RESET}")
+        print(f"{GREEN}Please edit your config file accordingly.{RESET}\n")
+        sleep(1.5)
 
     # Load the config
-    with open('config.json', 'r') as f:
+    with open(config_path, 'r') as f:
         config = json.load(f)
 
     # Check for missing keys and remove deprecated keys
@@ -82,7 +92,7 @@ def load_config():
 
     if sync_dict(config, default_config):
         config_updated = True
-        with open('config.json', 'w') as f:
+        with open(config_path, 'w') as f:
             json.dump(config, f, indent=4)
         
     # Create a flattened version for backward compatibility
