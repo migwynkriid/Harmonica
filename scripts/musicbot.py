@@ -151,6 +151,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         if self.command_processor_task is None:
             self.command_processor_task = asyncio.create_task(self.process_command_queue())
             print('----------------------------------------')
+        
+        # Config file
+        print(f"{GREEN}Config file location:{RESET} {BLUE}{Path(__file__).parent.parent / 'config.json'}{RESET}")
 
     async def process_command_queue(self):
         """Process commands from the queue one at a time"""
