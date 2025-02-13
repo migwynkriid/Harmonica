@@ -156,7 +156,7 @@ async def on_ready():
     config = load_config()
     auto_update = config.get('AUTO_UPDATE', True)
     status_color = GREEN if auto_update else RED
-    update_msg = f"{GREEN}Auto update: {BLUE if auto_update else RED}{'Enabled' if auto_update else 'Disabled. To update your instance - use {PREFIX}update'}{RESET}"
+    update_msg = f"{GREEN}Auto update: {BLUE if auto_update else RED}{'Enabled' if auto_update else f'Disabled. To update your instance - use {config_vars['PREFIX']}update'}{RESET}"
     print(update_msg)
     print(f"{GREEN}SponsorBlock:{RESET} {BLUE if config.get('SPONSORBLOCK', False) else RED}{'Enabled' if config.get('SPONSORBLOCK', False) else 'Disabled'}{RESET}")
     # Load scripts and commands
