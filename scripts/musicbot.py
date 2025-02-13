@@ -105,7 +105,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         print(f"{GREEN}Spotify credentials found:{RESET} {BLUE if (client_id and client_secret) else RED}{'Yes' if (client_id and client_secret) else 'No'}{RESET}")
         
         if not client_id or not client_secret:
-            print(f"{RED}Warning: Spotify credentials not found. Spotify functionality will be limited.{RESET}")
+            print(f"{RED}Warning: Spotify credentials not found. Spotify functionality will be unavailable.{RESET}")
+            print(f"{BLUE}https://developer.spotify.com/documentation/web-api/concepts/apps{RESET}")
+            print(f"{BLUE}Update your {RESET}{YELLOW}.spotifyenv file{RESET}\n")
             self.sp = None
         else:
             try:
@@ -123,9 +125,12 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 self.sp = None
 
         if self.cookie_file.exists():
-            print(f"{GREEN}YouTube cookies file found:{RESET} {BLUE}Yes{RESET}")
+            print(f"{GREEN}YouTube cookies found:{RESET} {BLUE}Yes{RESET}")
         else:
-            print(f"{RED}YouTube cookies not found, features might be limited{RESET}")
+            print(f"{GREEN}YouTube cookies found:{RESET} {RED}No{RESET}")
+            print(f"{RED}Warning: YouTube cookies not found, YouTube functionality might be limited.{RESET}")
+            print(f'{BLUE}Extract using "Get Cookies" extension and save it as cookies.txt in the root directory where you run the bot.{RESET}')
+            print(f"{BLUE}https://github.com/yt-dlp/yt-dlp/wiki/How-to-use-cookies{RESET}\n")
             
         # Check for Genius lyrics token
         genius_token_file = Path(__file__).parent.parent / '.geniuslyrics'
@@ -135,7 +140,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 has_token = content and not content.endswith('=')
             print(f"{GREEN}Genius lyrics token found:{RESET} {BLUE if has_token else RED}{'Yes' if has_token else 'No'}{RESET}")
             if not has_token:
-                print(f"{RED}Warning: Genius lyrics token not found. {YELLOW}AZLyrics will be used as a fallback.{RESET}")
+                print(f"{RED}Warning: Genius lyrics token not found.\n{BLUE}AZLyrics will be used as a fallback.{RESET}")
+                print(f"{BLUE}https://genius.com/api-clients{RESET}")
+                print(f'{BLUE}Update your {RESET}{YELLOW}.geniuslyrics file{RESET}')
 
     async def setup(self, bot_instance):
         """Setup the bot with the event loop"""
