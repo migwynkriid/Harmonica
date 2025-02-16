@@ -21,7 +21,7 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from pathlib import Path
 from pytz import timezone
-from scripts.constants import RED, GREEN, BLUE, RESET, SHOW_PROGRESS_BAR, YELLOW
+from scripts.constants import RED, GREEN, BLUE, RESET, YELLOW
 from scripts.activity import update_activity
 from scripts.after_playing_coro import AfterPlayingHandler
 from scripts.cleardownloads import clear_downloads_folder
