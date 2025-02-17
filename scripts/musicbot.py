@@ -512,10 +512,24 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         self.current_download_task = asyncio.create_task(extract_info(ydl, query, download=False))
                         try:
                             info_dict = await self.current_download_task
-                            is_live = info_dict.get('is_live', False) or info_dict.get('live_status') in ['is_live', 'post_live', 'is_upcoming']
+                            # Enhanced livestream detection
+                            is_live = (
+                                info_dict.get('is_live', False) or 
+                                info_dict.get('live_status') in ['is_live', 'post_live', 'is_upcoming']
+                            )
 
                             if is_live:
                                 print(f"Livestream detected: {query}")
+                                # Convert watch URL to live URL if needed
+                                webpage_url = info_dict.get('webpage_url', query)
+                                if 'youtube.com/watch' in webpage_url:
+                                    video_id = info_dict.get('id', webpage_url.split('watch?v=')[1].split('&')[0])
+                                    query = f"https://www.youtube.com/live/{video_id}"
+                                    # Re-extract info with the live URL
+                                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                                        self.current_download_task = asyncio.create_task(extract_info(ydl, query, download=False))
+                                        info_dict = await self.current_download_task
+
                                 # Clean up the title by removing date, time and (live) suffix if present
                                 title = info_dict.get('title', 'Livestream')
                                 if title.endswith(datetime.now().strftime("%Y-%m-%d %H:%M")):
