@@ -488,7 +488,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 # Check if the query is a URL or a search term
                 if not is_url(query):
                     # If it's not a URL, treat it as a search term
-                    query = f"ytsearch1:{query}"  # Only get the first result
+                    if not query.startswith("ytsearch1:"):
+                        query = f"ytsearch1:{query}"  # Only get the first result
                     ydl_opts['noplaylist'] = True  # Never process playlists for search queries
                 else:
                     # Check if the URL is a YouTube Mix playlist
@@ -598,7 +599,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             is_live = False
                 else:
                     # For search terms, just proceed with the download directly
-                    query = f"ytsearch1:{query}"
+                    pass
                 
                 # For non-livestream content, proceed with normal download
                 ydl_opts = {
