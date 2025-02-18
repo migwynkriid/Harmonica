@@ -31,13 +31,20 @@ def clean_song_title(title):
     return ' '.join(cleaned.split())
 
 def clean_lyrics(lyrics):
-    """Remove text within brackets from lyrics"""
+    """Remove text within brackets and unwanted lines from lyrics"""
     import re
     # Remove text within parentheses () and square brackets []
     cleaned = re.sub(r'\([^)]*\)|\[[^\]]*\]', '', lyrics)
     # Remove extra whitespace and empty lines
     lines = [line.strip() for line in cleaned.split('\n')]
-    return '\n'.join(line for line in lines if line)
+    # Filter out unwanted lines and empty lines
+    filtered_lines = [
+        line for line in lines 
+        if line 
+        and "You might also like" not in line
+        and not re.match(r'^\d+ Contributors?$', line)  # Matches "X Contributors" where X is any number
+    ]
+    return '\n'.join(filtered_lines)
 
 def split_into_chunks(text, max_size):
     """
