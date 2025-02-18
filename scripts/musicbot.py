@@ -484,30 +484,45 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             try:
                 # Initialize default options
                 ydl_opts = {**BASE_YTDL_OPTIONS}
+                is_youtube_mix = False
                 
-                # Check if the query is a URL or a search term
-                if not is_url(query):
-                    # If it's not a URL, treat it as a search term
-                    if not query.startswith("ytsearch1:"):
-                        query = f"ytsearch1:{query}"  # Only get the first result
-                    ydl_opts['noplaylist'] = True  # Never process playlists for search queries
-                else:
-                    # Check if the URL is a YouTube Mix playlist
-                    is_youtube_mix = 'start_radio=1' in query or 'list=RD' in query
+                # Check if the input is a URL
+                if is_url(query):
+                    # Convert YouTube watch URL to live URL if it's a livestream
+                    if 'youtube.com/watch' in query:
+                        video_id = query.split('watch?v=')[1].split('&')[0]
+                        # First check if it's a livestream without downloading
+                        with yt_dlp.YoutubeDL({
+                            **ydl_opts,
+                            'extract_flat': True,
+                            'quiet': True
+                        }) as ydl:
+                            try:
+                                info = ydl.extract_info(query, download=False)
+                                is_live = info.get('is_live', False) or info.get('live_status') in ['is_live', 'post_live', 'is_upcoming']
+                                if is_live:
+                                    query = f"https://www.youtube.com/live/{video_id}"
+                            except Exception as e:
+                                print(f"Error checking livestream status: {str(e)}")
                     
-                    # Add playlist limit for mix playlists
+                    # Handle YouTube Mix playlists
+                    is_youtube_mix = 'start_radio=1' in query or 'list=RD' in query
                     if is_youtube_mix:
-                        ydl_opts['playlistend'] = config_vars.get('MIX_PLAYLIST_LIMIT', 50)  # Get limit from config, default to 50
+                        ydl_opts['playlistend'] = config_vars.get('MIX_PLAYLIST_LIMIT', 50)
+                else:
+                    # If it's not a URL, treat it as a search term
+                    query = f"ytsearch1:{query}"  # Only get the first result
+                    ydl_opts['noplaylist'] = True  # Never process playlists for search queries
 
-                # Skip pre-check only for direct YouTube watch URLs (no playlist/mix)
-                is_direct_watch = ('youtube.com/watch' in query or 'youtu.be/' in query) and not any(x in query for x in ['list=', 'start_radio='])
+                # Skip pre-check for direct YouTube watch URLs (no playlist/mix)
+                is_direct_watch = ('youtube.com/watch' in query or 'youtu.be/' in query) and not is_youtube_mix
                 
                 if not is_direct_watch and is_url(query):
                     # First, extract info without downloading to check if it's a livestream or mix
                     with yt_dlp.YoutubeDL({
                         **ydl_opts, 
                         'extract_flat': True,
-                        'noplaylist': not (is_url(query) and 'is_youtube_mix' in locals() and is_youtube_mix)  # Allow playlist only for Mix URLs
+                        'noplaylist': not is_youtube_mix  # Allow playlist only for Mix URLs
                     }) as ydl:
                         self.current_download_task = asyncio.create_task(extract_info(ydl, query, download=False))
                         try:
