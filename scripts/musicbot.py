@@ -511,30 +511,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         ydl_opts['playlistend'] = config_vars.get('MIX_PLAYLIST_LIMIT', 50)
                 else:
                     # If it's not a URL, treat it as a search term
-                    original_query = query  # Store the original query for potential retry
-                    query = f"ytsearch2:{query}"  # Get two results in case first is playlist
+                    query = f"ytsearch1:{query}"  # Only get the first result
                     ydl_opts['noplaylist'] = True  # Never process playlists for search queries
-                    
-                    # First try to extract info without downloading
-                    with yt_dlp.YoutubeDL({**ydl_opts, 'extract_flat': True}) as ydl:
-                        try:
-                            info = await extract_info(ydl, query, download=False)
-                            if info and 'entries' in info:
-                                # Check if first result is a playlist
-                                first_result = info['entries'][0] if info['entries'] else None
-                                if first_result and ('_type' in first_result and first_result['_type'] == 'playlist'):
-                                    # First result was a playlist, try the second result if available
-                                    if len(info['entries']) > 1:
-                                        second_result = info['entries'][1]
-                                        if '_type' not in second_result or second_result['_type'] != 'playlist':
-                                            query = f"https://youtube.com/watch?v={second_result['id']}"
-                                else:
-                                    # First result was not a playlist, use it
-                                    query = f"https://youtube.com/watch?v={first_result['id']}"
-                        except Exception as e:
-                            print(f"Error in search pre-check: {str(e)}")
-                            # If pre-check fails, fall back to first result
-                            query = f"ytsearch1:{original_query}"
 
                 # Skip pre-check for direct YouTube watch URLs (no playlist/mix)
                 is_direct_watch = ('youtube.com/watch' in query or 'youtu.be/' in query) and not is_youtube_mix
@@ -696,7 +674,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
                         if status_msg:
                             playlist_embed = create_embed(
-                                "Adding Playlist",
+                                "Adding Playlist 🎵",
                                 f"[ {playlist_title}]({playlist_url})\nDownloading first song...",
                                 color=0x3498db,
                                 thumbnail_url=video_thumbnail,
