@@ -35,6 +35,7 @@ def load_config():
         "DOWNLOADS": {
             "AUTO_CLEAR": True,                         # if True, clear download directory on startup
             "MIX_PLAYLIST_LIMIT": 50,                   # Maximum number of songs to download from YouTube Mix playlists
+            "SHUFFLE_DOWNLOAD": False,                  # Whether to shuffle download order in playlists
         },
         "MESSAGES": {
             "SHOW_PROGRESS_BAR": True,                  # if True, show download progress bar in Discord messages
@@ -106,6 +107,7 @@ def load_config():
         'DEFAULT_VOLUME': config.get('VOICE', {}).get('DEFAULT_VOLUME', default_config['VOICE']['DEFAULT_VOLUME']),
         'AUTO_CLEAR_DOWNLOADS': config.get('DOWNLOADS', {}).get('AUTO_CLEAR', default_config['DOWNLOADS']['AUTO_CLEAR']),
         'MIX_PLAYLIST_LIMIT': config.get('DOWNLOADS', {}).get('MIX_PLAYLIST_LIMIT', default_config['DOWNLOADS']['MIX_PLAYLIST_LIMIT']),
+        'SHUFFLE_DOWNLOAD': config.get('DOWNLOADS', {}).get('SHUFFLE_DOWNLOAD', default_config['DOWNLOADS']['SHUFFLE_DOWNLOAD']),
         'SHOW_PROGRESS_BAR': config.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', default_config['MESSAGES']['SHOW_PROGRESS_BAR']),
         'AUTO_UPDATE': config.get('AUTO_UPDATE', default_config['AUTO_UPDATE']),
         'SPONSORBLOCK': config.get('SPONSORBLOCK', default_config['SPONSORBLOCK']),
@@ -123,9 +125,11 @@ FFMPEG_PATH = get_ffmpeg_path()
 FFPROBE_PATH = get_ffprobe_path()
 YTDLP_PATH = get_ytdlp_path()
 
+# Export config variables for other modules to use
+config_vars = load_config()
+
 # Get config for volume
-config = load_config()
-DEFAULT_VOLUME = config.get('VOICE', {}).get('DEFAULT_VOLUME', 100)
+DEFAULT_VOLUME = config_vars.get('VOICE', {}).get('DEFAULT_VOLUME', 100)
 # Convert DEFAULT_VOLUME from percentage (0-100) to float (0.0-1.0)
 volume_float = DEFAULT_VOLUME / 100.0  # This makes 100% = 1.0, 75% = 0.75, 50% = 0.5, etc.
 
@@ -167,7 +171,7 @@ BASE_YTDL_OPTIONS = {
 }
 
 # Add SponsorBlock configuration if enabled in config
-if config.get('SPONSORBLOCK', False):
+if config_vars.get('SPONSORBLOCK', False):
     sponsorblock_config = {
         'sponsorblock_remove': ['sponsor', 'intro', 'outro', 'selfpromo', 'interaction', 'music_offtopic'],
         'sponsorblock_api': 'https://sponsor.ajay.app',
@@ -189,7 +193,7 @@ YTDL_OPTIONS = BASE_YTDL_OPTIONS
 FFMPEG_OPTIONS = {
     'executable': FFMPEG_PATH,
     'options': (
-        f'-loglevel {config["LOG_LEVEL"].lower()} -v quiet -hide_banner '
+        f'-loglevel {config_vars["LOG_LEVEL"].lower()} -v quiet -hide_banner '
         '-vn '
         '-b:a 96k '
         '-reconnect 1 '

@@ -2,6 +2,7 @@ import asyncio
 import discord
 import re
 import spotipy
+import random
 from spotipy.oauth2 import SpotifyClientCredentials
 import os
 from scripts.play_next import play_next
@@ -9,6 +10,7 @@ from scripts.process_queue import process_queue
 from dotenv import load_dotenv
 from scripts.messages import create_embed
 from scripts.duration import get_audio_duration
+from scripts.config import config_vars
 
 class SpotifyHandler:
     async def handle_spotify_url(self, url, ctx, status_msg=None):
@@ -140,6 +142,11 @@ class SpotifyHandler:
             while results['next']:
                 results = self.sp.next(results)
                 tracks.extend(results['items'])
+
+            # Shuffle tracks if enabled
+            if config_vars.get('DOWNLOADS', {}).get('SHUFFLE_DOWNLOAD', False):
+                random.shuffle(tracks)
+
             if tracks:
                 first_track = tracks[0]
                 artists = ", ".join([artist['name'] for artist in first_track['artists']])
@@ -198,6 +205,10 @@ class SpotifyHandler:
             while results['next']:
                 results = self.sp.next(results)
                 tracks.extend(results['items'])
+
+            # Shuffle tracks if enabled
+            if config_vars.get('DOWNLOADS', {}).get('SHUFFLE_DOWNLOAD', False):
+                random.shuffle(tracks)
 
             if tracks:
                 first_track = tracks[0]['track']
