@@ -50,6 +50,7 @@ from scripts.load_commands import load_commands
 from scripts.load_scripts import load_scripts
 from scripts.activity import update_activity
 from scripts.spotify import get_spotify_album_details, get_spotify_track_details, get_spotify_playlist_details
+from scripts.priority import set_high_priority
 
 # Load environment variables
 load_dotenv()
@@ -128,6 +129,7 @@ async def on_ready():
     """Called when the bot is ready"""
     global music_bot 
     clear_downloads_folder()
+    set_high_priority()
     prefix = config_vars.get('PREFIX', '!')  # Get prefix from config
     from scripts.activity import update_activity
     await update_activity(bot)
