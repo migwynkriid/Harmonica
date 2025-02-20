@@ -3,9 +3,10 @@ import discord
 import yt_dlp
 import os
 import json
+import random
 from pathlib import Path
 from scripts.play_next import play_next
-from scripts.config import load_config, BASE_YTDL_OPTIONS
+from scripts.config import load_config, BASE_YTDL_OPTIONS, config_vars
 from scripts.messages import update_or_send_message, create_embed
 from scripts.duration import get_audio_duration
 
@@ -74,7 +75,12 @@ class PlaylistHandler:
                 if not info or not info.get('entries'):
                     raise Exception("Could not extract playlist information")
 
-                total_videos = len(info['entries'])
+                entries = info['entries']
+                total_videos = len(entries)
+
+                # Shuffle entries if enabled
+                if config_vars.get('DOWNLOADS', {}).get('SHUFFLE_DOWNLOAD', False):
+                    random.shuffle(entries)
 
                 if status_msg:
                     playlist_title = info.get('title', 'Unknown')
@@ -98,8 +104,8 @@ class PlaylistHandler:
                 if not self.voice_client or not self.voice_client.is_connected():
                     await self.join_voice_channel(ctx)
 
-                if info['entries']:
-                    first_entry = info['entries'][0]
+                if entries:
+                    first_entry = entries[0]
                     if first_entry:
                         first_url = f"https://youtube.com/watch?v={first_entry['id']}"
                         first_song = await self.download_song(first_url, status_msg=None)
@@ -113,8 +119,10 @@ class PlaylistHandler:
                                 if not self.is_playing and not self.voice_client.is_playing():
                                     await play_next(ctx)
 
-                if len(info['entries']) > 1:
-                    asyncio.create_task(self._process_playlist_downloads(info['entries'][1:], ctx, status_msg))
+                if len(entries) > 1:
+                    # Create a new task for processing remaining songs
+                    remaining_entries = entries[1:]
+                    asyncio.create_task(self._process_playlist_downloads(remaining_entries, ctx, status_msg))
 
                 return True
 
