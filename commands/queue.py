@@ -136,11 +136,6 @@ class QueueCog(commands.Cog):
                                 
                             queue_text += f"`{total_songs}.` [{song_title}]({song['url']}){duration_str}\n"
                         shown_songs.add(song_title)
-                
-                # If there are more songs on later pages, show the count
-                remaining_songs = len(music_bot.queue) - len(shown_songs)
-                if remaining_songs > 0:
-                    queue_text += f"\n+`{remaining_songs}` more in queue waiting to play"
                     
                 # Calculate total duration of all songs
                 total_duration = 0
