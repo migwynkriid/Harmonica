@@ -760,8 +760,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     if duration > 0:
                         self.duration_cache[file_path] = duration
 
-                    # Add to cache if it's a YouTube video
-                    if ('youtube.com/watch' in query or 'youtu.be/' in query) and os.path.exists(file_path):
+                    # Add to cache for both YouTube direct links and Spotify->YouTube conversions
+                    if os.path.exists(file_path) and info.get('id'):
                         video_id = info['id']
                         playlist_cache.add_to_cache(
                             video_id, 
