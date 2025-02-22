@@ -46,7 +46,7 @@ class SpotifyHandler:
             # Check cache first
             cached_info = playlist_cache.get_cached_spotify_track(track_id)
             if cached_info:
-                print(f"\nFound cached Spotify track: {track_id}")
+                print(f"Found cached Spotify track: {track_id}")
                 song_info = {
                     'title': cached_info['title'],
                     'url': f'https://open.spotify.com/track/{track_id}',
@@ -322,12 +322,11 @@ class SpotifyHandler:
                     continue
 
                 track_id = track['id']
-                print(f"\nProcessing track ID: {track_id}")  # Debug print
                 
                 # Check cache first
                 cached_info = playlist_cache.get_cached_spotify_track(track_id)
                 if cached_info:
-                    print(f"\nFound cached Spotify track: {track_id}")
+                    print(f"Found cached Spotify track: {track_id}")
                     song_info = {
                         'title': cached_info['title'],
                         'url': f'https://open.spotify.com/track/{track_id}',
@@ -344,7 +343,8 @@ class SpotifyHandler:
                 # Download if not cached
                 artists = ", ".join([artist['name'] for artist in track['artists']])
                 search_query = f"{track['name']} {artists}"
-                print(f"\nDownloading track: {search_query}")  # Debug print
+                print(f"Downloading track: {search_query}")  # Debug print
+
                 
                 song_info = await self.download_song(search_query, status_msg=None, ctx=ctx)
                 if song_info:
