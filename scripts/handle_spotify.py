@@ -48,6 +48,16 @@ class SpotifyHandler:
             cached_info = playlist_cache.get_cached_spotify_track(track_id)
             if cached_info:
                 print(f"{GREEN}Found cached Spotify track: {track_id}{RESET}")
+                
+                # Delete the "Processing" message if it exists
+                if status_msg:
+                    try:
+                        await status_msg.delete()
+                    except discord.NotFound:
+                        pass
+                    except Exception as e:
+                        print(f"Note: Could not delete processing message: {e}")
+                
                 song_info = {
                     'title': cached_info['title'],
                     'url': f'https://open.spotify.com/track/{track_id}',
@@ -328,6 +338,16 @@ class SpotifyHandler:
                 cached_info = playlist_cache.get_cached_spotify_track(track_id)
                 if cached_info:
                     print(f"{GREEN}Found cached Spotify track: {track_id}{RESET}")
+                    
+                    # Delete the "Processing" message if it exists
+                    if status_msg:
+                        try:
+                            await status_msg.delete()
+                        except discord.NotFound:
+                            pass
+                        except Exception as e:
+                            print(f"Note: Could not delete processing message: {e}")
+                    
                     song_info = {
                         'title': cached_info['title'],
                         'url': f'https://open.spotify.com/track/{track_id}',
