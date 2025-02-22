@@ -43,19 +43,6 @@ class PlaylistHandler:
                         print(f"Error downloading song {entry.get('id', 'unknown')}: {str(e)}")
                         continue  # Skip this song and continue with the next one
 
-            if status_msg:
-                final_embed = create_embed(
-                    "Playlist Complete",
-                    f"All available songs have been downloaded and queued",
-                    color=0x00ff00,
-                    ctx=status_msg.channel
-                )
-                try:
-                    await status_msg.edit(embed=final_embed)
-                    await status_msg.delete(delay=5)
-                except:
-                    pass
-
         except Exception as e:
             print(f"Error in playlist download processing: {str(e)}")
 
