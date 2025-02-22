@@ -231,11 +231,22 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 ctx = download_info['ctx']
                 status_msg = download_info['status_msg']
 
+                # Skip processing if cache checking is stopped
+                if not playlist_cache._should_continue_check:
+                    self.download_queue.task_done()
+                    continue
+
                 try:
                     async with self.download_lock:
                         self.currently_downloading = True
                         print(f"Starting download: {query}")
                         self.in_progress_downloads[query] = None  # Mark as downloading but no info yet
+                        
+                        # Skip if cache checking is stopped
+                        if not playlist_cache._should_continue_check:
+                            self.download_queue.task_done()
+                            continue
+                            
                         result = await self.download_song(query, status_msg=status_msg, ctx=ctx)
                         if result:
                             self.in_progress_downloads[query] = result  # Store the song info
@@ -373,6 +384,10 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
     async def download_song(self, query, status_msg=None, ctx=None, skip_url_check=False):
         """Download a song from YouTube, Spotify, or handle radio stream"""
+        # Skip if cache checking is stopped
+        if not playlist_cache._should_continue_check:
+            return None
+
         if not skip_url_check and is_url(query):
             if is_youtube_channel(query):
                 if status_msg:

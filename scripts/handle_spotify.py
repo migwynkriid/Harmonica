@@ -379,6 +379,22 @@ class SpotifyHandler:
             processed = 0
 
             for track in tracks:
+                # Check if we should stop processing
+                if not playlist_cache._should_continue_check:
+                    print("Cache checking stopped, halting Spotify track processing")
+                    if status_msg:
+                        try:
+                            await status_msg.edit(embed=create_embed(
+                                "Stopped",
+                                "Spotify track processing halted",
+                                color=0xe74c3c,
+                                ctx=ctx
+                            ))
+                            await status_msg.delete(delay=5)
+                        except:
+                            pass
+                    return
+
                 if not track:
                     continue
 
@@ -387,6 +403,10 @@ class SpotifyHandler:
                 # Check cache first
                 cached_info = playlist_cache.get_cached_spotify_track(track_id)
                 if cached_info:
+                    # Skip if we should stop
+                    if not playlist_cache._should_continue_check:
+                        return
+                        
                     print(f"{GREEN}Found cached Spotify track: {track_id} - {cached_info.get('title', 'Unknown')}{RESET}")
                     
                     # Delete the "Processing" message if it exists
@@ -408,8 +428,17 @@ class SpotifyHandler:
                         'duration': get_audio_duration(cached_info['file_path']),
                         'ctx': ctx
                     }
+                    
+                    # Skip if we should stop
+                    if not playlist_cache._should_continue_check:
+                        return
+                        
                     self.queue.append(song_info)
                     continue
+
+                # Skip download if we should stop
+                if not playlist_cache._should_continue_check:
+                    return
 
                 # Download if not cached
                 artists = ", ".join([artist['name'] for artist in track['artists']])
@@ -417,6 +446,10 @@ class SpotifyHandler:
                 
                 song_info = await self.download_song(search_query, status_msg=None, ctx=ctx)
                 if song_info:
+                    # Skip if we should stop
+                    if not playlist_cache._should_continue_check:
+                        return
+                        
                     # Cache the downloaded song
                     playlist_cache.add_spotify_track(
                         track_id,
@@ -432,11 +465,20 @@ class SpotifyHandler:
                     song_info['requester'] = ctx.author
                     song_info['ctx'] = ctx
                     
+                    # Skip if we should stop
+                    if not playlist_cache._should_continue_check:
+                        return
+                        
                     self.queue.append(song_info)
                     
                     if not self.is_playing and not self.voice_client.is_playing():
                         await process_queue(self)
                 processed += 1
+                
+                # Skip status update if we should stop
+                if not playlist_cache._should_continue_check:
+                    return
+                    
                 if status_msg and processed % 5 == 0:
                     try:
                         await status_msg.edit(embed=create_embed(
@@ -447,6 +489,10 @@ class SpotifyHandler:
                         ))
                     except:
                         pass
+
+            # Skip final message if we should stop
+            if not playlist_cache._should_continue_check:
+                return
 
             if status_msg:
                 final_embed = create_embed(

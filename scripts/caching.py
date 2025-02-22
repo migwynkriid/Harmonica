@@ -12,7 +12,16 @@ class PlaylistCache:
         self.cache_file = Path(get_cache_file('filecache.json'))
         self.spotify_cache_file = Path(get_cache_file('spotify_cache.json'))
         self.cache_dir.mkdir(exist_ok=True)
+        self._should_continue_check = True
         self._load_cache()
+
+    def stop_cache_check(self):
+        """Stop the cache checking process"""
+        self._should_continue_check = False
+
+    def resume_cache_check(self):
+        """Resume the cache checking process"""
+        self._should_continue_check = True
 
     def _load_cache(self) -> None:
         """Load the cache from disk or create a new one if it doesn't exist"""
@@ -42,9 +51,15 @@ class PlaylistCache:
 
     def _cleanup_cache(self) -> None:
         """Remove entries for files that no longer exist or have invalid format"""
+        if not self._should_continue_check:
+            return
+
         # Clean YouTube cache
         to_remove = []
         for video_id, entry in self.cache.items():
+            if not self._should_continue_check:
+                return  # Exit early if stop was requested
+                
             # Check if entry has the required format
             if not isinstance(entry, dict) or 'file_path' not in entry:
                 to_remove.append(video_id)
@@ -55,12 +70,18 @@ class PlaylistCache:
             if not os.path.exists(absolute_path):
                 to_remove.append(video_id)
                 
+        if not self._should_continue_check:
+            return  # Exit before making any changes if stop was requested
+                
         for video_id in to_remove:
             del self.cache[video_id]
             
         # Clean Spotify cache
         to_remove = []
         for track_id, entry in self.spotify_cache.items():
+            if not self._should_continue_check:
+                return  # Exit early if stop was requested
+                
             if not isinstance(entry, dict) or 'file_path' not in entry:
                 to_remove.append(track_id)
                 continue
@@ -70,14 +91,20 @@ class PlaylistCache:
             if not os.path.exists(absolute_path):
                 to_remove.append(track_id)
                 
+        if not self._should_continue_check:
+            return  # Exit before making any changes if stop was requested
+                
         for track_id in to_remove:
             del self.spotify_cache[track_id]
         
-        if to_remove:
+        if to_remove and self._should_continue_check:
             self._save_cache()
 
     def get_cached_file(self, video_id: str) -> Optional[str]:
         """Get the cached file path for a video ID if it exists"""
+        if not self._should_continue_check:
+            return None
+            
         if video_id in self.cache:
             relative_path = self.cache[video_id]['file_path']
             absolute_path = get_absolute_path(relative_path)
@@ -87,6 +114,9 @@ class PlaylistCache:
 
     def add_to_cache(self, video_id: str, file_path: str, **kwargs) -> None:
         """Add a file to the cache with its video ID and file path"""
+        if not self._should_continue_check:
+            return
+            
         # Store relative path in cache
         relative_path = get_relative_path(file_path)
         cache_entry = {
@@ -132,6 +162,9 @@ class PlaylistCache:
 
     def add_spotify_track(self, track_id: str, file_path: str, **kwargs) -> None:
         """Add a Spotify track to the cache"""
+        if not self._should_continue_check:
+            return
+            
         # Store relative path in cache
         relative_path = get_relative_path(file_path)
         cache_entry = {
