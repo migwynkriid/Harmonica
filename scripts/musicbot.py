@@ -397,6 +397,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     cached_info = playlist_cache.get_cached_info(video_id)
                     if cached_info and os.path.exists(cached_info['file_path']):
                         print(f"{GREEN}Found cached YouTube file: {video_id}{RESET}")
+                        if status_msg:
+                            await status_msg.delete()
                         return {
                             'title': cached_info.get('title', 'Unknown'),  # Use cached title
                             'url': query,
