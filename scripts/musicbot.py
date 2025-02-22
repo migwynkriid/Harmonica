@@ -396,7 +396,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 if video_id:
                     cached_info = playlist_cache.get_cached_info(video_id)
                     if cached_info and os.path.exists(cached_info['file_path']):
-                        print(f"{GREEN}Found cached YouTube file: {video_id}{RESET}")
+                        print(f"{GREEN}Found cached YouTube file: {video_id} - {cached_info.get('title', 'Unknown')}{RESET}")
                         if status_msg:
                             await status_msg.delete()
                         return {
@@ -772,7 +772,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 thumbnail_url=info.get('thumbnail'),
                                 title=info.get('title', 'Unknown')  # Save the title
                             )
-                            print(f"{GREEN}Added file to cache: {video_id}{RESET}")
+                            print(f"{GREEN}Added file to cache: {video_id} - {info.get('title', 'Unknown')}{RESET}")
 
                     return {
                         'title': info['title'],

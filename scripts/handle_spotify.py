@@ -47,7 +47,7 @@ class SpotifyHandler:
             # Check cache first
             cached_info = playlist_cache.get_cached_spotify_track(track_id)
             if cached_info:
-                print(f"{GREEN}Found cached Spotify track: {track_id}{RESET}")
+                print(f"{GREEN}Found cached Spotify track: {track_id} - {cached_info.get('title', 'Unknown')}{RESET}")
                 
                 # Delete the "Processing" message if it exists
                 if status_msg:
@@ -98,10 +98,6 @@ class SpotifyHandler:
             track = self.sp.track(track_id)
             if not track:
                 raise ValueError("Could not find track on Spotify")
-
-            print("\n" + "="*50)
-            print(f"SPOTIFY TRACK ID: {track_id}")
-            print("="*50 + "\n")
 
             artists = ", ".join([artist['name'] for artist in track['artists']])
             search_query = f"{track['name']} {artists}"
@@ -198,14 +194,6 @@ class SpotifyHandler:
                 results = self.sp.next(results)
                 tracks.extend(results['items'])
 
-            # Print all track IDs from the album
-            print("\n" + "="*50)
-            print(f"SPOTIFY ALBUM ID: {album_id}")
-            print(f"ALBUM TRACKS:")
-            for track in tracks:
-                print(f"TRACK ID: {track['id']}")
-            print("="*50 + "\n")
-
             # Shuffle tracks if enabled
             if config_vars.get('DOWNLOADS', {}).get('SHUFFLE_DOWNLOAD', False):
                 random.shuffle(tracks)
@@ -269,15 +257,6 @@ class SpotifyHandler:
                 results = self.sp.next(results)
                 tracks.extend(results['items'])
 
-            # Print all track IDs from the playlist
-            print("\n" + "="*50)
-            print(f"SPOTIFY PLAYLIST ID: {playlist_id}")
-            print(f"PLAYLIST TRACKS:")
-            for item in tracks:
-                if item['track']:
-                    print(f"TRACK ID: {item['track']['id']}")
-            print("="*50 + "\n")
-
             # Shuffle tracks if enabled
             if config_vars.get('DOWNLOADS', {}).get('SHUFFLE_DOWNLOAD', False):
                 random.shuffle(tracks)
@@ -337,7 +316,7 @@ class SpotifyHandler:
                 # Check cache first
                 cached_info = playlist_cache.get_cached_spotify_track(track_id)
                 if cached_info:
-                    print(f"{GREEN}Found cached Spotify track: {track_id}{RESET}")
+                    print(f"{GREEN}Found cached Spotify track: {track_id} - {cached_info.get('title', 'Unknown')}{RESET}")
                     
                     # Delete the "Processing" message if it exists
                     if status_msg:
@@ -364,8 +343,6 @@ class SpotifyHandler:
                 # Download if not cached
                 artists = ", ".join([artist['name'] for artist in track['artists']])
                 search_query = f"{track['name']} {artists}"
-                print(f"Downloading track: {search_query}")  # Debug print
-
                 
                 song_info = await self.download_song(search_query, status_msg=None, ctx=ctx)
                 if song_info:
