@@ -188,6 +188,7 @@ class SpotifyHandler:
                     thumbnail_url=album['images'][0]['url'] if album['images'] else None,
                     ctx=ctx
                 ))
+
             tracks = []
             results = self.sp.album_tracks(album_id)
             tracks.extend(results['items'])
@@ -234,10 +235,20 @@ class SpotifyHandler:
                     search_query = f"{first_track['name']} {artists}"
                     song_info = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
                     if song_info:
+                        # Cache the downloaded song with Spotify track ID
+                        playlist_cache.add_spotify_track(
+                            track_id,
+                            song_info['file_path'],
+                            title=song_info['title'],
+                            thumbnail=song_info.get('thumbnail'),
+                            artist=artists
+                        )
+                        print(f"{GREEN}Added Spotify track to cache: {track_id} - {song_info.get('title', 'Unknown')}{RESET}")
+                        
                         # Create a proper queue entry for the first song
                         queue_entry = {
                             'title': song_info['title'],
-                            'url': song_info['url'],
+                            'url': f'https://open.spotify.com/track/{track_id}',
                             'file_path': song_info['file_path'],
                             'thumbnail': song_info.get('thumbnail'),
                             'duration': get_audio_duration(song_info['file_path']),
