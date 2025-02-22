@@ -12,6 +12,7 @@ from scripts.messages import create_embed
 from scripts.duration import get_audio_duration
 from scripts.config import config_vars
 from scripts.caching import playlist_cache
+from scripts.constants import RED, GREEN, RESET
 
 class SpotifyHandler:
     async def handle_spotify_url(self, url, ctx, status_msg=None):
@@ -46,7 +47,7 @@ class SpotifyHandler:
             # Check cache first
             cached_info = playlist_cache.get_cached_spotify_track(track_id)
             if cached_info:
-                print(f"Found cached Spotify track: {track_id}")
+                print(f"{GREEN}Found cached Spotify track: {track_id}{RESET}")
                 song_info = {
                     'title': cached_info['title'],
                     'url': f'https://open.spotify.com/track/{track_id}',
@@ -326,7 +327,7 @@ class SpotifyHandler:
                 # Check cache first
                 cached_info = playlist_cache.get_cached_spotify_track(track_id)
                 if cached_info:
-                    print(f"Found cached Spotify track: {track_id}")
+                    print(f"{GREEN}Found cached Spotify track: {track_id}{RESET}")
                     song_info = {
                         'title': cached_info['title'],
                         'url': f'https://open.spotify.com/track/{track_id}',
