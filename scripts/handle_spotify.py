@@ -349,11 +349,12 @@ class SpotifyHandler:
                 song_info = await self.download_song(search_query, status_msg=None, ctx=ctx)
                 if song_info:
                     # Cache the downloaded song
-                    playlist_cache.cache_spotify_track(
+                    playlist_cache.add_spotify_track(
                         track_id,
-                        file_path=song_info['file_path'],
-                        thumbnail_url=song_info.get('thumbnail'),
-                        title=song_info.get('title', 'Unknown')
+                        song_info['file_path'],
+                        title=song_info['title'],
+                        thumbnail=song_info.get('thumbnail'),
+                        artist=artists
                     )
                     print(f"{GREEN}Added Spotify track to cache: {track_id} - {song_info.get('title', 'Unknown')}{RESET}")
                     
