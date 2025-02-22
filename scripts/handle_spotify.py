@@ -409,8 +409,7 @@ class SpotifyHandler:
                         'ctx': ctx
                     }
                     self.queue.append(song_info)
-                    # Add 1 second delay between each cached song
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0.2)
                     continue
 
                 # Download if not cached
