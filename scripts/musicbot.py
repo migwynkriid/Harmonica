@@ -772,7 +772,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 thumbnail_url=info.get('thumbnail'),
                                 title=info.get('title', 'Unknown')  # Save the title
                             )
-                            print(f"{GREEN}Added file to cache: {video_id} - {info.get('title', 'Unknown')}{RESET}")
+                            print(f"{GREEN}Added Youtube file to cache: {video_id} - {info.get('title', 'Unknown')}{RESET}")
 
                     return {
                         'title': info['title'],

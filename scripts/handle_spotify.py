@@ -123,6 +123,7 @@ class SpotifyHandler:
                     thumbnail=song_info.get('thumbnail'),
                     artist=artists
                 )
+                print(f"{GREEN}Added Spotify track to cache: {track_id} - {song_info.get('title', 'Unknown')}{RESET}")
 
                 # Add to queue and process as before
                 song_info['is_from_playlist'] = False
@@ -276,6 +277,7 @@ class SpotifyHandler:
                         thumbnail=first_song.get('thumbnail'),
                         artist=artists
                     )
+                    print(f"{GREEN}Added Spotify track to cache: {first_track['id']} - {first_song.get('title', 'Unknown')}{RESET}")
                     
                     first_song['is_from_playlist'] = True
                     first_song['requester'] = ctx.author
@@ -347,13 +349,13 @@ class SpotifyHandler:
                 song_info = await self.download_song(search_query, status_msg=None, ctx=ctx)
                 if song_info:
                     # Cache the downloaded song
-                    playlist_cache.add_spotify_track(
+                    playlist_cache.cache_spotify_track(
                         track_id,
-                        song_info['file_path'],
-                        title=song_info['title'],
-                        thumbnail=song_info.get('thumbnail'),
-                        artist=artists
+                        file_path=song_info['file_path'],
+                        thumbnail_url=song_info.get('thumbnail'),
+                        title=song_info.get('title', 'Unknown')
                     )
+                    print(f"{GREEN}Added Spotify track to cache: {track_id} - {song_info.get('title', 'Unknown')}{RESET}")
                     
                     song_info['duration'] = get_audio_duration(song_info['file_path'])
                     song_info['is_from_playlist'] = True
