@@ -24,6 +24,20 @@ class StopCog(commands.Cog):
                 await ctx.send(embed=error_embed)
                 return
 
+            # Update now playing message if it exists
+            if music_bot.now_playing_message and music_bot.current_song:
+                try:
+                    finished_embed = create_embed(
+                        "Finished playing",
+                        f"[{music_bot.current_song['title']}]({music_bot.current_song['url']})",
+                        color=0x808080,
+                        thumbnail_url=music_bot.current_song.get('thumbnail'),
+                        ctx=ctx
+                    )
+                    await music_bot.now_playing_message.edit(embed=finished_embed, view=None)
+                except Exception as e:
+                    print(f"Error updating now playing message: {str(e)}")
+            
             # Cancel any active downloads first
             await music_bot.cancel_downloads()
             
