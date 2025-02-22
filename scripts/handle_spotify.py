@@ -409,7 +409,6 @@ class SpotifyHandler:
                         'ctx': ctx
                     }
                     self.queue.append(song_info)
-                    await asyncio.sleep(0.2)
                     continue
 
                 # Download if not cached

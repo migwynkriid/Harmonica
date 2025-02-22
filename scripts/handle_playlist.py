@@ -38,7 +38,7 @@ class PlaylistHandler:
                                 self.queue.append(song_info)
                                 if not self.is_playing and not self.voice_client.is_playing() and len(self.queue) == 1:
                                     await play_next(ctx)
-                            await asyncio.sleep(0.2)
+
                     except Exception as e:
                         print(f"Error downloading song {entry.get('id', 'unknown')}: {str(e)}")
                         continue  # Skip this song and continue with the next one
