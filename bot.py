@@ -51,6 +51,7 @@ from scripts.load_scripts import load_scripts
 from scripts.activity import update_activity
 from scripts.spotify import get_spotify_album_details, get_spotify_track_details, get_spotify_playlist_details
 from scripts.priority import set_high_priority
+from scripts.paths import get_downloads_dir, get_root_dir, get_absolute_path
 
 # Load environment variables
 load_dotenv()
@@ -71,7 +72,8 @@ setup_logging(LOG_LEVEL)
 YTDLP_PATH = get_ytdlp_path()
 FFMPEG_PATH = get_ffmpeg_path()
 
-DOWNLOADS_DIR = Path(__file__).parent / 'downloads'
+ROOT_DIR = Path(get_root_dir())
+DOWNLOADS_DIR = ROOT_DIR / get_downloads_dir()
 OWNER_ID = OWNER_ID
 
 if not DOWNLOADS_DIR.exists():
