@@ -201,25 +201,55 @@ class SpotifyHandler:
 
             if tracks:
                 first_track = tracks[0]
+                track_id = first_track['id']
                 artists = ", ".join([artist['name'] for artist in first_track['artists']])
-                search_query = f"{first_track['name']} {artists}"
-                first_song = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
-                if first_song:
-                    # Create a proper queue entry for the first song
-                    queue_entry = {
-                        'title': first_song['title'],
-                        'url': first_song['url'],
-                        'file_path': first_song['file_path'],
-                        'thumbnail': first_song.get('thumbnail'),
-                        'duration': get_audio_duration(first_song['file_path']),
-                        'is_stream': first_song.get('is_stream', False),
+                
+                # Check cache first for the first track
+                cached_info = playlist_cache.get_cached_spotify_track(track_id)
+                if cached_info:
+                    print(f"{GREEN}Found cached Spotify track: {track_id} - {cached_info.get('title', 'Unknown')}{RESET}")
+                    
+                    # Delete the "Processing" message if it exists
+                    if status_msg:
+                        try:
+                            await status_msg.delete()
+                        except discord.NotFound:
+                            pass
+                        except Exception as e:
+                            print(f"Note: Could not delete processing message: {e}")
+                    
+                    song_info = {
+                        'title': cached_info['title'],
+                        'url': f'https://open.spotify.com/track/{track_id}',
+                        'file_path': cached_info['file_path'],
+                        'thumbnail': cached_info.get('thumbnail'),
                         'is_from_playlist': True,
                         'requester': ctx.author,
+                        'duration': get_audio_duration(cached_info['file_path']),
                         'ctx': ctx
                     }
-                    self.queue.append(queue_entry)
-                    if not self.is_playing and not self.voice_client.is_playing():
-                        await process_queue(self)
+                    self.queue.append(song_info)
+                else:
+                    # Download if not in cache
+                    search_query = f"{first_track['name']} {artists}"
+                    song_info = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
+                    if song_info:
+                        # Create a proper queue entry for the first song
+                        queue_entry = {
+                            'title': song_info['title'],
+                            'url': song_info['url'],
+                            'file_path': song_info['file_path'],
+                            'thumbnail': song_info.get('thumbnail'),
+                            'duration': get_audio_duration(song_info['file_path']),
+                            'is_stream': song_info.get('is_stream', False),
+                            'is_from_playlist': True,
+                            'requester': ctx.author,
+                            'ctx': ctx
+                        }
+                        self.queue.append(queue_entry)
+                
+                if not self.is_playing and not self.voice_client.is_playing():
+                    await process_queue(self)
 
             if len(tracks) > 1:
                 asyncio.create_task(self._process_spotify_tracks(
@@ -229,7 +259,7 @@ class SpotifyHandler:
                     f"Album: {album['name']}"
                 ))
 
-            return first_song if tracks else None
+            return song_info if tracks else None
 
         except Exception as e:
             print(f"Error handling Spotify album: {str(e)}")
@@ -264,30 +294,58 @@ class SpotifyHandler:
 
             if tracks:
                 first_track = tracks[0]['track']
+                track_id = first_track['id']
                 artists = ", ".join([artist['name'] for artist in first_track['artists']])
-                search_query = f"{first_track['name']} {artists}"
                 
-                first_song = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
-                if first_song:
-                    # Cache the first track
-                    playlist_cache.add_spotify_track(
-                        first_track['id'],
-                        first_song['file_path'],
-                        title=first_song['title'],
-                        thumbnail=first_song.get('thumbnail'),
-                        artist=artists
-                    )
-                    print(f"{GREEN}Added Spotify track to cache: {first_track['id']} - {first_song.get('title', 'Unknown')}{RESET}")
+                # Check cache first for the first track
+                cached_info = playlist_cache.get_cached_spotify_track(track_id)
+                if cached_info:
+                    print(f"{GREEN}Found cached Spotify track: {track_id} - {cached_info.get('title', 'Unknown')}{RESET}")
                     
-                    first_song['is_from_playlist'] = True
-                    first_song['requester'] = ctx.author
-                    # Get duration using ffprobe
-                    first_song['duration'] = get_audio_duration(first_song['file_path'])
-                    first_song['ctx'] = ctx
+                    # Delete the "Processing" message if it exists
+                    if status_msg:
+                        try:
+                            await status_msg.delete()
+                        except discord.NotFound:
+                            pass
+                        except Exception as e:
+                            print(f"Note: Could not delete processing message: {e}")
                     
+                    first_song = {
+                        'title': cached_info['title'],
+                        'url': f'https://open.spotify.com/track/{track_id}',
+                        'file_path': cached_info['file_path'],
+                        'thumbnail': cached_info.get('thumbnail'),
+                        'is_from_playlist': True,
+                        'requester': ctx.author,
+                        'duration': get_audio_duration(cached_info['file_path']),
+                        'ctx': ctx
+                    }
                     self.queue.append(first_song)
-                    if not self.is_playing and not self.voice_client.is_playing():
-                        await process_queue(self)
+                else:
+                    # Download if not in cache
+                    search_query = f"{first_track['name']} {artists}"
+                    first_song = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
+                    if first_song:
+                        # Cache the first track
+                        playlist_cache.add_spotify_track(
+                            track_id,
+                            first_song['file_path'],
+                            title=first_song['title'],
+                            thumbnail=first_song.get('thumbnail'),
+                            artist=artists
+                        )
+                        print(f"{GREEN}Added Spotify track to cache: {track_id} - {first_song.get('title', 'Unknown')}{RESET}")
+                        
+                        first_song['is_from_playlist'] = True
+                        first_song['requester'] = ctx.author
+                        first_song['duration'] = get_audio_duration(first_song['file_path'])
+                        first_song['ctx'] = ctx
+                        
+                        self.queue.append(first_song)
+                
+                if not self.is_playing and not self.voice_client.is_playing():
+                    await process_queue(self)
 
             if len(tracks) > 1:
                 asyncio.create_task(self._process_spotify_tracks(
