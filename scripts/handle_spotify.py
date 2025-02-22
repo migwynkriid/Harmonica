@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from scripts.messages import create_embed
 from scripts.duration import get_audio_duration
 from scripts.config import config_vars
+from scripts.caching import playlist_cache
 
 class SpotifyHandler:
     async def handle_spotify_url(self, url, ctx, status_msg=None):
@@ -42,6 +43,47 @@ class SpotifyHandler:
     async def handle_spotify_track(self, track_id, ctx, status_msg=None):
         """Handle a single Spotify track"""
         try:
+            # Check cache first
+            cached_info = playlist_cache.get_cached_spotify_track(track_id)
+            if cached_info:
+                print(f"\nFound cached Spotify track: {track_id}")
+                song_info = {
+                    'title': cached_info['title'],
+                    'url': f'https://open.spotify.com/track/{track_id}',
+                    'file_path': cached_info['file_path'],
+                    'thumbnail': cached_info.get('thumbnail'),
+                    'is_from_playlist': False,
+                    'requester': ctx.author,
+                    'duration': get_audio_duration(cached_info['file_path']),
+                    'ctx': ctx
+                }
+                self.queue.append(song_info)
+                
+                if not self.is_playing and not self.voice_client.is_playing():
+                    await process_queue(self)
+                else:
+                    queue_pos = len(self.queue)
+                    description = f"[🎵 {song_info['title']}]({song_info['url']})"
+                    if self.current_song:
+                        loop_cog = ctx.bot.get_cog('Loop')
+                        current_song_url = self.current_song['url']
+                        is_current_looping = loop_cog and current_song_url in loop_cog.looped_songs
+                        if not is_current_looping:
+                            description += f"\nPosition in queue: {queue_pos}"
+                    
+                    queue_embed = create_embed(
+                        "Added to Queue",
+                        description,
+                        color=0x3498db,
+                        thumbnail_url=song_info.get('thumbnail'),
+                        ctx=ctx
+                    )
+                    queue_msg = await ctx.send(embed=queue_embed)
+                    self.queued_messages[song_info['url']] = queue_msg
+                
+                return song_info
+
+            # If not in cache, proceed with normal download
             track = self.sp.track(track_id)
             if not track:
                 raise ValueError("Could not find track on Spotify")
@@ -64,24 +106,22 @@ class SpotifyHandler:
             # Download the song
             song_info = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
             
-            # If song is successfully downloaded, add to queue and play
+            # If song is successfully downloaded, cache it and add to queue
             if song_info:
-                # Ensure the song is not marked as from a playlist
+                # Cache the downloaded song with Spotify ID
+                playlist_cache.add_spotify_track(
+                    track_id,
+                    song_info['file_path'],
+                    title=song_info['title'],
+                    thumbnail=song_info.get('thumbnail'),
+                    artist=artists
+                )
+
+                # Add to queue and process as before
                 song_info['is_from_playlist'] = False
-                # Add requester information
                 song_info['requester'] = ctx.author
-                # Get duration using ffprobe
                 song_info['duration'] = get_audio_duration(song_info['file_path'])
-                # Create a context-like object with the requester information
-                class DummyCtx:
-                    def __init__(self, author):
-                        self.author = author
-                        self.send = ctx.send  # Pass through the send method
-                        self.channel = ctx.channel  # Pass through the channel
-                
-                # Create a new context with the requester information
-                song_info['ctx'] = DummyCtx(ctx.author)
-                # Add to queue
+                song_info['ctx'] = ctx
                 self.queue.append(song_info)
                 
                 # If not currently playing, start playback
