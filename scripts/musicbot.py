@@ -396,7 +396,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 if video_id:
                     cached_info = playlist_cache.get_cached_info(video_id)
                     if cached_info and os.path.exists(cached_info['file_path']):
-                        print(f"Found cached file for video {video_id}")
+                        print(f"{GREEN}Found cached YouTube file: {video_id}{RESET}")
                         return {
                             'title': cached_info.get('title', 'Unknown'),  # Use cached title
                             'url': query,
@@ -763,13 +763,14 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     # Add to cache for both YouTube direct links and Spotify->YouTube conversions
                     if os.path.exists(file_path) and info.get('id'):
                         video_id = info['id']
-                        playlist_cache.add_to_cache(
-                            video_id, 
-                            file_path,
-                            thumbnail_url=info.get('thumbnail'),
-                            title=info.get('title', 'Unknown')  # Save the title
-                        )
-                        print(f"{GREEN}Added file to cache: {video_id}{RESET}")
+                        if not playlist_cache.is_video_cached(video_id):
+                            playlist_cache.add_to_cache(
+                                video_id, 
+                                file_path,
+                                thumbnail_url=info.get('thumbnail'),
+                                title=info.get('title', 'Unknown')  # Save the title
+                            )
+                            print(f"{GREEN}Added file to cache: {video_id}{RESET}")
 
                     return {
                         'title': info['title'],
