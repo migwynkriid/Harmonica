@@ -188,6 +188,7 @@ class SpotifyHandler:
                     thumbnail_url=album['images'][0]['url'] if album['images'] else None,
                     ctx=ctx
                 ))
+                await status_msg.delete(delay=5)
 
             tracks = []
             results = self.sp.album_tracks(album_id)
@@ -291,6 +292,7 @@ class SpotifyHandler:
                     thumbnail_url=playlist['images'][0]['url'] if playlist['images'] else None,
                     ctx=ctx
                 ))
+                await status_msg.delete(delay=5)
 
             tracks = []
             results = playlist['tracks']
@@ -384,12 +386,6 @@ class SpotifyHandler:
                     print("Cache checking stopped, halting Spotify track processing")
                     if status_msg:
                         try:
-                            await status_msg.edit(embed=create_embed(
-                                "Stopped",
-                                "Spotify track processing halted",
-                                color=0xe74c3c,
-                                ctx=ctx
-                            ))
                             await status_msg.delete(delay=5)
                         except:
                             pass
@@ -479,30 +475,12 @@ class SpotifyHandler:
                 if not playlist_cache._should_continue_check:
                     return
                     
-                if status_msg and processed % 5 == 0:
-                    try:
-                        await status_msg.edit(embed=create_embed(
-                            "Processing",
-                            f"Processing {source_name}\nProgress: {processed}/{total_tracks} tracks",
-                            color=0x1DB954,
-                            ctx=ctx
-                        ))
-                    except:
-                        pass
-
             # Skip final message if we should stop
             if not playlist_cache._should_continue_check:
                 return
 
             if status_msg:
-                final_embed = create_embed(
-                    "Complete",
-                    f"Finished processing {source_name}\nTotal tracks added: {processed}",
-                    color=0x1DB954,
-                    ctx=ctx
-                )
                 try:
-                    await status_msg.edit(embed=final_embed)
                     await status_msg.delete(delay=5)
                 except:
                     pass
