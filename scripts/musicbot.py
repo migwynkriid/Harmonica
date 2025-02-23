@@ -409,6 +409,19 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     video_id = query.split('youtu.be/')[1].split('?')[0]
                 
                 if video_id:
+                    # Check if video is blacklisted
+                    if playlist_cache.is_blacklisted(video_id):
+                        print(f"{RED}Unavailable video: {video_id}{RESET}")
+                        if status_msg:
+                            await status_msg.edit(embed=create_embed(
+                                "Skipped ⚠️",
+                                "This video was previously marked as unavailable.",
+                                color=0xe74c3c,
+                                ctx=ctx
+                            ))
+                            await status_msg.delete(delay=10)
+                        return None
+                        
                     cached_info = playlist_cache.get_cached_info(video_id)
                     if cached_info and os.path.exists(cached_info['file_path']):
                         print(f"{GREEN}Found cached YouTube file: {video_id} - {cached_info.get('title', 'Unknown')}{RESET}")
@@ -800,6 +813,20 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     }
             except Exception as e:
                 print(f"Error downloading song: {str(e)}")
+                error_msg = str(e)
+                
+                # Check for video unavailable message and add to blacklist
+                if ('Video unavailable' in error_msg and 'youtube' in query.lower()) or 'No video formats found' in error_msg:
+                    video_id = None
+                    if 'youtube.com/watch' in query:
+                        video_id = query.split('watch?v=')[1].split('&')[0]
+                    elif 'youtu.be/' in query:
+                        video_id = query.split('youtu.be/')[1].split('?')[0]
+                        
+                    if video_id:
+                        print(f"{RED}Video ID {video_id} is unavailable, blacklisting...{RESET}")
+                        playlist_cache.add_to_blacklist(video_id)
+                        
                 if status_msg:
                     error_embed = create_embed(
                         "Error ❌",

@@ -11,6 +11,7 @@ class PlaylistCache:
         self.cache_dir = Path(get_cache_dir())
         self.cache_file = Path(get_cache_file('filecache.json'))
         self.spotify_cache_file = Path(get_cache_file('spotify_cache.json'))
+        self.blacklist_file = Path(get_cache_file('blacklist.json'))
         self.cache_dir.mkdir(exist_ok=True)
         self._should_continue_check = True
         self._load_cache()
@@ -37,9 +38,16 @@ class PlaylistCache:
                     self.spotify_cache = json.load(f)
             else:
                 self.spotify_cache = {}
+
+            if self.blacklist_file.exists():
+                with open(self.blacklist_file, 'r') as f:
+                    self.blacklist = json.load(f)
+            else:
+                self.blacklist = {}
         except json.JSONDecodeError:
             self.cache = {}
             self.spotify_cache = {}
+            self.blacklist = {}
         self._cleanup_cache()
 
     def _save_cache(self) -> None:
@@ -48,6 +56,8 @@ class PlaylistCache:
             json.dump(self.cache, f, indent=2)
         with open(self.spotify_cache_file, 'w') as f:
             json.dump(self.spotify_cache, f, indent=2)
+        with open(self.blacklist_file, 'w') as f:
+            json.dump(self.blacklist, f, indent=2)
 
     def _cleanup_cache(self) -> None:
         """Remove entries for files that no longer exist or have invalid format"""
@@ -180,6 +190,18 @@ class PlaylistCache:
     def is_spotify_track_cached(self, track_id: str) -> bool:
         """Check if a Spotify track is in the cache and its file exists"""
         return self.get_cached_spotify_track(track_id) is not None
+
+    def add_to_blacklist(self, video_id: str) -> None:
+        """Add a video ID to the blacklist with timestamp"""
+        self.blacklist[video_id] = {
+            'timestamp': time.time(),
+            'reason': 'Video unavailable'
+        }
+        self._save_cache()
+
+    def is_blacklisted(self, video_id: str) -> bool:
+        """Check if a video ID is in the blacklist"""
+        return video_id in self.blacklist
 
 # Global instance
 playlist_cache = PlaylistCache()
