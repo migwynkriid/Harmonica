@@ -35,7 +35,7 @@ from scripts.handle_spotify import SpotifyHandler
 from scripts.inactivity import start_inactivity_checker, check_inactivity
 from scripts.load_commands import load_commands
 from scripts.load_scripts import load_scripts
-from scripts.logging import setup_logging, get_ytdlp_logger
+from scripts.logging import setup_logging, get_ytdlp_logger, CachedVideoFound
 from scripts.messages import update_or_send_message, create_embed
 from scripts.play_next import play_next
 from scripts.process_queue import process_queue
@@ -533,7 +533,36 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 try:
                     self.current_ydl = ydl
                     loop = asyncio.get_event_loop()
-                    return await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=download))
+                    try:
+                        info = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=download))
+                        return info
+                    except CachedVideoFound as e:  # Using our custom exception from logging module
+                        # Video was found in cache, return the cached info
+                        cached_path = e.cached_info['file_path']
+                        video_id = e.cached_info.get('id')
+                        
+                        # Verify the file exists
+                        if not os.path.exists(cached_path):
+                            print(f"{RED}Cached file not found: {cached_path}{RESET}")
+                            return None
+                            
+                        # Use the cached path directly
+                        file_path = cached_path
+                        
+                        # Construct proper YouTube URL
+                        youtube_url = f"https://www.youtube.com/watch?v={video_id}" if video_id else url
+                            
+                        return {
+                            'id': video_id,
+                            'title': e.cached_info.get('title', 'Unknown'),
+                            'url': youtube_url,
+                            'webpage_url': youtube_url,
+                            'file_path': file_path,
+                            'thumbnail': e.cached_info.get('thumbnail'),
+                            'is_from_cache': True,
+                            'duration': e.cached_info.get('duration', 0),
+                            'ext': os.path.splitext(file_path)[1][1:]  # Get extension without dot
+                        }
                 finally:
                     self.current_ydl = None
 

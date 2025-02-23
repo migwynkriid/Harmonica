@@ -1,6 +1,10 @@
 import logging
 import sys
+import re
 from datetime import datetime
+from scripts.caching import playlist_cache
+import os
+from scripts.constants import GREEN, BLUE, RED, RESET
 
 class MessageFilter(logging.Filter):
     """Filter out specific log messages"""
@@ -75,6 +79,46 @@ class OutputCapture:
     def flush(self):
         self.terminal.flush()
         self.log_file.flush()
+
+class YTDLPLogger(logging.Logger):
+    """Custom logger for yt-dlp that intercepts YouTube URLs and checks cache"""
+    def __init__(self, name):
+        super().__init__(name)
+        self.current_video_id = None
+        self.url_pattern = re.compile(r'https?://(?:www\.)?youtube\.com/(?:watch\?v=|shorts/|v/|embed/|e/|attribution_link\?.*v%3D|attribution_link\?.*v=|watch\?.+v=)([a-zA-Z0-9_-]+)')
+        self.search_pattern = re.compile(r'\[youtube\] Extracting URL: (https://.*)')
+        
+    def debug(self, msg):
+        if 'Extracting URL:' in msg:
+            # Try to extract video ID from the URL
+            search_match = self.search_pattern.search(msg)
+            if search_match:
+                url = search_match.group(1)
+                match = self.url_pattern.search(url)
+                if match:
+                    video_id = match.group(1)
+                    self.current_video_id = video_id
+                    
+                    # Check if video is in cache
+                    cached_info = playlist_cache.get_cached_info(video_id)
+                    if cached_info and os.path.exists(cached_info['file_path']):
+                        # Signal to stop the download by raising a special exception
+                        print(f"{GREEN}Found cached YouTube file: {video_id} - {cached_info.get('title', 'Unknown')}{RESET}")
+                        raise CachedVideoFound(cached_info)
+        
+        super().debug(msg)
+    
+    def warning(self, msg):
+        super().warning(msg)
+    
+    def error(self, msg):
+        super().error(msg)
+
+class CachedVideoFound(Exception):
+    """Special exception to signal that a video was found in cache"""
+    def __init__(self, cached_info):
+        self.cached_info = cached_info
+        super().__init__("Video found in cache")
 
 def setup_logging(log_level):
     """Set up logging configuration for all components."""
@@ -177,4 +221,13 @@ def setup_logging(log_level):
 
 def get_ytdlp_logger():
     """Get the yt-dlp logger for use in YTDL options."""
-    return logging.getLogger('yt-dlp')
+    # Remove any existing yt-dlp logger
+    if 'yt-dlp' in logging.Logger.manager.loggerDict:
+        del logging.Logger.manager.loggerDict['yt-dlp']
+    
+    # Register our custom logger class
+    logging.setLoggerClass(YTDLPLogger)
+    logger = logging.getLogger('yt-dlp')
+    logging.setLoggerClass(logging.Logger)  # Reset to default Logger class
+    
+    return logger

@@ -148,6 +148,7 @@ class PlaylistCache:
             if os.path.exists(absolute_path):
                 info['file_path'] = absolute_path
                 info['last_accessed'] = time.time()
+                info['id'] = video_id  # Add video ID to the info
                 self._save_cache()
                 return info
         return None
