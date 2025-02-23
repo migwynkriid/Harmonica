@@ -35,13 +35,18 @@ class StatsCog(commands.Cog):
         """Update bandwidth statistics"""
         current_bytes = psutil.net_io_counters()
         
+        # If counters were reset, start fresh
+        if current_bytes.bytes_sent < self.bandwidth_data['last_bytes_sent'] or current_bytes.bytes_recv < self.bandwidth_data['last_bytes_recv']:
+            self.bandwidth_data['total_bytes_sent'] = 0
+            self.bandwidth_data['total_bytes_recv'] = 0
+        
         # Calculate bytes since last update
         bytes_sent = current_bytes.bytes_sent - self.bandwidth_data['last_bytes_sent']
         bytes_recv = current_bytes.bytes_recv - self.bandwidth_data['last_bytes_recv']
         
         # Update total bytes
-        self.bandwidth_data['total_bytes_sent'] += bytes_sent
-        self.bandwidth_data['total_bytes_recv'] += bytes_recv
+        self.bandwidth_data['total_bytes_sent'] = max(0, self.bandwidth_data['total_bytes_sent'] + bytes_sent)
+        self.bandwidth_data['total_bytes_recv'] = max(0, self.bandwidth_data['total_bytes_recv'] + bytes_recv)
         
         # Update last bytes
         self.bandwidth_data['last_bytes_sent'] = current_bytes.bytes_sent
