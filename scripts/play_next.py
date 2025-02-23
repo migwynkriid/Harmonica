@@ -84,7 +84,7 @@ async def play_next(ctx):
                             else:
                                 # For non-looped songs or skipped songs, show appropriate message
                                 title = "Skipped song" if hasattr(music_bot, 'was_skipped') and music_bot.was_skipped else "Finished playing"
-                                description = f"[🎵 {previous_song['title']}]({previous_song['url']})"
+                                description = f"[{previous_song['title']}]({previous_song['url']})"
                                 
                                 # Create a context-like object with the requester information
                                 class DummyCtx:
