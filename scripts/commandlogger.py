@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+from scripts.constants import BLUE, GREEN, RESET
 
 class CommandLogger:
     def __init__(self):
@@ -25,6 +26,9 @@ class CommandLogger:
             # Append the log entry to the file
             with open(self.log_path, 'a', encoding='utf-8') as f:
                 f.write(log_entry)
+            
+            # Print to console in the requested format
+            print(f"{BLUE}[{username}]{RESET} {GREEN}used the command:{RESET}{BLUE} {command}{RESET}")
         except Exception as e:
             print(f"Error logging command: {str(e)}")
 
