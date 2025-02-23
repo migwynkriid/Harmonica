@@ -137,31 +137,6 @@ class QueueCog(commands.Cog):
                             queue_text += f"`{total_songs}.` [{song_title}]({song['url']}){duration_str}\n"
                         shown_songs.add(song_title)
                     
-                # Calculate total duration of all songs
-                total_duration = 0
-                for song in music_bot.queue:
-                    if not song.get('is_stream') and not (is_looping and song['url'] == current_song_url):
-                        file_path = song['file_path']
-                        duration = music_bot.duration_cache.get(file_path)
-                        if duration is None:
-                            duration = await get_audio_duration(file_path)
-                            if duration > 0:
-                                music_bot.duration_cache[file_path] = duration
-                        total_duration += duration
-                
-                # Add current song duration if it exists and isn't a stream
-                if music_bot.current_song and not music_bot.current_song.get('is_stream'):
-                    file_path = music_bot.current_song['file_path']
-                    duration = music_bot.duration_cache.get(file_path)
-                    if duration is None:
-                        duration = await get_audio_duration(file_path)
-                        if duration > 0:
-                            music_bot.duration_cache[file_path] = duration
-                    total_duration += duration
-                
-                if total_duration > 0:
-                    queue_text += f"\nTotal duration: `{format_duration(total_duration)}`"
-
         if not music_bot.download_queue.empty():
             queue_text += "\n**Downloading:**\n"
             downloading_count = music_bot.download_queue.qsize()
