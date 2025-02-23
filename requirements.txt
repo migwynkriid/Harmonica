@@ -13,4 +13,3 @@ lyricsgenius
 azapi
 yt-dlp
 psutil
-audioop-lts
