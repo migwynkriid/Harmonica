@@ -105,6 +105,10 @@ async def play_next(ctx):
                                 )
                                 # Don't include view for status messages
                                 await music_bot.now_playing_message.edit(embed=finished_embed, view=None)
+                                
+                                # Reset the skip flag after handling the previous song
+                                if hasattr(music_bot, 'was_skipped'):
+                                    music_bot.was_skipped = False
                         except Exception as e:
                             print(f"Error updating previous now playing message: {str(e)}")
 

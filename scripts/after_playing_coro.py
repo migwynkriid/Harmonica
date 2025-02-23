@@ -56,11 +56,13 @@ class AfterPlayingHandler:
                         )
                         # Remove buttons when song is finished
                         await self.now_playing_message.edit(embed=finished_embed, view=None)
+                        
+                        # Reset the skipped flag after updating the message
+                        if hasattr(self, 'was_skipped'):
+                            self.was_skipped = False
                 except Exception as e:
                     print(f"Error updating finished message: {str(e)}")
             
             self.is_playing = False
             self.current_song = None
-            if hasattr(self, 'was_skipped'):
-                self.was_skipped = False  # Reset the skipped flag
             await self.update_activity()
