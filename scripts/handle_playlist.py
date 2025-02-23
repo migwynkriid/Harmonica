@@ -30,8 +30,8 @@ class PlaylistHandler:
                         video_url = f"https://youtube.com/watch?v={entry['id']}"
                         song_info = await self.download_song(video_url, status_msg=None)
                         if song_info:
-                            # Get duration using ffprobe
-                            song_info['duration'] = get_audio_duration(song_info['file_path'])
+                            # Get duration using ffprobe asynchronously
+                            song_info['duration'] = await get_audio_duration(song_info['file_path'])
                             song_info['requester'] = ctx.author
                             song_info['is_from_playlist'] = True
                             async with self.queue_lock:
@@ -98,8 +98,8 @@ class PlaylistHandler:
                         first_url = f"https://youtube.com/watch?v={first_entry['id']}"
                         first_song = await self.download_song(first_url, status_msg=None)
                         if first_song:
-                            # Get duration using ffprobe
-                            first_song['duration'] = get_audio_duration(first_song['file_path'])
+                            # Get duration using ffprobe asynchronously
+                            first_song['duration'] = await get_audio_duration(first_song['file_path'])
                             first_song['requester'] = ctx.author
                             first_song['is_from_playlist'] = True
                             async with self.queue_lock:

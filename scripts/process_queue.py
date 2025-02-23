@@ -74,8 +74,11 @@ async def process_queue(music_bot):
         
         # Get and store the actual duration using ffprobe
         if not song.get('is_stream'):
-            duration = get_audio_duration(song['file_path'])
-            music_bot.current_song['duration'] = duration
+            try:
+                duration = await get_audio_duration(song['file_path'])
+                music_bot.current_song['duration'] = duration
+            except Exception as e:
+                print(f"Error getting audio duration: {str(e)}")
         
         # Only send now playing message if we should
         if should_send_now_playing(music_bot, song['title']):

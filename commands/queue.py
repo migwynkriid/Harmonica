@@ -62,7 +62,7 @@ class QueueCog(commands.Cog):
             
         return view
 
-    def get_queue_embed(self, ctx, page=1):
+    async def get_queue_embed(self, ctx, page=1):
         """Get the queue embed for a specific page"""
         from bot import music_bot
         
@@ -83,7 +83,7 @@ class QueueCog(commands.Cog):
                 file_path = music_bot.current_song['file_path']
                 duration = music_bot.duration_cache.get(file_path)
                 if duration is None:
-                    duration = get_audio_duration(file_path)
+                    duration = await get_audio_duration(file_path)
                     if duration > 0:
                         music_bot.duration_cache[file_path] = duration
                 duration_str = f" `[{format_duration(duration)}]`" if duration > 0 else ""
@@ -127,7 +127,7 @@ class QueueCog(commands.Cog):
                                 file_path = song['file_path']
                                 duration = music_bot.duration_cache.get(file_path)
                                 if duration is None:
-                                    duration = get_audio_duration(file_path)
+                                    duration = await get_audio_duration(file_path)
                                     if duration > 0:
                                         music_bot.duration_cache[file_path] = duration
                                 duration_str = f" `[{format_duration(duration)}]`" if duration > 0 else ""
@@ -144,7 +144,7 @@ class QueueCog(commands.Cog):
                         file_path = song['file_path']
                         duration = music_bot.duration_cache.get(file_path)
                         if duration is None:
-                            duration = get_audio_duration(file_path)
+                            duration = await get_audio_duration(file_path)
                             if duration > 0:
                                 music_bot.duration_cache[file_path] = duration
                         total_duration += duration
@@ -154,7 +154,7 @@ class QueueCog(commands.Cog):
                     file_path = music_bot.current_song['file_path']
                     duration = music_bot.duration_cache.get(file_path)
                     if duration is None:
-                        duration = get_audio_duration(file_path)
+                        duration = await get_audio_duration(file_path)
                         if duration > 0:
                             music_bot.duration_cache[file_path] = duration
                     total_duration += duration
@@ -177,7 +177,7 @@ class QueueCog(commands.Cog):
 
     async def update_queue_page(self, interaction, new_page, original_ctx):
         """Update the queue message with a new page"""
-        embed, total_songs = self.get_queue_embed(original_ctx, new_page)
+        embed, total_songs = await self.get_queue_embed(original_ctx, new_page)
         total_pages = (total_songs + self.page_size - 1) // self.page_size
         view = self.create_queue_buttons(new_page, total_pages)
         await interaction.response.edit_message(embed=embed, view=view)
@@ -187,7 +187,7 @@ class QueueCog(commands.Cog):
     async def queue(self, ctx):
         """Show the current queue"""
         page = 1
-        embed, total_songs = self.get_queue_embed(ctx, page)
+        embed, total_songs = await self.get_queue_embed(ctx, page)
         total_pages = (total_songs + self.page_size - 1) // self.page_size
         view = self.create_queue_buttons(page, total_pages)
         

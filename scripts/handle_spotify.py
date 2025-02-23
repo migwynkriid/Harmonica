@@ -59,13 +59,13 @@ class SpotifyHandler:
                         print(f"Note: Could not delete processing message: {e}")
                 
                 song_info = {
-                    'title': cached_info['title'],
-                    'url': f'https://open.spotify.com/track/{track_id}',
+                    'title': cached_info.get('title', 'Unknown'),
+                    'url': cached_info.get('url', f'https://open.spotify.com/track/{track_id}'),
                     'file_path': cached_info['file_path'],
                     'thumbnail': cached_info.get('thumbnail'),
                     'is_from_playlist': False,
                     'requester': ctx.author,
-                    'duration': get_audio_duration(cached_info['file_path']),
+                    'duration': await get_audio_duration(cached_info['file_path']),
                     'ctx': ctx
                 }
                 self.queue.append(song_info)
@@ -128,7 +128,7 @@ class SpotifyHandler:
                 # Add to queue and process as before
                 song_info['is_from_playlist'] = False
                 song_info['requester'] = ctx.author
-                song_info['duration'] = get_audio_duration(song_info['file_path'])
+                song_info['duration'] = await get_audio_duration(song_info['file_path'])
                 song_info['ctx'] = ctx
                 self.queue.append(song_info)
                 
@@ -220,13 +220,13 @@ class SpotifyHandler:
                             print(f"Note: Could not delete processing message: {e}")
                     
                     song_info = {
-                        'title': cached_info['title'],
-                        'url': f'https://open.spotify.com/track/{track_id}',
+                        'title': cached_info.get('title', 'Unknown'),
+                        'url': cached_info.get('url', f'https://open.spotify.com/track/{track_id}'),
                         'file_path': cached_info['file_path'],
                         'thumbnail': cached_info.get('thumbnail'),
                         'is_from_playlist': True,
                         'requester': ctx.author,
-                        'duration': get_audio_duration(cached_info['file_path']),
+                        'duration': await get_audio_duration(cached_info['file_path']),
                         'ctx': ctx
                     }
                     self.queue.append(song_info)
@@ -247,11 +247,11 @@ class SpotifyHandler:
                         
                         # Create a proper queue entry for the first song
                         queue_entry = {
-                            'title': song_info['title'],
-                            'url': f'https://open.spotify.com/track/{track_id}',
+                            'title': song_info.get('title', 'Unknown'),
+                            'url': song_info.get('url', f'https://open.spotify.com/track/{track_id}'),
                             'file_path': song_info['file_path'],
                             'thumbnail': song_info.get('thumbnail'),
-                            'duration': get_audio_duration(song_info['file_path']),
+                            'duration': await get_audio_duration(song_info['file_path']),
                             'is_stream': song_info.get('is_stream', False),
                             'is_from_playlist': True,
                             'requester': ctx.author,
@@ -323,20 +323,20 @@ class SpotifyHandler:
                             print(f"Note: Could not delete processing message: {e}")
                     
                     first_song = {
-                        'title': cached_info['title'],
-                        'url': f'https://open.spotify.com/track/{track_id}',
+                        'title': cached_info.get('title', 'Unknown'),
+                        'url': cached_info.get('url', f'https://open.spotify.com/track/{track_id}'),
                         'file_path': cached_info['file_path'],
                         'thumbnail': cached_info.get('thumbnail'),
                         'is_from_playlist': True,
                         'requester': ctx.author,
-                        'duration': get_audio_duration(cached_info['file_path']),
+                        'duration': await get_audio_duration(cached_info['file_path']),
                         'ctx': ctx
                     }
                     self.queue.append(first_song)
                 else:
                     # Download if not in cache
                     search_query = f"{first_track['name']} {artists}"
-                    first_song = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
+                    first_song = await self.download_song(search_query, status_msg=None, ctx=ctx)
                     if first_song:
                         # Cache the first track
                         playlist_cache.add_spotify_track(
@@ -350,7 +350,7 @@ class SpotifyHandler:
                         
                         first_song['is_from_playlist'] = True
                         first_song['requester'] = ctx.author
-                        first_song['duration'] = get_audio_duration(first_song['file_path'])
+                        first_song['duration'] = await get_audio_duration(first_song['file_path'])
                         first_song['ctx'] = ctx
                         
                         self.queue.append(first_song)
@@ -419,13 +419,13 @@ class SpotifyHandler:
                             print(f"Note: Could not delete processing message: {e}")
                     
                     song_info = {
-                        'title': cached_info['title'],
-                        'url': f'https://open.spotify.com/track/{track_id}',
+                        'title': cached_info.get('title', 'Unknown'),
+                        'url': cached_info.get('url', f'https://open.spotify.com/track/{track_id}'),
                         'file_path': cached_info['file_path'],
                         'thumbnail': cached_info.get('thumbnail'),
                         'is_from_playlist': True,
                         'requester': ctx.author,
-                        'duration': get_audio_duration(cached_info['file_path']),
+                        'duration': await get_audio_duration(cached_info['file_path']),
                         'ctx': ctx
                     }
                     
@@ -460,7 +460,7 @@ class SpotifyHandler:
                     )
                     print(f"{GREEN}Added Spotify track to cache: {track_id} - {song_info.get('title', 'Unknown')}{RESET}")
                     
-                    song_info['duration'] = get_audio_duration(song_info['file_path'])
+                    song_info['duration'] = await get_audio_duration(song_info['file_path'])
                     song_info['is_from_playlist'] = True
                     song_info['requester'] = ctx.author
                     song_info['ctx'] = ctx

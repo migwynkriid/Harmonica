@@ -786,7 +786,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         info['requester'] = ctx.author
                     
                     # Get and cache the duration
-                    duration = get_audio_duration(file_path)
+                    duration = await get_audio_duration(file_path)
                     if duration > 0:
                         self.duration_cache[file_path] = duration
 
