@@ -14,6 +14,10 @@ class PlaylistHandler:
     async def _process_playlist_downloads(self, entries, ctx, status_msg=None):
         """Process remaining playlist videos in the background"""
         try:
+            total_entries = len(entries)
+            processed_entries = 0
+            failed_entries = 0
+            
             for entry in entries:
                 if entry:
                     # Check if bot is still in voice chat
@@ -38,9 +42,13 @@ class PlaylistHandler:
                                 self.queue.append(song_info)
                                 if not self.is_playing and not self.voice_client.is_playing() and len(self.queue) == 1:
                                     await play_next(ctx)
+                            processed_entries += 1
+                        else:
+                            failed_entries += 1
 
                     except Exception as e:
                         print(f"Error downloading song {entry.get('id', 'unknown')}: {str(e)}")
+                        failed_entries += 1
                         continue  # Skip this song and continue with the next one
 
         except Exception as e:
@@ -93,26 +101,11 @@ class PlaylistHandler:
                     await self.join_voice_channel(ctx)
 
                 if entries:
-                    first_entry = entries[0]
-                    if first_entry:
-                        first_url = f"https://youtube.com/watch?v={first_entry['id']}"
-                        first_song = await self.download_song(first_url, status_msg=None)
-                        if first_song:
-                            # Get duration using ffprobe asynchronously
-                            first_song['duration'] = await get_audio_duration(first_song['file_path'])
-                            first_song['requester'] = ctx.author
-                            first_song['is_from_playlist'] = True
-                            async with self.queue_lock:
-                                self.queue.append(first_song)
-                                if not self.is_playing and not self.voice_client.is_playing():
-                                    await play_next(ctx)
+                    # Process all entries using _process_playlist_downloads
+                    await self._process_playlist_downloads(entries, ctx)
+                    return True
 
-                if len(entries) > 1:
-                    # Create a new task for processing remaining songs
-                    remaining_entries = entries[1:]
-                    asyncio.create_task(self._process_playlist_downloads(remaining_entries, ctx, status_msg))
-
-                return True
+                return False
 
         except Exception as e:
             print(f"Error processing playlist: {str(e)}")
@@ -141,18 +134,6 @@ class PlaylistHandler:
                             if not self.is_playing and not self.voice_client.is_playing() and len(self.queue) == 1:
                                 await play_next(ctx)
 
-            if status_msg:
-                final_embed = create_embed(
-                    "Playlist Complete",
-                    f"All songs have been downloaded and queued",
-                    color=0x00ff00,
-                    ctx=status_msg.channel
-                )
-                try:
-                    await status_msg.edit(embed=final_embed)
-                    await status_msg.delete(delay=5)
-                except:
-                    pass
 
         except Exception as e:
             print(f"Error in playlist download processing: {str(e)}")
