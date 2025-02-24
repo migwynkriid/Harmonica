@@ -379,79 +379,111 @@ class SpotifyHandler:
         try:
             total_tracks = len(tracks)
             processed = 0
-            batch_size = 10  # Process more tracks per batch
-            
-            # Process tracks in batches
-            for i in range(0, len(tracks), batch_size):
-                batch = tracks[i:i + batch_size]
-                tasks = []
+
+            for track in tracks:
+                # Check if we should stop processing
+                if not playlist_cache._should_continue_check:
+                    print("Cache checking stopped, halting Spotify track processing")
+                    if status_msg:
+                        try:
+                            await status_msg.delete(delay=5)
+                        except:
+                            pass
+                    return
+
+                if not track:
+                    continue
+
+                track_id = track['id']
                 
-                for track in batch:
-                    if not track or not playlist_cache._should_continue_check:
-                        continue
-
-                    track_id = track['id']
-                    cached_info = playlist_cache.get_cached_spotify_track(track_id)
-                    
-                    if cached_info:
-                        print(f"{GREEN}Found cached Spotify track: {track_id} - {cached_info.get('title', 'Unknown')}{RESET}")
-                        song_info = {
-                            'title': cached_info.get('title', 'Unknown'),
-                            'url': cached_info.get('url', f'https://open.spotify.com/track/{track_id}'),
-                            'file_path': cached_info['file_path'],
-                            'thumbnail': cached_info.get('thumbnail'),
-                            'is_from_playlist': True,
-                            'requester': ctx.author,
-                            'duration': await get_audio_duration(cached_info['file_path']),
-                            'ctx': ctx
-                        }
-                        self.queue.append(song_info)
-                        processed += 1
-                        continue
-
+                # Check cache first
+                cached_info = playlist_cache.get_cached_spotify_track(track_id)
+                if cached_info:
+                    # Skip if we should stop
                     if not playlist_cache._should_continue_check:
                         return
-
-                    # Download if not cached
-                    artists = ", ".join([artist['name'] for artist in track['artists']])
-                    search_query = f"{track['name']} {artists}"
+                        
+                    print(f"{GREEN}Found cached Spotify track: {track_id} - {cached_info.get('title', 'Unknown')}{RESET}")
                     
-                    # Create task for downloading
-                    tasks.append(self.download_song(search_query, status_msg=None, ctx=ctx))
-
-                if tasks:
-                    # Wait for all downloads in this batch to complete
-                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    # Delete the "Processing" message if it exists
+                    if status_msg:
+                        try:
+                            await status_msg.delete()
+                        except discord.NotFound:
+                            pass
+                        except Exception as e:
+                            print(f"Note: Could not delete processing message: {e}")
                     
-                    for track, result in zip([t for t in batch if t], results):
-                        if isinstance(result, Exception):
-                            print(f"Error downloading track: {str(result)}")
-                            continue
-                            
-                        if result:
-                            track_id = track['id']
-                            artists = ", ".join([artist['name'] for artist in track['artists']])
-                            
-                            # Cache the downloaded song
-                            playlist_cache.add_spotify_track(
-                                track_id,
-                                result['file_path'],
-                                title=result['title'],
-                                thumbnail=result.get('thumbnail'),
-                                artist=artists
-                            )
-                            print(f"{GREEN}Added Spotify track to cache: {track_id} - {result.get('title', 'Unknown')}{RESET}")
-                            
-                            result['is_from_playlist'] = True
-                            result['requester'] = ctx.author
-                            result['duration'] = await get_audio_duration(result['file_path'])
-                            result['ctx'] = ctx
-                            
-                            self.queue.append(result)
-                            processed += 1
+                    song_info = {
+                        'title': cached_info.get('title', 'Unknown'),
+                        'url': cached_info.get('url', f'https://open.spotify.com/track/{track_id}'),
+                        'file_path': cached_info['file_path'],
+                        'thumbnail': cached_info.get('thumbnail'),
+                        'is_from_playlist': True,
+                        'requester': ctx.author,
+                        'duration': await get_audio_duration(cached_info['file_path']),
+                        'ctx': ctx
+                    }
+                    
+                    # Skip if we should stop
+                    if not playlist_cache._should_continue_check:
+                        return
+                        
+                    self.queue.append(song_info)
+                    continue
 
-                if not self.is_playing and not self.voice_client.is_playing():
-                    await process_queue(self)
+                # Skip download if we should stop
+                if not playlist_cache._should_continue_check:
+                    return
+
+                # Download if not cached
+                artists = ", ".join([artist['name'] for artist in track['artists']])
+                search_query = f"{track['name']} {artists}"
+                
+                song_info = await self.download_song(search_query, status_msg=None, ctx=ctx)
+                if song_info:
+                    # Skip if we should stop
+                    if not playlist_cache._should_continue_check:
+                        return
+                        
+                    # Cache the downloaded song
+                    playlist_cache.add_spotify_track(
+                        track_id,
+                        song_info['file_path'],
+                        title=song_info['title'],
+                        thumbnail=song_info.get('thumbnail'),
+                        artist=artists
+                    )
+                    print(f"{GREEN}Added Spotify track to cache: {track_id} - {song_info.get('title', 'Unknown')}{RESET}")
+                    
+                    song_info['duration'] = await get_audio_duration(song_info['file_path'])
+                    song_info['is_from_playlist'] = True
+                    song_info['requester'] = ctx.author
+                    song_info['ctx'] = ctx
+                    
+                    # Skip if we should stop
+                    if not playlist_cache._should_continue_check:
+                        return
+                        
+                    self.queue.append(song_info)
+                    
+                    if not self.is_playing and not self.voice_client.is_playing():
+                        await process_queue(self)
+                processed += 1
+                
+                # Skip status update if we should stop
+                if not playlist_cache._should_continue_check:
+                    return
+                    
+            # Skip final message if we should stop
+            if not playlist_cache._should_continue_check:
+                return
+
+            if status_msg:
+                try:
+                    await status_msg.delete(delay=5)
+                except:
+                    pass
 
         except Exception as e:
-            print(f"Error in playlist download processing: {str(e)}")
+            print(f"Error in _process_spotify_tracks: {str(e)}")
