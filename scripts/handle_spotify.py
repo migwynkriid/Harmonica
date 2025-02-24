@@ -342,7 +342,7 @@ class SpotifyHandler:
                         tracks.extend([item])
 
             if skipped_local > 0:
-                print(f"{GREEN}Skipped {skipped_local} local track(s) from playlist{RESET}")
+                print(f"{GREEN}Playlist contains {skipped_local} local tracks. skipping...{RESET}")
 
             # Shuffle tracks if enabled
             if config_vars.get('DOWNLOADS', {}).get('SHUFFLE_DOWNLOAD', False):
