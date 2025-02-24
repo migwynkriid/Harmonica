@@ -145,6 +145,10 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 print(f"{BLUE}https://genius.com/api-clients{RESET}")
                 print(f'{BLUE}Update your {RESET}{YELLOW}.geniuslyrics file{RESET}')
 
+        # Bind voice methods
+        self.join_voice_channel = lambda ctx: join_voice_channel(self, ctx)
+        self.leave_voice_channel = lambda: leave_voice_channel(self)
+
     async def setup(self, bot_instance):
         """Setup the bot with the event loop"""
         self.bot = bot_instance
@@ -607,7 +611,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             'thumbnail': info.get('thumbnail'),
                             'is_stream': False,
                             'is_from_playlist': True,
-                            'ctx': status_msg.channel if status_msg else None
+                            'ctx': status_msg.channel if status_msg else None,
+                            'is_from_cache': True
                         }
                 
                 is_youtube_mix = False
