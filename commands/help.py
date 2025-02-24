@@ -50,6 +50,7 @@ class HelpCog(commands.Cog):
         
         if user_id == owner_id and owner_id != "YOUR_DISCORD_USER_ID":
             help_embed.add_field(name=f"{prefix}log", value="Show the log file (Owner Only).", inline=True)
+            help_embed.add_field(name=f"{prefix}clearcache", value="Initiates the clear cache process (Owner Only).", inline=True)
             help_embed.add_field(name=f"{prefix}logclear", value="Clear the log file (Owner Only).", inline=True)
             help_embed.add_field(name=f"{prefix}version", value="Check the version of yt-dlp and commit info (Owner Only).", inline=True)
             help_embed.add_field(name=f"{prefix}update", value="Updates the yt-dlp executable and does a git pull (Owner Only).", inline=True)
