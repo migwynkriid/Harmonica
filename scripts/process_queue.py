@@ -6,6 +6,7 @@ from scripts.duration import get_audio_duration
 from scripts.messages import create_embed, should_send_now_playing
 from scripts.config import FFMPEG_OPTIONS, load_config
 from scripts.ui_components import create_now_playing_view
+from scripts.constants import RED, GREEN, BLUE, RESET
 
 # Get default volume from config
 config = load_config()
@@ -71,6 +72,7 @@ async def process_queue(music_bot):
         music_bot.current_song = song
         music_bot.is_playing = True
         music_bot.playback_start_time = time.time()  # Set the start time when song begins playing
+        print(f"{GREEN}Now playing:{RESET}{BLUE} {song['title']}{RESET}")
         
         # Get and store the actual duration using ffprobe
         if not song.get('is_stream'):
