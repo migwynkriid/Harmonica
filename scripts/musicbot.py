@@ -569,6 +569,47 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             try:
                 # Initialize default options
                 ydl_opts = {**BASE_YTDL_OPTIONS}
+                
+                # If this is a playlist entry, skip all initial checks and just download
+                if skip_url_check and ('youtube.com/watch' in query or 'youtu.be/' in query):
+                    ydl_opts.update({
+                        'extract_flat': False,
+                        'quiet': True,
+                        'outtmpl': os.path.join(self.downloads_dir, '%(id)s.%(ext)s')
+                    })
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(query, download=True))
+                        if not info:
+                            raise Exception("Could not extract video information")
+                        file_path = os.path.join(self.downloads_dir, f"{info['id']}.{info.get('ext', 'opus')}")
+                        
+                        # Add to cache
+                        if os.path.exists(file_path) and info.get('id'):
+                            video_id = info['id']
+                            if not playlist_cache.is_video_cached(video_id):
+                                playlist_cache.add_to_cache(
+                                    video_id, 
+                                    file_path,
+                                    thumbnail_url=info.get('thumbnail'),
+                                    title=info.get('title', 'Unknown')
+                                )
+                                print(f"{GREEN}Added Youtube file to cache: {video_id} - {info.get('title', 'Unknown')}{RESET}")
+                        
+                        # Get and cache the duration
+                        duration = await get_audio_duration(file_path)
+                        if duration > 0:
+                            self.duration_cache[file_path] = duration
+                            
+                        return {
+                            'title': info['title'],
+                            'url': info['webpage_url'] if info.get('webpage_url') else info['url'],
+                            'file_path': file_path,
+                            'thumbnail': info.get('thumbnail'),
+                            'is_stream': False,
+                            'is_from_playlist': True,
+                            'ctx': status_msg.channel if status_msg else None
+                        }
+                
                 is_youtube_mix = False
                 
                 # Check if the input is a URL
@@ -810,15 +851,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         except Exception as e:
                             print(f"Note: Could not delete processing message: {e}")
                     
-                    # Add requester information to the song info
-                    if ctx:
-                        info['requester'] = ctx.author
-                    
-                    # Get and cache the duration
-                    duration = await get_audio_duration(file_path)
-                    if duration > 0:
-                        self.duration_cache[file_path] = duration
-
                     # Add to cache for both YouTube direct links and Spotify->YouTube conversions
                     if os.path.exists(file_path) and info.get('id'):
                         video_id = info['id']
@@ -830,6 +862,15 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 title=info.get('title', 'Unknown')  # Save the title
                             )
                             print(f"{GREEN}Added Youtube file to cache: {video_id} - {info.get('title', 'Unknown')}{RESET}")
+
+                    # Add requester information to the song info
+                    if ctx:
+                        info['requester'] = ctx.author
+                    
+                    # Get and cache the duration
+                    duration = await get_audio_duration(file_path)
+                    if duration > 0:
+                        self.duration_cache[file_path] = duration
 
                     return {
                         'title': info['title'],

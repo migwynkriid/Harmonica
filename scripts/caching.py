@@ -204,9 +204,7 @@ class PlaylistCache:
                     chunk = to_process[i:i + chunk_size]
                     print(f"{GREEN}Processing chunk {i//chunk_size + 1} ({len(chunk)} files)...{RESET}")
                     await self._process_chunk(chunk)
-
-                print(f"{GREEN}Cache update complete!{RESET}")
-
+                    
         except Exception as e:
             print(f"{RED}Error importing uncached files: {str(e)}{RESET}")
 
