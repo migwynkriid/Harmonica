@@ -569,6 +569,49 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             try:
                 # Initialize default options
                 ydl_opts = {**BASE_YTDL_OPTIONS}
+                
+                # If this is a playlist entry, skip all initial checks and just download
+                if skip_url_check and ('youtube.com/watch' in query or 'youtu.be/' in query):
+                    ydl_opts.update({
+                        'extract_flat': False,
+                        'quiet': True,
+                        'outtmpl': os.path.join(self.downloads_dir, '%(id)s.%(ext)s')
+                    })
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(query, download=True))
+                        if not info:
+                            raise Exception("Could not extract video information")
+                        
+                        # Get the video ID and file path
+                        video_id = info['id']
+                        file_path = os.path.join(self.downloads_dir, f"{video_id}.{info.get('ext', 'opus')}")
+                        
+                        # Cache the file info
+                        cache_info = {
+                            'id': video_id,
+                            'file_path': file_path,
+                            'title': info['title'],
+                            'thumbnail': info.get('thumbnail'),
+                            'url': info['webpage_url'] if info.get('webpage_url') else info['url'],
+                            'last_accessed': time.time()
+                        }
+                        playlist_cache.add_to_cache(video_id, cache_info)
+                        
+                        # Get and cache the duration
+                        duration = await get_audio_duration(file_path)
+                        if duration > 0:
+                            self.duration_cache[file_path] = duration
+                            
+                        return {
+                            'title': info['title'],
+                            'url': info['webpage_url'] if info.get('webpage_url') else info['url'],
+                            'file_path': file_path,
+                            'thumbnail': info.get('thumbnail'),
+                            'is_stream': False,
+                            'is_from_playlist': True,
+                            'ctx': status_msg.channel if status_msg else None
+                        }
+                
                 is_youtube_mix = False
                 
                 # Check if the input is a URL
@@ -877,7 +920,3 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 )
                 await status_msg.edit(embed=error_embed)
             raise
-
-    async def update_activity(self):
-        """Update the bot's activity status"""
-        await update_activity(self.bot, self.current_song, self.is_playing)

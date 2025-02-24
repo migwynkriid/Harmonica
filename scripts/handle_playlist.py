@@ -32,7 +32,8 @@ class PlaylistHandler:
                         
                     try:
                         video_url = f"https://youtube.com/watch?v={entry['id']}"
-                        song_info = await self.download_song(video_url, status_msg=None)
+                        # Skip URL check for playlist entries since we already verified the playlist
+                        song_info = await self.download_song(video_url, status_msg=None, skip_url_check=True)
                         if song_info:
                             # Get duration using ffprobe asynchronously
                             song_info['duration'] = await get_audio_duration(song_info['file_path'])
