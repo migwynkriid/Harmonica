@@ -6,6 +6,7 @@ import time
 from scripts.messages import create_embed, should_send_now_playing
 from scripts.config import load_config, FFMPEG_OPTIONS
 from scripts.ui_components import create_now_playing_view
+from scripts.constants import RED, GREEN, BLUE, RESET
 
 # Get default volume from config
 config = load_config()
@@ -28,7 +29,7 @@ async def play_next(ctx):
                 previous_song = music_bot.current_song
                 music_bot.current_song = music_bot.queue.pop(0)
                 music_bot.last_activity = time.time()
-                print(f"Playing next song: {music_bot.current_song['title']}")
+                print(f"{GREEN}Now playing:{RESET}{BLUE} {music_bot.current_song['title']}{RESET}")
                 
                 # Clean up the queued message for the song that's about to play
                 if music_bot.current_song['url'] in music_bot.queued_messages:

@@ -9,7 +9,6 @@ class AfterPlayingHandler:
         if error:
             print(f"Error in playback: {error}")
         
-        print("Song ended, checking queue...")
         # Update playback state
         if hasattr(self, 'playback_state'):
             self.playback_state = "stopped"
@@ -21,8 +20,6 @@ class AfterPlayingHandler:
         if hasattr(self, 'after_song_callback') and self.after_song_callback:
             await self.after_song_callback()
         
-        if len(self.queue) > 0:
-            print(f"Queue length: {len(self.queue)}")
         if not self.download_queue.empty():
             print(f"Download queue size: {self.download_queue.qsize()}")
         if not self.currently_downloading and not self.download_queue.empty():
