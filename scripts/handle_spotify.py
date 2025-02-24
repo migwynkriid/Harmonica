@@ -320,11 +320,29 @@ class SpotifyHandler:
                 await status_msg.delete(delay=5)
 
             tracks = []
+            skipped_local = 0
             results = playlist['tracks']
-            tracks.extend(results['items'])
+            
+            # Filter out local tracks
+            for item in results['items']:
+                if item['track']:
+                    if item['track'].get('id') is None or item['track'].get('is_local', False):
+                        skipped_local += 1
+                        continue
+                    tracks.extend([item])
+                    
+            # Get remaining pages
             while results['next']:
                 results = self.sp.next(results)
-                tracks.extend(results['items'])
+                for item in results['items']:
+                    if item['track']:
+                        if item['track'].get('id') is None or item['track'].get('is_local', False):
+                            skipped_local += 1
+                            continue
+                        tracks.extend([item])
+
+            if skipped_local > 0:
+                print(f"{GREEN}Skipped {skipped_local} local track(s) from playlist{RESET}")
 
             # Shuffle tracks if enabled
             if config_vars.get('DOWNLOADS', {}).get('SHUFFLE_DOWNLOAD', False):
