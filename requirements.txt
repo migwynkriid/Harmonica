@@ -13,3 +13,4 @@ lyricsgenius
 azapi
 yt-dlp
 psutil
+audioop-lts; platform_system=="darwin"
