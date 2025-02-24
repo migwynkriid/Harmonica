@@ -2,6 +2,7 @@ import json
 import os
 import time
 import asyncio
+import re
 from pathlib import Path
 from typing import Dict, Optional, List
 from scripts.constants import RED, GREEN, RESET
@@ -116,6 +117,10 @@ class PlaylistCache:
         if to_remove and self._should_continue_check:
             self._save_cache()
 
+    def _is_valid_youtube_id(self, video_id: str) -> bool:
+        """Check if string looks like a valid YouTube video ID."""
+        return bool(re.fullmatch(r"[\w-]{11}", video_id))
+
     async def _get_video_info(self, video_id: str, file_path: str) -> Dict:
         """Get video info from YouTube"""
         # Get cookie file path from root directory
@@ -185,8 +190,8 @@ class PlaylistCache:
                 file_path = os.path.join(self.downloads_dir, filename)
                 video_id = os.path.splitext(filename)[0]
 
-                # Skip if already in cache
-                if video_id in self.cache:
+                # Skip if already in cache or not a valid YouTube ID
+                if video_id in self.cache or not self._is_valid_youtube_id(video_id):
                     continue
 
                 print(f"{GREEN}Found uncached file: {filename}{RESET}")
