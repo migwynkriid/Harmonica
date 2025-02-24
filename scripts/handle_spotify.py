@@ -3,6 +3,7 @@ import discord
 import re
 import spotipy
 import random
+import yt_dlp
 from spotipy.oauth2 import SpotifyClientCredentials
 import os
 from scripts.play_next import play_next
@@ -13,6 +14,7 @@ from scripts.duration import get_audio_duration
 from scripts.config import config_vars
 from scripts.caching import playlist_cache
 from scripts.constants import RED, GREEN, RESET
+from scripts.logging import setup_logging, get_ytdlp_logger, CachedVideoFound
 
 class SpotifyHandler:
     async def handle_spotify_url(self, url, ctx, status_msg=None):
@@ -110,8 +112,31 @@ class SpotifyHandler:
                     ctx=ctx
                 ))
 
-            # Download the song
-            song_info = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
+            # First get the YouTube URL without downloading
+            ydl_opts = {
+                'format': 'bestaudio/best',
+                'quiet': True,
+                'noplaylist': True,
+                'extract_flat': True,
+            }
+            
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(f"ytsearch1:{search_query}", download=False))
+                    if not info or 'entries' not in info or not info['entries']:
+                        raise ValueError("No results found")
+                        
+                    video_info = info['entries'][0]
+                    video_url = video_info.get('url') or video_info.get('webpage_url')
+                    
+                    if not video_url:
+                        raise ValueError("Could not get video URL")
+                        
+                    # Now use download_song with the actual YouTube URL
+                    song_info = await self.download_song(video_url, status_msg=status_msg, ctx=ctx)
+            except Exception as e:
+                print(f"{RED}Error getting YouTube URL: {str(e)}{RESET}")
+                return None
             
             # If song is successfully downloaded, cache it and add to queue
             if song_info:
@@ -157,8 +182,8 @@ class SpotifyHandler:
                     )
                     queue_msg = await ctx.send(embed=queue_embed)
                     self.queued_messages[song_info['url']] = queue_msg
-                
-                return song_info
+            
+            return song_info
             
             return None
 
