@@ -1,9 +1,12 @@
 import json
 import os
-from pathlib import Path
-from typing import Dict, Optional
 import time
-from scripts.paths import get_cache_dir, get_cache_file, get_root_dir, get_relative_path, get_absolute_path
+import asyncio
+from pathlib import Path
+from typing import Dict, Optional, List
+from scripts.constants import RED, GREEN, RESET
+from scripts.paths import get_cache_dir, get_root_dir, get_relative_path, get_absolute_path, get_cache_file, get_downloads_dir
+import yt_dlp
 
 class PlaylistCache:
     def __init__(self):
@@ -12,9 +15,12 @@ class PlaylistCache:
         self.cache_file = Path(get_cache_file('filecache.json'))
         self.spotify_cache_file = Path(get_cache_file('spotify_cache.json'))
         self.blacklist_file = Path(get_cache_file('blacklist.json'))
+        self.downloads_dir = Path(get_downloads_dir())
         self.cache_dir.mkdir(exist_ok=True)
         self._should_continue_check = True
         self._load_cache()
+        # Run import asynchronously
+        asyncio.run(self._import_uncached_files())
 
     def stop_cache_check(self):
         """Stop the cache checking process"""
@@ -109,6 +115,95 @@ class PlaylistCache:
         
         if to_remove and self._should_continue_check:
             self._save_cache()
+
+    async def _get_video_info(self, video_id: str, file_path: str) -> Dict:
+        """Get video info from YouTube"""
+        # Get cookie file path from root directory
+        cookie_file = os.path.join(get_root_dir(), 'cookies.txt')
+        
+        ydl_opts = {
+            'quiet': True,
+            'extract_flat': True,
+            'force_generic_extractor': False,
+            'no_warnings': True
+        }
+        
+        # Add cookies if file exists
+        if os.path.exists(cookie_file):
+            ydl_opts['cookiefile'] = cookie_file
+        
+        try:
+            # Run yt-dlp in a thread pool to not block
+            loop = asyncio.get_event_loop()
+            info = await loop.run_in_executor(
+                None,
+                lambda: yt_dlp.YoutubeDL(ydl_opts).extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+            )
+            
+            if info and info.get('title'):
+                return {
+                    'id': video_id,
+                    'file_path': file_path,
+                    'title': info['title'],
+                    'thumbnail': f'https://i.ytimg.com/vi/{video_id}/maxresdefault.jpg',
+                    'url': f"https://www.youtube.com/watch?v={video_id}",
+                    'last_accessed': time.time()
+                }
+        except Exception as e:
+            print(f"{RED}Could not get title for {video_id}: {str(e)}{RESET}")
+        
+        # Return basic info if YouTube fetch fails
+        return {
+            'id': video_id,
+            'file_path': file_path,
+            'title': 'Unknown',
+            'thumbnail': f'https://i.ytimg.com/vi/{video_id}/maxresdefault.jpg',
+            'url': f"https://www.youtube.com/watch?v={video_id}",
+            'last_accessed': time.time()
+        }
+
+    async def _process_chunk(self, chunk):
+        """Process a chunk of files and update cache"""
+        results = await asyncio.gather(*[self._get_video_info(task['id'], task['path']) for task in chunk])
+        for info in results:
+            self.cache[info['id']] = info
+            print(f"{GREEN}Added to cache: {info['id']} - {info['title']}{RESET}")
+        self._save_cache()
+
+    async def _import_uncached_files(self):
+        """Import any files from downloads directory that aren't in the cache"""
+        try:
+            if not os.path.exists(self.downloads_dir):
+                return
+
+            # Collect all uncached files
+            to_process = []
+            for filename in os.listdir(self.downloads_dir):
+                if not any(filename.endswith(ext) for ext in ['.webm', '.m4a', '.mp3', '.opus']):
+                    continue
+
+                file_path = os.path.join(self.downloads_dir, filename)
+                video_id = os.path.splitext(filename)[0]
+
+                # Skip if already in cache
+                if video_id in self.cache:
+                    continue
+
+                print(f"{GREEN}Found uncached file: {filename}{RESET}")
+                to_process.append({'id': video_id, 'path': file_path})
+
+            if to_process:
+                # Process in chunks of 10
+                chunk_size = 10
+                for i in range(0, len(to_process), chunk_size):
+                    chunk = to_process[i:i + chunk_size]
+                    print(f"{GREEN}Processing chunk {i//chunk_size + 1} ({len(chunk)} files)...{RESET}")
+                    await self._process_chunk(chunk)
+
+                print(f"{GREEN}Cache update complete!{RESET}")
+
+        except Exception as e:
+            print(f"{RED}Error importing uncached files: {str(e)}{RESET}")
 
     def get_cached_file(self, video_id: str) -> Optional[str]:
         """Get the cached file path for a video ID if it exists"""
