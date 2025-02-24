@@ -30,7 +30,6 @@ class AfterPlayingHandler:
         if len(self.queue) > 0 or not self.download_queue.empty():
             await play_next(ctx)
         else:
-            print("All songs finished, updating activity...")
             if self.now_playing_message and self.current_song and isinstance(self.current_song, dict):
                 try:
                     # Check if the song is looped
