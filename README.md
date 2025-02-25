@@ -1,4 +1,6 @@
+<div align="center">
 # Harmonica - Discord Music Bot 🎵
+</div>
 
 <div align="center">
 
