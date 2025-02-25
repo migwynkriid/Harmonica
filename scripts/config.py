@@ -33,7 +33,7 @@ def load_config():
             "DEFAULT_VOLUME": 100,                      # default volume for voice connections
         },
         "DOWNLOADS": {
-            "AUTO_CLEAR": True,                         # if True, clear download directory on startup
+            "AUTO_CLEAR": False,                         # if True, clear download directory on startup
             "MIX_PLAYLIST_LIMIT": 50,                   # Maximum number of songs to download from YouTube Mix playlists
             "SHUFFLE_DOWNLOAD": False,                  # Whether to shuffle download order in playlists
         },
