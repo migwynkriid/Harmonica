@@ -25,6 +25,7 @@ A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, 
 - Real-time track information
 
 ### 🎯 Smart Features
+- Automated caching, skips querying YouTube.
 - YouTube search integration
 - Spotify playlist parsing
 - Genius lyrics integration
