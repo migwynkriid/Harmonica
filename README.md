@@ -1,5 +1,16 @@
 # Harmonica - Discord Music Bot 🎵
 
+<div align="center">
+
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Discord.py](https://img.shields.io/badge/Discord.py-2.0+-blue.svg)](https://discordpy.readthedocs.io/en/stable/)
+[![YT-DLP](https://img.shields.io/badge/YT--DLP-Latest-red.svg)](https://github.com/yt-dlp/yt-dlp)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Status](https://img.shields.io/badge/status-active-success.svg)]()
+[![SpotiPy](https://img.shields.io/badge/SpotiPy-2.23.0-brightgreen.svg)](https://spotipy.readthedocs.io/)
+
+</div>
+
 A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, direct links, and livestreams in your Discord voice channels.
 
 ![Bot Preview](https://github.com/user-attachments/assets/1ee417c8-db7c-458c-987d-95dcd909ee47)
@@ -25,7 +36,11 @@ A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, 
 - Real-time track information
 
 ### 🎯 Smart Features
-- Automated caching, skips querying YouTube.
+- ⚡ Advanced Caching System:
+  - Automated local caching for faster playback
+  - Skip YouTube queries for cached songs
+  - Intelligent cache management
+  - Reduced bandwidth usage
 - YouTube search integration
 - Spotify playlist parsing
 - Genius lyrics integration
