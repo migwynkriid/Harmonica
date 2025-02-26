@@ -194,15 +194,18 @@ class PlaylistCache:
                 if video_id in self.cache or not self._is_valid_youtube_id(video_id):
                     continue
 
-                print(f"{GREEN}Found uncached file: {filename}{RESET}")
                 to_process.append({'id': video_id, 'path': file_path})
 
             if to_process:
+                # Print consolidated message for uncached files
+                file_count = len(to_process)
+                print(f"{GREEN}Found {file_count} uncached {'file' if file_count == 1 else 'files'}.{RESET}")
+                
                 # Process in chunks of 10
                 chunk_size = 10
                 for i in range(0, len(to_process), chunk_size):
                     chunk = to_process[i:i + chunk_size]
-                    print(f"{GREEN}Processing chunk {i//chunk_size + 1} ({len(chunk)} files)...{RESET}")
+                    print(f"{GREEN}Processing chunk {i//chunk_size + 1}{RESET}")
                     await self._process_chunk(chunk)
                     
         except Exception as e:
