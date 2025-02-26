@@ -57,6 +57,8 @@ class MessageFilter(logging.Filter):
             'process_ie_result',           # Filter processing errors
             'process_video_result',        # Filter video processing errors
             'process_info',                # Filter info processing errors
+            'Error downloading song',    # Filter song download errors
+            'Error downloading song: ERROR:', # Filter song download errors
             'raise_no_formats',            # Filter format errors
         ]
 
