@@ -228,8 +228,9 @@ class PlaylistCache:
         if not self._should_continue_check:
             return
             
-        # Store relative path in cache
-        relative_path = get_relative_path(file_path)
+        # Always store relative path in cache
+        relative_path = get_relative_path(file_path) if os.path.isabs(file_path) else file_path
+        
         cache_entry = {
             'file_path': relative_path,
             'thumbnail': kwargs.get('thumbnail_url'),
@@ -243,9 +244,9 @@ class PlaylistCache:
         """Get all cached info for a video ID including file path and thumbnail"""
         if video_id in self.cache:
             info = self.cache[video_id].copy()
-            # Convert relative path to absolute
+            # Convert relative path to absolute only when returning
             relative_path = info['file_path']
-            absolute_path = get_absolute_path(relative_path)
+            absolute_path = get_absolute_path(relative_path) if not os.path.isabs(relative_path) else relative_path
             if os.path.exists(absolute_path):
                 info['file_path'] = absolute_path
                 info['last_accessed'] = time.time()
