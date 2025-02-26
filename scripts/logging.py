@@ -45,6 +45,19 @@ class MessageFilter(logging.Filter):
             'discord.gateway',
             'discord.gateway Keeping shard ID', # Gateway shard messages
             'discord.gateway For Shard ID', # Gateway shard messages
+            'YouTube said: INFO',          # Filter YouTube info messages
+            'unavailable videos are hidden', # Filter unavailable video messages
+            'Incomplete data received',     # Filter incomplete data messages
+            'Retrying',                    # Filter retry messages
+            'Giving up after',             # Filter retry exhaustion messages
+            'Traceback (most recent call last):', # Filter error tracebacks
+            'File "/opt/homebrew/lib/python3.13/site-packages/yt_dlp/', # Filter yt-dlp error paths
+            'return func(self, *args, **kwargs)', # Filter common traceback lines
+            'ExtractorError',              # Filter extractor errors
+            'process_ie_result',           # Filter processing errors
+            'process_video_result',        # Filter video processing errors
+            'process_info',                # Filter info processing errors
+            'raise_no_formats',            # Filter format errors
         ]
 
     def filter(self, record):
