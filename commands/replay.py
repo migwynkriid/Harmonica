@@ -16,7 +16,8 @@ class ReplayCog(commands.Cog):
     @check_dj_role()
     async def replay(self, ctx):
         """Restart the currently playing song from the beginning"""
-        from bot import music_bot
+        from bot import MusicBot
+        music_bot = MusicBot.get_instance(ctx.guild.id)
         
         try:
             # Check voice state
@@ -38,7 +39,7 @@ class ReplayCog(commands.Cog):
             ffmpeg_options['options'] = ffmpeg_options.get('options', '') + ' -ss 0'
             
             # Create new source with seek
-            source = discord.FFmpegOpusAudio(current_song['file_path'], **ffmpeg_options)
+            source = discord.FFmpegPCMAudio(current_song['file_path'], **ffmpeg_options)
             
             # Call read() on the audio source before playing to prevent speed-up issue
             source.read()

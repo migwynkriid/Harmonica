@@ -12,22 +12,29 @@ class SkipCog(commands.Cog):
 
     async def _skip_song(self, amount: int = 1, ctx=None):
         """Core skip functionality that can be used by both command and button"""
-        from bot import music_bot
+        from bot import MusicBot
         
-        if not music_bot or not music_bot.voice_client:
+        # Get server-specific music bot instance
+        guild_id = ctx.guild.id if ctx else None
+        if not guild_id:
+            return False, "Invalid guild context"
+            
+        server_music_bot = MusicBot.get_instance(str(guild_id))
+        
+        if not server_music_bot or not server_music_bot.voice_client:
             return False, "Not connected to a voice channel"
 
-        if not music_bot.voice_client.is_playing() and not music_bot.voice_client.is_paused():
+        if not server_music_bot.voice_client.is_playing() and not server_music_bot.voice_client.is_paused():
             return False, "Nothing is playing to skip"
 
         if amount < 1:
             return False, "Skip amount must be at least 1"
 
         # Store current song info before skipping
-        current_song = music_bot.current_song
+        current_song = server_music_bot.current_song
         
         # Set the skipped flag
-        music_bot.was_skipped = True
+        server_music_bot.was_skipped = True
         
         # Check if current song is looping
         loop_cog = self.bot.get_cog('Loop')
@@ -36,20 +43,20 @@ class SkipCog(commands.Cog):
         # If song is looping, remove it from looped songs and clear its instances from queue
         if is_looping:
             loop_cog.looped_songs.remove(current_song['url'])
-            music_bot.queue = [song for song in music_bot.queue if song['url'] != current_song['url']]
-            music_bot.after_song_callback = None
+            server_music_bot.queue = [song for song in server_music_bot.queue if song['url'] != current_song['url']]
+            server_music_bot.after_song_callback = None
         
         # Stop current song
-        music_bot.voice_client.stop()
+        server_music_bot.voice_client.stop()
         
         # Remove additional songs from queue if requested
         if amount > 1:
-            songs_to_remove = min(amount - 1, len(music_bot.queue))
+            songs_to_remove = min(amount - 1, len(server_music_bot.queue))
             if songs_to_remove > 0:
-                del music_bot.queue[:songs_to_remove]
+                del server_music_bot.queue[:songs_to_remove]
                 return True, f"Skipped current song and {songs_to_remove} songs from queue"
         
-        music_bot.last_activity = time.time()
+        server_music_bot.last_activity = time.time()
         return True, current_song if current_song else "Skipped"
 
     @commands.command(name='skip')
@@ -58,11 +65,14 @@ class SkipCog(commands.Cog):
         """Skip one or multiple songs in the queue
         Usage: !skip [amount]
         amount: number of songs to skip (default: 1)"""
-        from bot import music_bot
+        from bot import MusicBot
         
         try:
+            # Get server-specific music bot instance
+            server_music_bot = MusicBot.get_instance(str(ctx.guild.id))
+            
             # Check voice state
-            is_valid, error_embed = await check_voice_state(ctx, music_bot)
+            is_valid, error_embed = await check_voice_state(ctx, server_music_bot)
             if not is_valid:
                 await ctx.send(embed=error_embed)
                 return

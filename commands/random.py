@@ -54,7 +54,8 @@ class RandomCommand(commands.Cog):
     @commands.command(name='random')
     async def random_command(self, ctx):
         """Play a random song based on a randomly selected word"""
-        from bot import music_bot
+        from bot import MusicBot
+        music_bot = MusicBot.get_instance(ctx.guild.id)
         
         try:
             # Check if user is in a voice channel

@@ -123,7 +123,10 @@ async def on_command_error(ctx, error):
 async def on_voice_state_update(member, before, after):
     """Event handler for voice state updates"""
     global music_bot
-    await handle_voice_state_update(music_bot, member, before, after)
+    # Get the server-specific instance of MusicBot
+    if member.guild and member.guild.id:
+        server_music_bot = MusicBot.get_instance(str(member.guild.id))
+        await handle_voice_state_update(server_music_bot, member, before, after)
 
 music_bot = None
 @bot.event
@@ -172,8 +175,14 @@ async def on_ready():
     await load_commands(bot)
     update_checker.start(bot) 
     if not music_bot:
-        music_bot = MusicBot()
-        await music_bot.setup(bot)
+        music_bot = MusicBot  # Store the class, not an instance
+        # Initialize the bot for setup purposes (shared resources)
+        setup_instance = MusicBot.get_instance('setup')
+        await setup_instance.setup(bot)
+        
+        # Set the bot reference for all existing instances
+        for guild_id, instance in MusicBot._instances.items():
+            instance.bot = bot
 
 bot.remove_command('help')
 bot.run(os.getenv('DISCORD_TOKEN'))

@@ -49,8 +49,14 @@ async def check_updates(bot):
 
         if "Your branch is behind" in status:
             # Only proceed with update if not in voice chat
-            from bot import music_bot
-            is_in_voice = music_bot and music_bot.voice_client and music_bot.voice_client.is_connected()
+            from bot import MusicBot
+            
+            # Check if any server instance is in a voice channel
+            is_in_voice = False
+            for guild_id, instance in MusicBot._instances.items():
+                if instance.voice_client and instance.voice_client.is_connected():
+                    is_in_voice = True
+                    break
             
             if not is_in_voice:
                 try:
@@ -76,8 +82,14 @@ async def check_updates(bot):
             update_msg = '\n'.join(line for line in updates if "Would install" in line)
             
             # Check if bot is in voice chat
-            from bot import music_bot
-            is_in_voice = music_bot and music_bot.voice_client and music_bot.voice_client.is_connected()
+            from bot import MusicBot
+            
+            # Check if any server instance is in a voice channel
+            is_in_voice = False
+            for guild_id, instance in MusicBot._instances.items():
+                if instance.voice_client and instance.voice_client.is_connected():
+                    is_in_voice = True
+                    break
 
             if not is_in_voice:
                 try:

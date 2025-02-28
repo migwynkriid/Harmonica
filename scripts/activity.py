@@ -4,11 +4,11 @@ from scripts.config import load_config
 async def update_activity(bot, current_song=None, is_playing=False):
     """Update the bot's activity status"""
     try:
-        if bot:
+        if bot and hasattr(bot, 'change_presence'):
             if current_song and is_playing:
                 activity = discord.Activity(
                     type=discord.ActivityType.playing,
-                    name=f"🎵 {current_song['title']}"
+                    name=f" {current_song['title']}"
                 )
             else:
                 prefix = load_config()['PREFIX']

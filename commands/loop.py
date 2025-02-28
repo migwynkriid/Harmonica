@@ -9,22 +9,25 @@ class Loop(commands.Cog):
         self.bot = bot
         self.looped_songs = set()
 
-    async def _toggle_loop(self, count: int = 999):
+    async def _toggle_loop(self, ctx, count: int = 999):
         """Core loop functionality that can be used by both command and button"""
-        from bot import music_bot
+        from bot import MusicBot
+        music_bot = MusicBot.get_instance(ctx.guild.id)
         
         # Input validation
         if count < 1:
             return False, "Loop count must be a positive number!"
             
+        # Check if there's a song playing
         if not music_bot.current_song:
-            return False, "No song is currently playing!"
-
+            return False, create_embed("Error", "No song is currently playing!", color=0xe74c3c, ctx=ctx)
+            
         current_song_url = music_bot.current_song['url']
         is_song_looped = current_song_url in self.looped_songs
         
         if not is_song_looped:
             self.looped_songs.add(current_song_url)
+            
             # Find the position of the current song in the queue (if it exists)
             current_song_position = -1
             for i, song in enumerate(music_bot.queue):
@@ -42,7 +45,7 @@ class Loop(commands.Cog):
             
             # Set up callback for future repeats
             music_bot.after_song_callback = lambda: self.bot.loop.create_task(
-                repeat_song(music_bot, None)  # We'll set the context later
+                repeat_song(music_bot, ctx)  # We'll set the context later
             )
             
             return True, {
@@ -80,7 +83,7 @@ class Loop(commands.Cog):
             await ctx.send(embed=create_embed("Error", "You must be in the same voice channel as the bot to use this command!", color=0xe74c3c, ctx=ctx))
             return
             
-        success, result = await self._toggle_loop(count)
+        success, result = await self._toggle_loop(ctx, count)
         
         if not success:
             await ctx.send(result)

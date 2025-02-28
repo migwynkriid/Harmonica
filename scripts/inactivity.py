@@ -29,7 +29,11 @@ async def check_inactivity(bot_instance):
                     # Cancel any active downloads before disconnecting
                     await bot_instance.cancel_downloads()
                     await bot_instance.voice_client.disconnect()
-                    clear_queue()
+                    # Clear queue for this specific server
+                    if hasattr(bot_instance, 'guild_id'):
+                        clear_queue(bot_instance.guild_id)
+                    else:
+                        clear_queue()
         except Exception as e:
             print(f"Error in inactivity checker: {str(e)}")
             await asyncio.sleep(60)

@@ -10,7 +10,8 @@ class MaxCog(commands.Cog):
     @commands.command(name='max')
     async def max(self, ctx):
         """Play Radio Max stream"""
-        from bot import music_bot
+        from bot import MusicBot
+        music_bot = MusicBot.get_instance(ctx.guild.id)
         
         try:
             play_cog = self.bot.get_cog('PlayCog')

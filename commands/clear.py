@@ -14,16 +14,19 @@ class ClearCog(commands.Cog):
     @check_dj_role()
     async def clear(self, ctx, position: int = None):
         """Clear the queue or remove a specific song"""
-        from bot import music_bot
+        from bot import MusicBot
 
         try:
+            # Get server-specific music bot instance
+            server_music_bot = MusicBot.get_instance(str(ctx.guild.id))
+            
             # Check voice state
-            is_valid, error_embed = await check_voice_state(ctx, music_bot)
+            is_valid, error_embed = await check_voice_state(ctx, server_music_bot)
             if not is_valid:
                 await ctx.send(embed=error_embed)
                 return
 
-            await clear_queue_command(ctx, music_bot, position)
+            await clear_queue_command(ctx, server_music_bot, position)
 
         except Exception as e:
             await ctx.send(embed=create_embed("Error", f"An error occurred while clearing: {str(e)}", color=0xe74c3c, ctx=ctx))

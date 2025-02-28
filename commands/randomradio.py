@@ -54,7 +54,8 @@ class RandomRadioCog(commands.Cog):
         """Try to play a radio station and handle potential errors"""
         try:
             # Get the bot instance
-            from bot import music_bot
+            from bot import MusicBot
+            music_bot = MusicBot.get_instance(ctx.guild.id)
             
             # Check if user is in a voice channel
             if not ctx.author.voice:

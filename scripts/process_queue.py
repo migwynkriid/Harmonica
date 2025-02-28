@@ -49,155 +49,130 @@ async def process_queue(music_bot):
                     connected = await music_bot.join_voice_channel(ctx)
                     if not connected:
                         print("Failed to connect to voice channel")
-                        music_bot.current_song = None
-                        music_bot.is_playing = False
-                        music_bot.voice_client = None
                         music_bot.waiting_for_song = False
                         return
-                else:
-                    print("No join_voice_channel method available")
-                    return
             except Exception as e:
-                print(f"Error during voice connection: {str(e)}")
+                print(f"Error connecting to voice channel: {str(e)}")
+                music_bot.waiting_for_song = False
                 return
 
+        # Set the current song
+        music_bot.current_song = song
+        music_bot.is_playing = True
+        music_bot.last_activity = time.time()
+
+        # Clean up the queued message for the song that's about to play
         if song['url'] in music_bot.queued_messages:
             try:
                 await music_bot.queued_messages[song['url']].delete()
-            except Exception as e:
-                print(f"Error deleting queue message: {str(e)}")
-            finally:
                 del music_bot.queued_messages[song['url']]
-
-        music_bot.current_song = song
-        music_bot.is_playing = True
-        music_bot.playback_start_time = time.time()  # Set the start time when song begins playing
-        print(f"{GREEN}Now playing:{RESET}{BLUE} {song['title']}{RESET}")
-        
-        # Get and store the actual duration using ffprobe
-        if not song.get('is_stream'):
-            try:
-                duration = await get_audio_duration(song['file_path'])
-                music_bot.current_song['duration'] = duration
             except Exception as e:
-                print(f"Error getting audio duration: {str(e)}")
-        
-        # Only send now playing message if we should
+                print(f"Error deleting queued message: {str(e)}")
+
+        # Check if file exists for non-stream content
+        if not song.get('is_stream') and not Path(song['file_path']).exists():
+            print(f"Error: File not found: {song['file_path']}")
+            music_bot.waiting_for_song = False
+            music_bot.is_playing = False
+            
+            # Try the next song
+            if music_bot.queue:
+                await process_queue(music_bot)
+            return
+
+        # Use the original requester if available, otherwise use the context
+        requester = song.get('requester', ctx.author)
+        ctx_with_requester = ctx
+        if requester and requester != ctx.author:
+            # Create a context-like object with the requester information
+            class DummyCtx:
+                def __init__(self, author):
+                    self.author = author
+            ctx_with_requester = DummyCtx(requester)
+
+        # Check if we should send the now playing message
         if should_send_now_playing(music_bot, song['title']):
             now_playing_embed = create_embed(
-                "Now playing 🎵",
+                "Now playing ",
                 f"[{song['title']}]({song['url']})",
                 color=0x00ff00,
                 thumbnail_url=song.get('thumbnail'),
-                ctx=ctx
+                ctx=ctx_with_requester
             )
-
-            # Create and send the message with the view if buttons are enabled
+            
+            # Create view with buttons if enabled
             view = create_now_playing_view()
-            # Only pass the view if it's not None
+            
             kwargs = {'embed': now_playing_embed}
             if view is not None:
                 kwargs['view'] = view
-            music_bot.now_playing_message = await ctx.send(**kwargs)
-        
-        await music_bot.bot.change_presence(activity=discord.Game(name=f"{song['title']}"))
-        
-        audio_source = discord.FFmpegOpusAudio(
-            song['file_path'],
-            **FFMPEG_OPTIONS
-        )
-        # Call read() on the audio source before playing to prevent speed-up issue
-        audio_source.read()
-
-        current_message = music_bot.now_playing_message
-        current_song_info = {
-            'title': song['title'],
-            'url': song['url'],
-            'thumbnail': song.get('thumbnail')
-        }
-
-        def after_playing(error):
-            """Callback after song finishes"""
-            if error:
-                print(f"Error in playback: {error}")
-            music_bot.is_playing = False  # Mark that we're done playing
-            
-            async def update_now_playing():
-                # Small delay to ensure proper state transitions
-                await asyncio.sleep(0.2)
-                try:
-                    if current_message:
-                        # Check if the song is looped
-                        loop_cog = music_bot.bot.get_cog('Loop')
-                        is_looped = loop_cog and current_song_info['url'] in loop_cog.looped_songs
-
-                        # For looped songs that weren't skipped, just delete the message
-                        if is_looped and not music_bot.was_skipped:
-                            await current_message.delete()
-                        else:
-                            # For non-looped songs or skipped songs, show appropriate message
-                            title = "Skipped song" if music_bot.was_skipped else "Finished playing"
-                            
-                            finished_embed = create_embed(
-                                title,
-                                f"[{current_song_info['title']}]({current_song_info['url']})",
-                                color=0x808080,
-                                thumbnail_url=current_song_info.get('thumbnail'),
-                                ctx=ctx
-                            )
-                            # Remove buttons when song is finished
-                            await current_message.edit(embed=finished_embed, view=None)
-                    
-                    music_bot.is_playing = False
-                    music_bot.waiting_for_song = False
-                    music_bot.current_song = None
-                    music_bot.now_playing_message = None
-                    music_bot.was_skipped = False  # Reset the skipped flag
-                    from scripts.activity import update_activity
-                    await update_activity(music_bot.bot)
-                    await process_queue(music_bot)
-                except Exception as e:
-                    print(f"Error updating finished message: {str(e)}")
-            
-            asyncio.run_coroutine_threadsafe(update_now_playing(), music_bot.bot_loop)
-
-        try:
-            # If we're already playing, stop and wait a moment
-            if music_bot.voice_client and music_bot.voice_client.is_playing():
-                music_bot.voice_client.stop()
-                music_bot.is_playing = False
-                # Give time for the previous playback to fully stop
-                await asyncio.sleep(0.5)
-
-            # Check voice client is still valid
-            if not music_bot.voice_client or not music_bot.voice_client.is_connected():
-                print("Voice client lost before playback could start")
-                music_bot.waiting_for_song = False
-                return
-
-            # Start new playback
-            music_bot.voice_client.play(audio_source, after=after_playing)
-            music_bot.is_playing = True
-            
-            # Small delay to ensure playback started
-            await asyncio.sleep(0.2)
-            if not music_bot.voice_client.is_playing():
-                print("Playback failed to start")
-                music_bot.waiting_for_song = False
-                music_bot.is_playing = False
-                return
                 
+            music_bot.now_playing_message = await ctx.send(**kwargs)
+
+        # Update bot presence with current song
+        try:
+            if music_bot.bot:
+                await music_bot.bot.change_presence(activity=discord.Game(name=f"{song['title']}"))
         except Exception as e:
-            print(f"Error starting playback: {str(e)}")
+            print(f"Error updating presence: {str(e)}")
+
+        # Reset command tracking
+        music_bot.current_command_msg = None
+        music_bot.current_command_author = None
+
+        # Play the audio
+        try:
+            # Check if already playing before attempting to play
+            if music_bot.voice_client and music_bot.voice_client.is_playing():
+                print("Already playing audio, stopping current playback")
+                music_bot.voice_client.stop()
+                
+            if music_bot.voice_client and music_bot.voice_client.is_connected():
+                # For streams, we need to use a different approach
+                if song.get('is_stream'):
+                    audio_source = discord.FFmpegPCMAudio(
+                        song['url'],
+                        **FFMPEG_OPTIONS
+                    )
+                else:
+                    audio_source = discord.FFmpegPCMAudio(
+                        song['file_path'],
+                        **FFMPEG_OPTIONS
+                    )
+                
+                # Call read() on the audio source before playing to prevent speed-up issue
+                audio_source.read()
+                
+                # Set the playback start time right before starting playback
+                music_bot.playback_start_time = time.time()
+                music_bot.playback_state = "playing"
+                
+                # Set volume
+                volume_transformer = discord.PCMVolumeTransformer(audio_source, volume=DEFAULT_VOLUME/100.0)
+                
+                music_bot.voice_client.play(
+                    volume_transformer,
+                    after=lambda e: asyncio.run_coroutine_threadsafe(
+                        music_bot.after_playing_coro(e, ctx), 
+                        music_bot.bot_loop
+                    )
+                )
+        except Exception as e:
+            print(f"Error playing audio: {str(e)}")
             music_bot.waiting_for_song = False
             music_bot.is_playing = False
-            return
-
+            
+            # Try the next song
+            if music_bot.queue:
+                await process_queue(music_bot)
     except Exception as e:
         print(f"Error in process_queue: {str(e)}")
         music_bot.waiting_for_song = False
+        music_bot.is_playing = False
         
+        # Try the next song
+        if music_bot.queue:
+            await process_queue(music_bot)
     finally:
-        # Only reset waiting_for_song if we're not playing
-        if not music_bot.is_playing:
-            music_bot.waiting_for_song = False
+        # Reset the waiting flag regardless of success or failure
+        music_bot.waiting_for_song = False

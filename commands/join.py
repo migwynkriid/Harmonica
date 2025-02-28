@@ -12,7 +12,10 @@ class JoinCog(commands.Cog):
     @check_dj_role()
     async def join(self, ctx):
         """Join the user's voice channel"""
-        from bot import music_bot
+        from bot import MusicBot
+        
+        # Get server-specific music bot instance
+        server_music_bot = MusicBot.get_instance(str(ctx.guild.id))
 
         # Check if user is in a voice channel
         if not ctx.author.voice:
@@ -26,16 +29,16 @@ class JoinCog(commands.Cog):
             except discord.ClientException as e:
                 if "already connected" in str(e):
                     # If already connected but in a different state, clean up and reconnect
-                    if music_bot.voice_client:
-                        await music_bot.voice_client.disconnect()
-                    music_bot.voice_client = None
+                    if server_music_bot.voice_client:
+                        await server_music_bot.voice_client.disconnect()
+                    server_music_bot.voice_client = None
                     await ctx.author.voice.channel.connect()
                 else:
                     raise e
         elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
             await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
 
-        music_bot.voice_client = ctx.guild.voice_client
+        server_music_bot.voice_client = ctx.guild.voice_client
 
 async def setup(bot):
     await bot.add_cog(JoinCog(bot))

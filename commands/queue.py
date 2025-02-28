@@ -64,45 +64,48 @@ class QueueCog(commands.Cog):
 
     async def get_queue_embed(self, ctx, page=1):
         """Get the queue embed for a specific page"""
-        from bot import music_bot
+        from bot import MusicBot
         
-        if not music_bot.current_song and not music_bot.queue and music_bot.download_queue.empty():
+        # Get server-specific music bot instance
+        server_music_bot = MusicBot.get_instance(str(ctx.guild.id))
+        
+        if not server_music_bot.current_song and not server_music_bot.queue and server_music_bot.download_queue.empty():
             return create_embed("Queue is empty", "Nothing is in the queue", color=0xe74c3c, ctx=ctx), 0
 
         queue_text = ""
         shown_songs = set()
         total_songs = 0
 
-        if music_bot.current_song:
+        if server_music_bot.current_song:
             queue_text += "**Now playing:**\n"
             loop_cog = self.bot.get_cog('Loop')
-            is_looping = loop_cog and music_bot.current_song['url'] in loop_cog.looped_songs
+            is_looping = loop_cog and server_music_bot.current_song['url'] in loop_cog.looped_songs
             
             # Get duration for current song
-            if not music_bot.current_song.get('is_stream'):
-                file_path = music_bot.current_song['file_path']
-                duration = music_bot.duration_cache.get(file_path)
+            if not server_music_bot.current_song.get('is_stream'):
+                file_path = server_music_bot.current_song['file_path']
+                duration = server_music_bot.duration_cache.get(file_path)
                 if duration is None:
                     duration = await get_audio_duration(file_path)
                     if duration > 0:
-                        music_bot.duration_cache[file_path] = duration
+                        server_music_bot.duration_cache[file_path] = duration
                 duration_str = f" `[{format_duration(duration)}]`" if duration > 0 else ""
             else:
                 duration_str = " `[LIVE]`"
                 
-            queue_text += f"[{music_bot.current_song['title']}]({music_bot.current_song['url']}){duration_str}"
+            queue_text += f"[{server_music_bot.current_song['title']}]({server_music_bot.current_song['url']}){duration_str}"
             if is_looping:
                 queue_text += " - :repeat:"
             queue_text += "\n\n"
 
-        if music_bot.queue:
+        if server_music_bot.queue:
             loop_cog = self.bot.get_cog('Loop')
-            current_song_url = music_bot.current_song['url'] if music_bot.current_song else None
+            current_song_url = server_music_bot.current_song['url'] if server_music_bot.current_song else None
             is_looping = loop_cog and current_song_url in loop_cog.looped_songs
             
             # First check if there are any non-looping songs to show
             has_non_looping_songs = False
-            for song in music_bot.queue:
+            for song in server_music_bot.queue:
                 if not (is_looping and song['url'] == current_song_url):
                     has_non_looping_songs = True
                     break
@@ -113,7 +116,7 @@ class QueueCog(commands.Cog):
                 start_idx = (page - 1) * self.page_size
                 end_idx = start_idx + self.page_size
                 
-                for song in music_bot.queue:
+                for song in server_music_bot.queue:
                     # Skip showing the looped song in queue
                     if is_looping and song['url'] == current_song_url:
                         continue
@@ -125,11 +128,11 @@ class QueueCog(commands.Cog):
                             # Get duration for queued song
                             if not song.get('is_stream'):
                                 file_path = song['file_path']
-                                duration = music_bot.duration_cache.get(file_path)
+                                duration = server_music_bot.duration_cache.get(file_path)
                                 if duration is None:
                                     duration = await get_audio_duration(file_path)
                                     if duration > 0:
-                                        music_bot.duration_cache[file_path] = duration
+                                        server_music_bot.duration_cache[file_path] = duration
                                 duration_str = f" `[{format_duration(duration)}]`" if duration > 0 else ""
                             else:
                                 duration_str = " `[LIVE]`"
@@ -137,9 +140,9 @@ class QueueCog(commands.Cog):
                             queue_text += f"`{total_songs}.` [{song_title}]({song['url']}){duration_str}\n"
                         shown_songs.add(song_title)
                     
-        if not music_bot.download_queue.empty():
+        if not server_music_bot.download_queue.empty():
             queue_text += "\n**Downloading:**\n"
-            downloading_count = music_bot.download_queue.qsize()
+            downloading_count = server_music_bot.download_queue.qsize()
             queue_text += f"{downloading_count} song(s) in download queue\n"
 
         embed = create_embed(

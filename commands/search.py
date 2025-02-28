@@ -37,7 +37,8 @@ class SearchCog(commands.Cog):
     @commands.command(name='search')
     async def search(self, ctx, *, query: str = None):
         """Search for a song on YouTube and select from results"""
-        from bot import music_bot
+        from bot import MusicBot
+        music_bot = MusicBot.get_instance(ctx.guild.id)
 
         if not query:
             prefix = self.config['PREFIX']

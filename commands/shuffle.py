@@ -12,7 +12,10 @@ class ShuffleCog(commands.Cog):
     @check_dj_role()
     async def shuffle(self, ctx):
         """Randomly shuffle all songs in the queue"""
-        from bot import music_bot
+        from bot import MusicBot
+        
+        # Get server-specific music bot instance
+        server_music_bot = MusicBot.get_instance(str(ctx.guild.id))
         
         # Check if user is in voice chat
         if not ctx.author.voice:
@@ -24,7 +27,7 @@ class ShuffleCog(commands.Cog):
             await ctx.send(embed=create_embed("Error", "You must be in the same voice channel as the bot to use this command!", color=0xe74c3c, ctx=ctx))
             return
             
-        success = await shuffle_queue(ctx, music_bot)
+        success = await shuffle_queue(ctx, server_music_bot)
         
         if success:
             await ctx.send(embed=create_embed("Queue Shuffled", "The queue has been randomly shuffled!\n Pending downloads are not shuffled", color=0x2ecc71, ctx=ctx))

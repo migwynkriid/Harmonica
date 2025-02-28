@@ -66,12 +66,18 @@ async def leave_voice_channel(bot_instance):
 
 async def handle_voice_state_update(bot_instance, member, before, after):
     """Handle voice state updates for the bot"""
-    if not bot_instance or not bot_instance.voice_client:
+    # Check if bot_instance is None or a class instead of an instance
+    if not bot_instance or isinstance(bot_instance, type) or not hasattr(bot_instance, 'voice_client') or not bot_instance.voice_client:
         return
 
     bot_voice_channel = bot_instance.voice_client.channel
     if not bot_voice_channel:
         return
+
+    # Get guild ID for server-specific operations
+    guild_id = None
+    if hasattr(bot_instance, 'guild_id'):
+        guild_id = bot_instance.guild_id
 
     # Only check for empty channel if AUTO_LEAVE_EMPTY is enabled
     voice_config = get_voice_config()
@@ -91,6 +97,13 @@ async def handle_voice_state_update(bot_instance, member, before, after):
 
                 # Cancel any active downloads
                 await bot_instance.cancel_downloads()
+
+                # Clear the queue for this specific server
+                from scripts.clear_queue import clear_queue
+                if guild_id:
+                    clear_queue(guild_id)
+                else:
+                    clear_queue()
 
                 # Create a list of messages to delete to avoid dictionary size change during iteration
                 queued_messages = list(bot_instance.queued_messages.values())

@@ -54,8 +54,30 @@ config_vars = load_config()
 INACTIVITY_TIMEOUT = config_vars.get('INACTIVITY_TIMEOUT', 60)
 
 class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
+    _instances = {}  # Dictionary to store server-specific instances
+
+    @classmethod
+    def get_instance(cls, guild_id):
+        """Get or create a server-specific music bot instance"""
+        if guild_id not in cls._instances:
+            cls._instances[guild_id] = cls()
+            # Set the guild_id for this instance
+            cls._instances[guild_id].guild_id = guild_id
+            # Ensure bot_loop is initialized
+            if not cls._instances[guild_id].bot_loop:
+                cls._instances[guild_id].bot_loop = asyncio.get_event_loop()
+            
+            # If we have a setup instance with a bot reference, copy it to the new instance
+            if 'setup' in cls._instances and cls._instances['setup'].bot:
+                cls._instances[guild_id].bot = cls._instances['setup'].bot
+                
+        return cls._instances[guild_id]
+
     def __init__(self):
         """Initialize the music bot"""
+        # Discord bot instance (set later)
+        self.bot = None
+        self.guild_id = None  # Will be set when get_instance is called
         self.queue = []
         self.current_song = None
         self.is_playing = False
@@ -86,7 +108,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.last_update = 0
         self._last_progress = -1
         self.last_known_ctx = None
-        self.bot = None
         self.was_skipped = False  # Add flag to track if song was skipped
         self.cache_dir = Path(__file__).parent.parent / '.cache'
         self.spotify_cache = self.cache_dir / 'spotify'
@@ -372,7 +393,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             # Reset the music bot state
             self.current_song = None
             self.is_playing = False
-            await update_activity(self.bot, self.current_song, self.is_playing)
+            if self.bot:
+                await update_activity(self.bot, self.current_song, self.is_playing)
 
     def _download_hook(self, d):
         """Custom download hook that checks for cancellation"""
@@ -614,7 +636,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             'ctx': status_msg.channel if status_msg else None,
                             'is_from_cache': True
                         }
-                
+
+                # If not in cache or not a YouTube video, proceed with normal download
                 is_youtube_mix = False
                 
                 # Check if the input is a URL
@@ -770,7 +793,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         lambda d: self._download_hook(d),
                         lambda d: asyncio.run_coroutine_threadsafe(
                             progress.progress_hook(d),
-                            self.bot_loop
+                            self.bot_loop if self.bot_loop else asyncio.get_event_loop()
                         ) if status_msg else None
                     ],
                     'default_search': 'ytsearch'
@@ -926,4 +949,5 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
     async def update_activity(self):
         """Update the bot's activity status"""
-        await update_activity(self.bot, self.current_song, self.is_playing)
+        if self.bot:
+            await update_activity(self.bot, self.current_song, self.is_playing)
