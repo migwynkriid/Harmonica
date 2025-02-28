@@ -124,6 +124,7 @@ class RandomCommand(commands.Cog):
             
             if not word:
                 await status_msg.edit(embed=create_embed("Error", "Failed to fetch a random word. Please try again.", discord.Color.red(), ctx=ctx))
+                await status_msg.delete(delay=5)  # Delete after 5 seconds
                 return
 
             # Search using the word
@@ -131,11 +132,13 @@ class RandomCommand(commands.Cog):
             result = await self.search_youtube(search_query)
             if not result:
                 await status_msg.edit(embed=create_embed("Error", f"No results found for '{search_query}'. Trying another word...", discord.Color.orange(), ctx=ctx))
+                await status_msg.delete(delay=5)  # Delete after 5 seconds
                 return
             
             # Download the song using the URL
             download_result = await music_bot.download_song(result['url'], status_msg=status_msg, ctx=ctx, skip_url_check=True)
             if not download_result:
+                await status_msg.delete(delay=5)  # Delete after 5 seconds
                 return
 
             # Add to queue
@@ -160,6 +163,7 @@ class RandomCommand(commands.Cog):
 
             # Start playing if needed
             if should_play:
+                await status_msg.delete()  # Delete the "Feeling lucky?" message
                 await process_queue(music_bot, ctx)
             else:
                 queue_pos = len(music_bot.queue)
@@ -181,13 +185,17 @@ class RandomCommand(commands.Cog):
                     thumbnail_url=download_result.get('thumbnail'),
                     ctx=ctx
                 )
+                await status_msg.delete()  # Delete the "Feeling lucky?" message
                 queue_msg = await ctx.send(embed=queue_embed)
                 music_bot.queued_messages[download_result['url']] = queue_msg
 
         except Exception as e:
             logger.error(f"Error in random command: {str(e)}")
+            if 'status_msg' in locals():
+                await status_msg.delete()  # Delete the "Feeling lucky?" message
             embed = create_embed("Error", f"An error occurred: {str(e)}", discord.Color.red(), ctx=ctx)
-            await ctx.send(embed=embed)
+            error_msg = await ctx.send(embed=embed)
+            await error_msg.delete(delay=5)  # Delete error message after 5 seconds
 
 async def setup(bot):
     """
