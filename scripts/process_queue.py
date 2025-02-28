@@ -147,6 +147,10 @@ async def process_queue(music_bot):
                 music_bot.playback_start_time = time.time()
                 music_bot.playback_state = "playing"
                 
+                # Log the now playing message with server name
+                server_name = ctx.guild.name if ctx and hasattr(ctx, 'guild') and ctx.guild else "Unknown Server"
+                print(f"{GREEN}Now playing:{RESET}{BLUE} {song['title']}{RESET}{GREEN} in server: {RESET}{BLUE}{server_name}{RESET}")
+                
                 # Set volume
                 volume_transformer = discord.PCMVolumeTransformer(audio_source, volume=DEFAULT_VOLUME/100.0)
                 
