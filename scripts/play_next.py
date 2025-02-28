@@ -102,41 +102,43 @@ async def play_next(ctx):
                     # Handle previous now playing message
                     if server_music_bot.now_playing_message:
                         try:
-                            # Check if the previous song is looped
-                            loop_cog = server_music_bot.bot.get_cog('Loop')
-                            is_looped = loop_cog and previous_song['url'] in loop_cog.looped_songs
+                            # Add null check for bot instance
+                            if server_music_bot.bot:
+                                # Add null check before accessing the cog
+                                loop_cog = server_music_bot.bot.get_cog('Loop') if server_music_bot.bot else None
+                                is_looped = loop_cog and previous_song and previous_song['url'] in loop_cog.looped_songs if loop_cog else False
 
-                            # For looped songs that weren't skipped, just delete the message
-                            if is_looped and not (hasattr(server_music_bot, 'was_skipped') and server_music_bot.was_skipped):
-                                await server_music_bot.now_playing_message.delete()
-                            else:
-                                # For non-looped songs or skipped songs, show appropriate message
-                                title = "Skipped song" if hasattr(server_music_bot, 'was_skipped') and server_music_bot.was_skipped else "Finished playing"
-                                description = f"[{previous_song['title']}]({previous_song['url']})"
-                                
-                                # Create a context-like object with the requester information
-                                class DummyCtx:
-                                    def __init__(self, author):
-                                        self.author = author
-                                
-                                # Use the original requester if available, otherwise use the context
-                                # For playlist songs, the requester is stored in the song info
-                                requester = previous_song.get('requester', ctx.author)
-                                ctx_with_requester = DummyCtx(requester) if requester else ctx
-                                
-                                finished_embed = create_embed(
-                                    title,
-                                    description,
-                                    color=0x808080,  # Gray color for finished
-                                    thumbnail_url=previous_song.get('thumbnail'),
-                                    ctx=ctx_with_requester
-                                )
-                                # Don't include view for status messages
-                                await server_music_bot.now_playing_message.edit(embed=finished_embed, view=None)
-                                
-                                # Reset the skip flag after handling the previous song
-                                if hasattr(server_music_bot, 'was_skipped'):
-                                    server_music_bot.was_skipped = False
+                                # For looped songs that weren't skipped, just delete the message
+                                if is_looped and not (hasattr(server_music_bot, 'was_skipped') and server_music_bot.was_skipped):
+                                    await server_music_bot.now_playing_message.delete()
+                                else:
+                                    # For non-looped songs or skipped songs, show appropriate message
+                                    title = "Skipped song" if hasattr(server_music_bot, 'was_skipped') and server_music_bot.was_skipped else "Finished playing"
+                                    description = f"[{previous_song['title']}]({previous_song['url']})"
+                                    
+                                    # Create a context-like object with the requester information
+                                    class DummyCtx:
+                                        def __init__(self, author):
+                                            self.author = author
+                                    
+                                    # Use the original requester if available, otherwise use the context
+                                    # For playlist songs, the requester is stored in the song info
+                                    requester = previous_song.get('requester', ctx.author)
+                                    ctx_with_requester = DummyCtx(requester) if requester else ctx
+                                    
+                                    finished_embed = create_embed(
+                                        title,
+                                        description,
+                                        color=0x808080,  # Gray color for finished
+                                        thumbnail_url=previous_song.get('thumbnail'),
+                                        ctx=ctx_with_requester
+                                    )
+                                    # Don't include view for status messages
+                                    await server_music_bot.now_playing_message.edit(embed=finished_embed, view=None)
+                                    
+                                    # Reset the skip flag after handling the previous song
+                                    if hasattr(server_music_bot, 'was_skipped'):
+                                        server_music_bot.was_skipped = False
                         except Exception as e:
                             print(f"Error updating previous now playing message: {str(e)}")
 

@@ -63,6 +63,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
     to organize functionality into logical components.
     """
     _instances = {}  # Dictionary to store server-specific instances
+    _credentials_shown = False  # Class variable to track if credentials have been shown
 
     @classmethod
     def get_instance(cls, guild_id):
@@ -72,12 +73,13 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         each server has its own isolated music queue and state.
         """
         if guild_id not in cls._instances:
-            cls._instances[guild_id] = cls()
+            cls._instances[guild_id] = cls(show_credentials=not cls._credentials_shown)
             # Set the guild_id for this instance
             cls._instances[guild_id].guild_id = guild_id
-            # Ensure bot_loop is initialized
-            if not cls._instances[guild_id].bot_loop:
-                cls._instances[guild_id].bot_loop = asyncio.get_event_loop()
+            
+            # If this is the first instance, mark credentials as shown
+            if not cls._credentials_shown:
+                cls._credentials_shown = True
             
             # If we have a setup instance with a bot reference, copy it to the new instance
             if 'setup' in cls._instances and cls._instances['setup'].bot:
@@ -85,10 +87,13 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 
         return cls._instances[guild_id]
 
-    def __init__(self):
+    def __init__(self, show_credentials=True):
         """
         Initialize the music bot with default values.
         Each attribute will be specific to a guild instance.
+        
+        Args:
+            show_credentials (bool): Whether to show credential status messages
         """
         # Discord bot instance (set later)
         self.bot = None
@@ -141,13 +146,15 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         client_secret = os.getenv('SPOTIPY_CLIENT_SECRET')
         
         # Check if Spotify credentials are available
-        print(f"{GREEN}Spotify credentials found:{RESET} {BLUE if (client_id and client_secret) else RED}{'Yes' if (client_id and client_secret) else 'No'}{RESET}")
+        if show_credentials:
+            print(f"{GREEN}Spotify credentials found:{RESET} {BLUE if (client_id and client_secret) else RED}{'Yes' if (client_id and client_secret) else 'No'}{RESET}")
         
         # Initialize Spotify client if credentials are available
         if not client_id or not client_secret:
-            print(f"{RED}Warning: Spotify credentials not found. Spotify functionality will be unavailable.{RESET}")
-            print(f"{BLUE}https://developer.spotify.com/documentation/web-api/concepts/apps{RESET}")
-            print(f"{BLUE}Update your {RESET}{YELLOW}.spotifyenv file{RESET}\n")
+            if show_credentials:
+                print(f"{RED}Warning: Spotify credentials not found. Spotify functionality will be unavailable.{RESET}")
+                print(f"{BLUE}https://developer.spotify.com/documentation/web-api/concepts/apps{RESET}")
+                print(f"{BLUE}Update your {RESET}{YELLOW}.spotifyenv file{RESET}\n")
             self.sp = None
         else:
             try:
@@ -162,17 +169,20 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 )
                 self.sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
             except Exception as e:
-                print(f"{RED}Error initializing Spotify client: {str(e)}{RESET}")
+                if show_credentials:
+                    print(f"{RED}Error initializing Spotify client: {str(e)}{RESET}")
                 self.sp = None
 
         # Check for YouTube cookies file (needed for age-restricted content)
         if self.cookie_file.exists():
-            print(f"{GREEN}YouTube cookies found:{RESET} {BLUE}Yes{RESET}")
+            if show_credentials:
+                print(f"{GREEN}YouTube cookies found:{RESET} {BLUE}Yes{RESET}")
         else:
-            print(f"{GREEN}YouTube cookies found:{RESET} {RED}No{RESET}")
-            print(f"{RED}Warning: YouTube cookies not found, YouTube functionality might be limited.{RESET}")
-            print(f'{BLUE}Extract using "Get Cookies" extension and save it as cookies.txt in the root directory where you run the bot.{RESET}')
-            print(f"{BLUE}https://github.com/yt-dlp/yt-dlp/wiki/How-to-use-cookies{RESET}\n")
+            if show_credentials:
+                print(f"{GREEN}YouTube cookies found:{RESET} {RED}No{RESET}")
+                print(f"{RED}Warning: YouTube cookies not found, YouTube functionality might be limited.{RESET}")
+                print(f'{BLUE}Extract using "Get Cookies" extension and save it as cookies.txt in the root directory where you run the bot.{RESET}')
+                print(f"{BLUE}https://github.com/yt-dlp/yt-dlp/wiki/How-to-use-cookies{RESET}\n")
             
         # Check for Genius lyrics API token
         genius_token_file = Path(__file__).parent.parent / '.geniuslyrics'
@@ -180,11 +190,12 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             with open(genius_token_file, 'r') as f:
                 content = f.read().strip()
                 has_token = content and not content.endswith('=')
-            print(f"{GREEN}Genius lyrics token found:{RESET} {BLUE if has_token else RED}{'Yes' if has_token else 'No'}{RESET}")
-            if not has_token:
-                print(f"{RED}Warning: Genius lyrics token not found.\n{BLUE}AZLyrics will be used as a fallback.{RESET}")
-                print(f"{BLUE}https://genius.com/api-clients{RESET}")
-                print(f'{BLUE}Update your {RESET}{YELLOW}.geniuslyrics file{RESET}')
+            if show_credentials:
+                print(f"{GREEN}Genius lyrics token found:{RESET} {BLUE if has_token else RED}{'Yes' if has_token else 'No'}{RESET}")
+                if not has_token:
+                    print(f"{RED}Warning: Genius lyrics token not found.\n{BLUE}AZLyrics will be used as a fallback.{RESET}")
+                    print(f"{BLUE}https://genius.com/api-clients{RESET}")
+                    print(f'{BLUE}Update your {RESET}{YELLOW}.geniuslyrics file{RESET}')
 
         # Bind voice methods from external module
         self.join_voice_channel = lambda ctx: join_voice_channel(self, ctx)
