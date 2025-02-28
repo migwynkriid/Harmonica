@@ -104,7 +104,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.voice_client = None  # Voice client connection
         self.waiting_for_song = False  # Flag to indicate waiting for a song to download
         self.queue_lock = asyncio.Lock()  # Lock to prevent race conditions when modifying queue
-        self.download_queue = asyncio.Queue()  # Queue for songs to be downloaded
+        self.download_queue = asyncio.Queue()  # Queue for songs to be downloaded for this server
         self.currently_downloading = False  # Flag to indicate if a download is in progress
         self.command_queue = asyncio.Queue()  # Queue for commands to be processed
         self.command_processor_task = None  # Task for processing commands
@@ -118,7 +118,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.downloads_dir = Path(__file__).parent.parent / 'downloads'  # Directory for downloaded files
         self.cookie_file = Path(__file__).parent.parent / 'cookies.txt'  # Cookie file for authentication
         self.playback_start_time = None  # Track when the current song started playing
-        self.in_progress_downloads = {}  # Track downloads in progress
+        self.in_progress_downloads = {}  # Track downloads in progress for this server
         if not self.downloads_dir.exists():
             self.downloads_dir.mkdir()
         self.last_activity = time.time()  # Timestamp of last user interaction
@@ -131,9 +131,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.was_skipped = False  # Flag to track if song was skipped
         self.cache_dir = Path(__file__).parent.parent / '.cache'  # Directory for cache files
         self.spotify_cache = self.cache_dir / 'spotify'  # Directory for Spotify cache
-        self.should_stop_downloads = False  # Flag to control download cancellation
-        self.current_download_task = None  # Track current download task
-        self.current_ydl = None  # Track current YoutubeDL instance
+        self.current_download_task = None  # Track current download task for this server
+        self.current_ydl = None  # Track current YoutubeDL instance for this server
+        self.should_stop_downloads = False  # Flag to control download cancellation for this server
         self.duration_cache = {}  # Cache for storing audio durations
         
         # Create cache directories if they don't exist
@@ -386,7 +386,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
     async def cancel_downloads(self, disconnect_voice=True):
         """
-        Cancel all active downloads and clear the download queue
+        Cancel all active downloads and clear the download queue for this server
         
         This method safely cancels any ongoing downloads, clears the download queue,
         and optionally disconnects from the voice channel. It's used when the bot
@@ -394,12 +394,12 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         command or when the bot is shutting down.
         
         The method performs the following steps:
-        1. Sets a flag to stop any active downloads
-        2. Cancels the current download task if one exists
-        3. Closes the current yt-dlp instance
-        4. Clears the download queue
+        1. Sets a flag to stop any active downloads for this server
+        2. Cancels the current download task for this server if one exists
+        3. Closes the current yt-dlp instance for this server
+        4. Clears the download queue for this server
         5. Removes incomplete downloads from the queue
-        6. Clears the in-progress downloads tracking
+        6. Clears the in-progress downloads tracking for this server
         7. Stops any current playback
         8. Optionally disconnects from voice
         
@@ -430,7 +430,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             except Exception as e:
                 print(f"Error closing yt-dlp instance: {e}")
         
-        # Clear the download queue
+        # Clear the download queue for this server
         while not self.download_queue.empty():
             try:
                 self.download_queue.get_nowait()
@@ -441,13 +441,14 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         # Clear any incomplete downloads from the queue
         self.queue = [song for song in self.queue if not isinstance(song.get('file_path'), type(None))]
         
-        # Clear in-progress downloads tracking
+        # Clear in-progress downloads tracking for this server
         self.in_progress_downloads.clear()
         
         # Wait a moment for any active downloads to notice the cancellation flag
         await asyncio.sleep(0.5)
         self.should_stop_downloads = False
         self.current_download_task = None
+        self.current_ydl = None
 
         # Stop any current playback
         if self.voice_client and self.voice_client.is_playing():
@@ -767,7 +768,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         duration = await get_audio_duration(file_path)
                         if duration > 0:
                             self.duration_cache[file_path] = duration
-                            
+
                         return {
                             'title': info['title'],
                             'url': info['webpage_url'] if info.get('webpage_url') else info['url'],
