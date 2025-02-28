@@ -4,6 +4,7 @@ from time import sleep
 from scripts.logging import get_ytdlp_logger
 from scripts.paths import get_ytdlp_path, get_ffmpeg_path, get_ffprobe_path, get_cache_dir
 from scripts.constants import RED, GREEN, BLUE, RESET
+import psutil
 
 # Get the absolute path to the cache directory
 CACHE_DIR = get_cache_dir()
@@ -220,7 +221,7 @@ FFMPEG_OPTIONS = {
         '-reconnect 1 '  # Enable reconnection if the connection is lost
         '-reconnect_streamed 1 '  # Enable reconnection for streamed content
         '-reconnect_delay_max 5 '  # Maximum delay between reconnection attempts in seconds
-        '-threads 4 '  # Use 4 CPU threads for processing
+        f'-threads {psutil.cpu_count(logical=True)} '  # Use all available CPU threads for processing
         '-af '  # Begin audio filter chain
         'aresample=async=1:min_hard_comp=0.100000:max_soft_comp=0.100000:first_pts=0,'  # Resample audio with async mode to handle timing issues
         'equalizer=f=100:t=h:width=200:g=-3,'  # Apply high-shelf equalizer at 100Hz with -3dB gain
