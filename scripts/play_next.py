@@ -32,7 +32,8 @@ async def play_next(ctx):
                 previous_song = server_music_bot.current_song
                 server_music_bot.current_song = server_music_bot.queue.pop(0)
                 server_music_bot.last_activity = time.time()
-                print(f"{GREEN}Now playing:{RESET}{BLUE} {server_music_bot.current_song['title']}{RESET}")
+                server_name = ctx.guild.name if ctx and hasattr(ctx, 'guild') and ctx.guild else "Unknown Server"
+                print(f"{GREEN}Now playing:{RESET}{BLUE} {server_music_bot.current_song['title']}{RESET}{GREEN} in server: {RESET}{BLUE}{server_name}{RESET}")
                 
                 # Clean up the queued message for the song that's about to play
                 if server_music_bot.current_song['url'] in server_music_bot.queued_messages:

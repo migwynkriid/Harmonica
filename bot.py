@@ -99,7 +99,8 @@ async def on_command(ctx):
     command_name = ctx.command.name if ctx.command else "unknown"
     full_command = ctx.message.content
     username = str(ctx.author)
-    command_logger.log_command(username, full_command)
+    server_name = ctx.guild.name if ctx.guild else "DM"
+    command_logger.log_command(username, full_command, server_name)
 
 @bot.event
 async def on_command_error(ctx, error):
