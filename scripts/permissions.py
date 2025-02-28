@@ -6,7 +6,14 @@ from scripts.messages import create_embed
 def check_dj_role():
     """
     A decorator that checks if the user has the DJ role before executing the command.
-    Only checks if REQUIRES_DJ_ROLE is set to true in config.
+    
+    This decorator verifies whether the user has the 'DJ' role before allowing
+    them to execute the decorated command. The check is only performed if
+    REQUIRES_DJ_ROLE is set to true in the configuration. If the check fails,
+    a permission denied message is sent to the channel.
+    
+    Returns:
+        function: The decorator function that wraps the command
     """
     def decorator(func):
         @wraps(func)
@@ -37,7 +44,14 @@ def check_dj_role():
 def check_admin_role():
     """
     A decorator that checks if the user has the Administrator role before executing the command.
-    Only checks if REQUIRES_ADMIN_ROLE is set to true in config.
+    
+    This decorator verifies whether the user has the 'Administrator' role before
+    allowing them to execute the decorated command. The check is only performed if
+    REQUIRES_ADMIN_ROLE is set to true in the configuration. If the check fails,
+    a permission denied message is sent to the channel.
+    
+    Returns:
+        function: The decorator function that wraps the command
     """
     def decorator(func):
         @wraps(func)

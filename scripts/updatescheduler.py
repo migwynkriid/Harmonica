@@ -9,6 +9,20 @@ import pytz
 import json
 
 def create_embed(title, description, color=0x3498db):
+    """
+    Create a Discord embed with consistent styling.
+    
+    This function creates a standardized Discord embed with the provided title,
+    description, and color. It automatically adds the current UTC timestamp.
+    
+    Args:
+        title: The embed title
+        description: The embed description
+        color: The color of the embed (default: blue)
+        
+    Returns:
+        discord.Embed: The created embed
+    """
     embed = discord.Embed(
         title=title,
         description=description,
@@ -18,10 +32,36 @@ def create_embed(title, description, color=0x3498db):
     return embed
 
 def load_config():
+    """
+    Load configuration from the config.json file.
+    
+    This function reads and parses the bot's configuration file to access
+    settings related to auto-updates and other features.
+    
+    Returns:
+        dict: The configuration settings as a dictionary
+    """
     with open('config.json', 'r') as f:
         return json.load(f)
 
 async def check_updates(bot):
+    """
+    Check for and apply updates to the bot.
+    
+    This function checks for updates from the git repository and for package
+    updates via pip. If updates are found, it notifies the bot owner and
+    can automatically apply the updates based on configuration settings.
+    
+    The function performs the following steps:
+    1. Check if auto-updates are enabled in config
+    2. Check for git repository updates
+    3. Check for pip package updates
+    4. Apply updates if conditions are met
+    5. Notify the bot owner about update status
+    
+    Args:
+        bot: The Discord bot instance
+    """
     config = load_config()
     if not config.get('AUTO_UPDATE', True):
         return
@@ -123,12 +163,40 @@ async def check_updates(bot):
 
 @tasks.loop(hours=1)
 async def update_checker(bot):
+    """
+    Task loop that runs the update check every hour.
+    
+    This function sets up a background task that periodically checks
+    for updates according to the specified interval.
+    
+    Args:
+        bot: The Discord bot instance
+    """
     await check_updates(bot)
 
 async def startup_check(bot):
+    """
+    Run an update check when the bot starts.
+    
+    This function performs an immediate update check when the bot
+    first starts up, ensuring it's running the latest version.
+    
+    Args:
+        bot: The Discord bot instance
+    """
     await check_updates(bot)
 
 def setup(bot):
+    """
+    Set up the update scheduler.
+    
+    This function is called when the module is loaded. It starts the
+    periodic update checker, schedules an immediate startup check,
+    and adds the UpdateScheduler cog to the bot.
+    
+    Args:
+        bot: The Discord bot instance
+    """
     update_checker.start(bot)
     bot.loop.create_task(startup_check(bot))
     bot.add_cog(UpdateScheduler(bot))

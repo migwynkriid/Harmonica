@@ -3,7 +3,15 @@ import time
 from scripts.clear_queue import clear_queue
 
 async def start_inactivity_checker(bot_instance):
-    """Start the inactivity checker"""
+    """
+    Start the inactivity checker.
+    
+    This function initializes the inactivity checker task that monitors
+    voice channel activity and disconnects the bot after a period of inactivity.
+    
+    Args:
+        bot_instance: The MusicBot instance to monitor for inactivity
+    """
     try:
         await check_inactivity(bot_instance)
         bot_instance._inactivity_task = bot_instance.bot_loop.create_task(check_inactivity(bot_instance))
@@ -11,7 +19,17 @@ async def start_inactivity_checker(bot_instance):
         print(f"Error starting inactivity checker: {str(e)}")
 
 async def check_inactivity(bot_instance):
-    """Check for inactivity and leave voice if inactive too long"""
+    """
+    Check for inactivity and leave voice if inactive too long.
+    
+    This function runs in a continuous loop, checking if the bot has been
+    inactive in a voice channel for longer than the configured timeout period.
+    If the bot is inactive and not playing music, it will disconnect from
+    the voice channel and clear the queue.
+    
+    Args:
+        bot_instance: The MusicBot instance to monitor for inactivity
+    """
     while True:
         try:
             await asyncio.sleep(60)

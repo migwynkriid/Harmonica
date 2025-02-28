@@ -7,14 +7,32 @@ from scripts.permissions import check_dj_role
 from scripts.config import load_config
 
 class AliasCog(commands.Cog):
+    """
+    Command cog for managing command aliases.
+    
+    This cog handles the 'alias' command group, which allows users to create,
+    remove, and list custom aliases for existing commands on a per-server basis.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the AliasCog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         self.aliases_file = 'aliases.json'
         self.aliases = self.load_aliases()
         self.config = load_config()
 
     def load_aliases(self):
-        """Load aliases from the JSON file"""
+        """
+        Load aliases from the JSON file.
+        
+        Returns:
+            dict: Dictionary containing server-specific aliases
+        """
         if os.path.exists(self.aliases_file):
             try:
                 with open(self.aliases_file, 'r') as f:
@@ -24,12 +42,22 @@ class AliasCog(commands.Cog):
         return {}
 
     def save_aliases(self):
-        """Save aliases to the JSON file"""
+        """
+        Save aliases to the JSON file.
+        """
         with open(self.aliases_file, 'w') as f:
             json.dump(self.aliases, f, indent=4)
 
     def get_server_aliases(self, guild_id):
-        """Get aliases for a specific server"""
+        """
+        Get aliases for a specific server.
+        
+        Args:
+            guild_id: The ID of the guild (server)
+            
+        Returns:
+            dict: Dictionary of aliases for the specified server
+        """
         guild_id = str(guild_id)  # Convert to string for JSON compatibility
         if guild_id not in self.aliases:
             self.aliases[guild_id] = {}
@@ -37,7 +65,15 @@ class AliasCog(commands.Cog):
 
     @commands.group(name='alias', invoke_without_command=True)
     async def alias(self, ctx):
-        """Manage command aliases"""
+        """
+        Manage command aliases.
+        
+        This is the base command for the alias group. If no subcommand is provided,
+        it displays help information for the available alias commands.
+        
+        Args:
+            ctx: The command context
+        """
         if ctx.invoked_subcommand is None:
             prefix = self.config['PREFIX']
             embed = create_embed(
@@ -53,7 +89,16 @@ class AliasCog(commands.Cog):
     @alias.command(name='add')
     @check_dj_role()
     async def alias_add(self, ctx, command: str = None, alias: str = None):
-        """Add an alias for a command"""
+        """
+        Add an alias for a command.
+        
+        This subcommand creates a new alias for an existing command.
+        
+        Args:
+            ctx: The command context
+            command (str): The existing command to create an alias for
+            alias (str): The new alias to create
+        """
         prefix = self.config['PREFIX']
         if command is None or alias is None:
             embed = create_embed('Error', f'Usage: `{prefix}alias add <command> <alias>`\nExample: `{prefix}alias add play p`', ctx=ctx)
@@ -88,7 +133,15 @@ class AliasCog(commands.Cog):
     @alias.command(name='remove')
     @check_dj_role()
     async def alias_remove(self, ctx, alias: str = None):
-        """Remove an alias"""
+        """
+        Remove an alias.
+        
+        This subcommand removes an existing alias.
+        
+        Args:
+            ctx: The command context
+            alias (str): The alias to remove
+        """
         prefix = self.config['PREFIX']
         if alias is None:
             embed = create_embed('Error', f'Usage: `{prefix}alias remove <alias>`\nExample: `{prefix}alias remove p`', ctx=ctx)
@@ -111,7 +164,14 @@ class AliasCog(commands.Cog):
 
     @alias.command(name='list')
     async def alias_list(self, ctx):
-        """List all aliases"""
+        """
+        List all aliases.
+        
+        This subcommand displays all aliases configured for the current server.
+        
+        Args:
+            ctx: The command context
+        """
         server_aliases = self.get_server_aliases(ctx.guild.id)
         
         if not server_aliases:
@@ -139,7 +199,16 @@ class AliasCog(commands.Cog):
         await ctx.send(embed=embed)
 
     async def get_command(self, ctx, cmd_name: str):
-        """Get the actual command from an alias"""
+        """
+        Get the actual command from an alias.
+        
+        Args:
+            ctx: The command context
+            cmd_name (str): The command or alias name
+            
+        Returns:
+            Command: The actual command object, or None if not found
+        """
         cmd_name = cmd_name.lower()
         server_aliases = self.get_server_aliases(ctx.guild.id)
         
@@ -149,6 +218,15 @@ class AliasCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        """
+        Event listener for messages to handle alias resolution.
+        
+        This listener checks if a message starts with the command prefix
+        and contains an alias, and if so, it executes the actual command.
+        
+        Args:
+            message: The message object
+        """
         prefix = self.config['PREFIX']
         if not message.content.startswith(prefix):
             return
@@ -173,4 +251,10 @@ class AliasCog(commands.Cog):
                 await self.bot.invoke(ctx)
 
 async def setup(bot):
+    """
+    Setup function to add the AliasCog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(AliasCog(bot))

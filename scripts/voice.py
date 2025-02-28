@@ -6,7 +6,15 @@ import logging
 from scripts.messages import update_or_send_message, create_embed
 
 def get_voice_config():
-    """Get voice configuration from config.json"""
+    """
+    Get voice configuration from config.json
+    
+    Reads the voice-related settings from the config file, which control
+    behaviors like auto-leaving empty channels and inactivity timeouts.
+    
+    Returns:
+        dict: Voice configuration settings or default values if file can't be read
+    """
     try:
         with open('config.json', 'r') as f:
             config = json.load(f)
@@ -16,7 +24,20 @@ def get_voice_config():
         return {"AUTO_LEAVE_EMPTY": True}  # Default values
 
 async def join_voice_channel(bot_instance, ctx):
-    """Join the user's voice channel"""
+    """
+    Join the user's voice channel
+    
+    Connects the bot to the voice channel where the command author is currently in.
+    Handles various checks and error cases such as the user not being in a voice channel
+    or the channel being empty when AUTO_LEAVE_EMPTY is enabled.
+    
+    Args:
+        bot_instance: The bot instance containing voice client and state
+        ctx: The command context containing information about the invoker
+        
+    Returns:
+        bool: True if successfully joined, False otherwise
+    """
     if not ctx.author.voice:
         await update_or_send_message(ctx, embed=create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c))
         return False
@@ -40,6 +61,7 @@ async def join_voice_channel(bot_instance, ctx):
                 pass
             bot_instance.voice_client = None
 
+        # Connect to the voice channel with self_deaf=True to avoid listening to audio
         bot_instance.voice_client = await channel.connect(self_deaf=True)
         bot_instance.last_activity = time.time()
         return bot_instance.voice_client.is_connected()
@@ -51,7 +73,15 @@ async def join_voice_channel(bot_instance, ctx):
         return False
 
 async def leave_voice_channel(bot_instance):
-    """Leave voice channel and cleanup"""
+    """
+    Leave voice channel and cleanup resources
+    
+    Disconnects the bot from the voice channel, stops any playing audio,
+    and resets related state variables.
+    
+    Args:
+        bot_instance: The bot instance containing voice client and state
+    """
     try:
         if bot_instance.voice_client:
             if bot_instance.voice_client.is_playing():
@@ -61,11 +91,24 @@ async def leave_voice_channel(bot_instance):
     except Exception as e:
         print(f"Error leaving voice channel: {str(e)}")
     finally:
+        # Reset bot state variables
         bot_instance.voice_client = None
         bot_instance.current_song = None
 
 async def handle_voice_state_update(bot_instance, member, before, after):
-    """Handle voice state updates for the bot"""
+    """
+    Handle voice state updates for the bot
+    
+    This event handler is triggered whenever a voice state changes in the server.
+    It's primarily used to detect when the bot is alone in a voice channel and
+    should disconnect according to the AUTO_LEAVE_EMPTY configuration.
+    
+    Args:
+        bot_instance: The bot instance containing voice client and state
+        member: The member whose voice state changed
+        before: The voice state before the change
+        after: The voice state after the change
+    """
     # Check if bot_instance is None or a class instead of an instance
     if not bot_instance or isinstance(bot_instance, type) or not hasattr(bot_instance, 'voice_client') or not bot_instance.voice_client:
         return
@@ -82,6 +125,7 @@ async def handle_voice_state_update(bot_instance, member, before, after):
     # Only check for empty channel if AUTO_LEAVE_EMPTY is enabled
     voice_config = get_voice_config()
     if voice_config.get('AUTO_LEAVE_EMPTY', True):
+        # Count non-bot members in the channel
         members_in_channel = sum(1 for m in bot_voice_channel.members if not m.bot)
 
         if members_in_channel == 0:
@@ -110,7 +154,7 @@ async def handle_voice_state_update(bot_instance, member, before, after):
                 for msg in queued_messages:
                     try:
                         await msg.delete()
-                        await asyncio.sleep(0.5)  # Add 0.5-second delay between deletions
+                        await asyncio.sleep(0.5)  # Add 0.5-second delay between deletions to avoid rate limits
                     except:
                         pass
                 bot_instance.queued_messages.clear()
@@ -131,6 +175,7 @@ async def handle_voice_state_update(bot_instance, member, before, after):
                     except Exception as e:
                         print(f"Error updating now playing message: {str(e)}")
                 
+                # Reset bot state variables
                 bot_instance.current_song = None
                 bot_instance.is_playing = False
                 bot_instance.now_playing_message = None

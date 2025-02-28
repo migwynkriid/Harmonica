@@ -10,10 +10,27 @@ from scripts.constants import RED, GREEN, BLUE, RESET
 
 # Get default volume from config
 config = load_config()
-DEFAULT_VOLUME = config.get('DEFAULT_VOLUME', 100)
+DEFAULT_VOLUME = config.get('DEFAULT_VOLUME', 100)  # Default to 100% if not specified
 
 async def play_next(ctx):
-    """Play the next song in the queue"""
+    """
+    Play the next song in the queue.
+    
+    This is the main function that handles playing songs from the queue.
+    It manages the transition between songs, updates the now playing message,
+    and handles any errors that occur during playback.
+    
+    The function performs several key tasks:
+    1. Gets the next song from the queue
+    2. Verifies the audio file exists and is ready to play
+    3. Ensures the voice client is connected
+    4. Updates the now playing message
+    5. Starts playback with the appropriate FFmpeg options
+    6. Sets up the after callback to handle song completion
+    
+    Args:
+        ctx: The Discord command context containing guild and channel information
+    """
     from bot import MusicBot
     
     # Get server-specific music bot instance
@@ -29,8 +46,11 @@ async def play_next(ctx):
     async with playback_lock:
         if len(server_music_bot.queue) > 0:
             try:
+                # Store the previous song for reference
                 previous_song = server_music_bot.current_song
+                # Get the next song from the queue
                 server_music_bot.current_song = server_music_bot.queue.pop(0)
+                # Update last activity time to prevent inactivity timeout
                 server_music_bot.last_activity = time.time()
                 server_name = ctx.guild.name if ctx and hasattr(ctx, 'guild') and ctx.guild else "Unknown Server"
                 print(f"{GREEN}Now playing:{RESET}{BLUE} {server_music_bot.current_song['title']}{RESET}{GREEN} in server: {RESET}{BLUE}{server_name}{RESET}")
@@ -48,7 +68,7 @@ async def play_next(ctx):
                     if not os.path.exists(server_music_bot.current_song['file_path']):
                         print(f"Error: File not found: {server_music_bot.current_song['file_path']}")
                         if len(server_music_bot.queue) > 0:
-                            await play_next(ctx)
+                            await play_next(ctx)  # Recursively try the next song
                         return
                         
                     # If we have a download progress object, wait for download to complete
@@ -61,6 +81,7 @@ async def play_next(ctx):
                                 break
                             await asyncio.sleep(0.1)
 
+                # Check if voice client is connected, reconnect if needed
                 if not server_music_bot.voice_client or not server_music_bot.voice_client.is_connected():
                     print("Voice client not connected, attempting to reconnect...")
                     connected = await server_music_bot.join_voice_channel(ctx)
@@ -68,6 +89,7 @@ async def play_next(ctx):
                         print("Failed to reconnect to voice channel")
                         server_music_bot.voice_client = None
                         
+                        # Attempt automatic restart if reconnection fails
                         try:
                             await ctx.send("⚠️ Internal error detected!. Automatically restarting bot...")
                             restart_cog = server_music_bot.bot.get_cog('Restart')
@@ -77,9 +99,10 @@ async def play_next(ctx):
                             print(f"Error during automatic restart in play_next: {str(e)}")
                         return
                 else:
+                    # Handle previous now playing message
                     if server_music_bot.now_playing_message:
                         try:
-                            # Check if the song is looped
+                            # Check if the previous song is looped
                             loop_cog = server_music_bot.bot.get_cog('Loop')
                             is_looped = loop_cog and previous_song['url'] in loop_cog.looped_songs
 

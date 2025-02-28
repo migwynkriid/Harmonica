@@ -7,7 +7,19 @@ RED = '\033[91m'
 RESET = '\033[0m'
 
 async def load_commands(bot):
-    """Load all commands from the commands directory."""
+    """
+    Load all commands from the commands directory.
+    
+    This function dynamically loads all Python files in the commands directory
+    as Discord bot extensions. It tracks successful and failed loads and
+    provides a summary of the loading process.
+    
+    Args:
+        bot: The Discord bot instance to load commands into
+        
+    Returns:
+        None: The function prints loading results to the console
+    """
     print('----------------------------------------')
     print(f'{GREEN}Loading commands...{RESET}')
     commands_dir = 'commands'

@@ -7,7 +7,16 @@ import os
 from scripts.constants import GREEN, BLUE, RED, RESET
 
 class MessageFilter(logging.Filter):
-    """Filter out specific log messages"""
+    """
+    Filter out specific log messages.
+    
+    This class filters out unnecessary or verbose log messages to keep the log output
+    clean and focused on important information. It can be configured to allow all
+    messages in debug mode.
+    
+    Args:
+        debug_mode: If True, no messages will be filtered regardless of content
+    """
     def __init__(self, debug_mode=False):
         super().__init__()
         self.debug_mode = debug_mode
@@ -63,6 +72,15 @@ class MessageFilter(logging.Filter):
         ]
 
     def filter(self, record):
+        """
+        Filter log records based on logger name and message content.
+        
+        Args:
+            record: The log record to filter
+            
+        Returns:
+            bool: True if the record should be logged, False if it should be filtered out
+        """
         # In debug mode, don't filter anything
         if self.debug_mode:
             return True
@@ -75,12 +93,28 @@ class MessageFilter(logging.Filter):
         return not any(keyword in record.getMessage() for keyword in self.filtered_keywords)
 
 class OutputCapture:
-    """Captures ALL terminal output and writes it to the log file"""
+    """
+    Captures ALL terminal output and writes it to the log file.
+    
+    This class intercepts all stdout and stderr output, writes it to the
+    terminal as normal, but also adds timestamps and writes it to a log file.
+    It removes ANSI color codes from the log file output for better readability.
+    
+    Args:
+        log_file: Path to the log file
+        stream: The stream to capture (sys.stdout or sys.stderr)
+    """
     def __init__(self, log_file, stream=None):
         self.terminal = stream or sys.stdout
         self.log_file = open(log_file, 'a', encoding='utf-8')
         
     def write(self, message):
+        """
+        Write the message to both terminal and log file.
+        
+        Args:
+            message: The message to write
+        """
         # Write to terminal
         self.terminal.write(message)
         # Remove color codes and clean up the message
@@ -92,11 +126,22 @@ class OutputCapture:
             self.log_file.flush()
             
     def flush(self):
+        """Flush both terminal and log file streams."""
         self.terminal.flush()
         self.log_file.flush()
 
 class YTDLPLogger(logging.Logger):
-    """Custom logger for yt-dlp that intercepts YouTube URLs and checks cache"""
+    """
+    Custom logger for yt-dlp that intercepts YouTube URLs and checks cache.
+    
+    This logger extends the standard logging.Logger to intercept YouTube URLs
+    during the download process. When it detects a YouTube URL, it checks if
+    the video is already in the cache. If found, it raises a CachedVideoFound
+    exception to stop the download and use the cached file instead.
+    
+    Args:
+        name: The name of the logger
+    """
     def __init__(self, name):
         super().__init__(name)
         self.current_video_id = None
@@ -104,6 +149,15 @@ class YTDLPLogger(logging.Logger):
         self.search_pattern = re.compile(r'\[youtube\] Extracting URL: (https://.*)')
         
     def debug(self, msg):
+        """
+        Process debug messages and check for cached videos.
+        
+        This method intercepts debug messages containing YouTube URLs,
+        extracts the video ID, and checks if the video is already in the cache.
+        
+        Args:
+            msg: The debug message
+        """
         if 'Extracting URL:' in msg:
             # Try to extract video ID from the URL
             search_match = self.search_pattern.search(msg)
@@ -124,19 +178,39 @@ class YTDLPLogger(logging.Logger):
         super().debug(msg)
     
     def warning(self, msg):
+        """Process warning messages."""
         super().warning(msg)
     
     def error(self, msg):
+        """Process error messages."""
         super().error(msg)
 
 class CachedVideoFound(Exception):
-    """Special exception to signal that a video was found in cache"""
+    """
+    Special exception to signal that a video was found in cache.
+    
+    This exception is raised by the YTDLPLogger when it detects that a video
+    being downloaded is already in the cache. It carries the cached video
+    information to be used instead of downloading the video again.
+    
+    Args:
+        cached_info: Dictionary containing information about the cached video
+    """
     def __init__(self, cached_info):
         self.cached_info = cached_info
         super().__init__("Video found in cache")
 
 def setup_logging(log_level):
-    """Set up logging configuration for all components."""
+    """
+    Set up logging configuration for all components.
+    
+    This function configures the logging system for the entire application.
+    It sets up file and console handlers, applies filters to reduce noise,
+    and captures all terminal output to the log file.
+    
+    Args:
+        log_level: The logging level to use (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    """
     # Import color codes and datetime
     global GREEN, BLUE, RED, RESET
     from datetime import datetime
@@ -235,7 +309,16 @@ def setup_logging(log_level):
     sys.stderr = OutputCapture(log_file, sys.stderr)  # Also capture error output
 
 def get_ytdlp_logger():
-    """Get the yt-dlp logger for use in YTDL options."""
+    """
+    Get the yt-dlp logger for use in YTDL options.
+    
+    This function creates and returns a custom YTDLPLogger instance for
+    use with yt-dlp. The custom logger intercepts YouTube URLs and checks
+    if the videos are already in the cache.
+    
+    Returns:
+        YTDLPLogger: A custom logger for yt-dlp
+    """
     # Remove any existing yt-dlp logger
     if 'yt-dlp' in logging.Logger.manager.loggerDict:
         del logging.Logger.manager.loggerDict['yt-dlp']

@@ -11,8 +11,27 @@ from scripts.messages import update_or_send_message, create_embed
 from scripts.duration import get_audio_duration
 
 class PlaylistHandler:
+    """
+    Handler for processing and managing YouTube playlists.
+    
+    This class provides methods for extracting, downloading, and queuing
+    videos from YouTube playlists. It handles playlist processing in the
+    background to allow the first song to start playing immediately.
+    """
+    
     async def _process_playlist_downloads(self, entries, ctx, status_msg=None):
-        """Process remaining playlist videos in the background"""
+        """
+        Process remaining playlist videos in the background.
+        
+        This method downloads each video in the playlist and adds it to the queue.
+        It runs asynchronously to allow the first song to start playing immediately
+        while the rest of the playlist is processed in the background.
+        
+        Args:
+            entries: List of video entries from the playlist
+            ctx: Discord command context
+            status_msg: Optional message to update with progress
+        """
         try:
             total_entries = len(entries)
             processed_entries = 0
@@ -56,7 +75,20 @@ class PlaylistHandler:
             print(f"Error in playlist download processing: {str(e)}")
 
     async def _handle_playlist(self, url, ctx, status_msg=None):
-        """Handle a YouTube playlist by extracting video links and downloading them sequentially"""
+        """
+        Handle a YouTube playlist by extracting video links and downloading them sequentially.
+        
+        This method extracts metadata for all videos in a playlist and then
+        processes them in the background using _process_playlist_downloads.
+        
+        Args:
+            url: URL of the playlist
+            ctx: Discord command context
+            status_msg: Optional message to update with progress
+            
+        Returns:
+            bool: True if playlist processing started successfully, False otherwise
+        """
         try:
             # Use BASE_YTDL_OPTIONS and override only what's needed for playlist extraction
             ydl_opts = BASE_YTDL_OPTIONS.copy()
@@ -67,6 +99,7 @@ class PlaylistHandler:
             })
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # Extract playlist information asynchronously
                 info = await asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(url, download=False))
                 
                 if not info or not info.get('entries'):
@@ -75,11 +108,12 @@ class PlaylistHandler:
                 entries = info['entries']
                 total_videos = len(entries)
 
-                # Shuffle entries if enabled
+                # Shuffle entries if enabled in config
                 if config_vars.get('DOWNLOADS', {}).get('SHUFFLE_DOWNLOAD', False):
                     random.shuffle(entries)
 
                 if status_msg:
+                    # Create and display playlist information embed
                     playlist_title = info.get('title', 'Unknown')
                     playlist_url = info.get('webpage_url', url)
                     description = f"Playlist: [{playlist_title}]({playlist_url})\nEntries: {total_videos}"
@@ -98,6 +132,7 @@ class PlaylistHandler:
                     await status_msg.edit(embed=playlist_embed)
                     await status_msg.delete(delay=10)  
 
+                # Check if bot is still connected to voice
                 if not self.voice_client or not self.voice_client.is_connected():
                     await self.join_voice_channel(ctx)
 
@@ -121,7 +156,23 @@ class PlaylistHandler:
             return False
 
     async def _queue_playlist_videos(self, entries, ctx, is_from_playlist, status_msg, ydl_opts, playlist_title, playlist_url, total_videos):
-        """Process remaining playlist videos in the background"""
+        """
+        Process remaining playlist videos in the background.
+        
+        This method downloads each video in the playlist and adds it to the queue.
+        It runs asynchronously to allow the first song to start playing immediately
+        while the rest of the playlist is processed in the background.
+        
+        Args:
+            entries: List of video entries from the playlist
+            ctx: Discord command context
+            is_from_playlist: Whether the video is from a playlist
+            status_msg: Optional message to update with progress
+            ydl_opts: yt_dlp options
+            playlist_title: Title of the playlist
+            playlist_url: URL of the playlist
+            total_videos: Total number of videos in the playlist
+        """
         try:
             for entry in entries:
                 if entry:

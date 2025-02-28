@@ -1,11 +1,16 @@
 import asyncio
 
 def clear_queue(guild_id=None):
-    """Clear both download and playback queues
+    """
+    Clear both download and playback queues.
+    
+    This function clears the song queue and download queue for either a specific
+    server or all servers. It ensures that any tasks in the download queue are
+    properly marked as done to prevent hanging tasks.
     
     Args:
-        guild_id: Optional guild ID to clear queue for a specific server
-                  If None, clears all queues for all servers
+        guild_id: Optional guild ID to clear queue for a specific server.
+                  If None, clears all queues for all servers.
     """
     try:
         from bot import MusicBot

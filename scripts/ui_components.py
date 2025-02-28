@@ -6,23 +6,69 @@ from datetime import datetime
 from scripts.voice import leave_voice_channel
 
 def should_show_buttons():
-    """Check if UI buttons should be shown based on config"""
+    """
+    Check if UI buttons should be shown based on configuration.
+    
+    This function reads the bot configuration to determine whether
+    interactive UI buttons should be displayed in Discord messages.
+    The setting is controlled by the DISCORD_UI_BUTTONS parameter
+    in the MESSAGES section of the config file.
+    
+    Returns:
+        bool: True if buttons should be shown, False otherwise
+    """
     config = load_config()
     messages = config.get('MESSAGES', config.get('messages', {}))
     return messages.get('DISCORD_UI_BUTTONS', messages.get('discord_ui_buttons', True))
 
 def create_now_playing_view():
-    """Create a new NowPlayingView if buttons are enabled, otherwise return None"""
+    """
+    Create a new NowPlayingView if buttons are enabled, otherwise return None.
+    
+    This function serves as a factory for creating UI button views for
+    the "now playing" messages. It checks if buttons are enabled in the
+    configuration before creating a view to avoid unnecessary object creation.
+    
+    Returns:
+        NowPlayingView or None: A new view instance if buttons are enabled, None otherwise
+    """
     if should_show_buttons():
         return NowPlayingView()
     return None
 
 class NowPlayingView(discord.ui.View):
+    """
+    Discord UI view for music player controls.
+    
+    This class implements an interactive UI with buttons for controlling
+    music playback directly from Discord messages. It includes buttons for
+    skipping songs, toggling loop mode, pausing/resuming playback, and
+    stopping the bot.
+    
+    The view is persistent (no timeout) and includes permission checks
+    to ensure only users in the same voice channel can use the controls.
+    """
     def __init__(self):
+        """Initialize the view with persistent timeout."""
         super().__init__(timeout=None)  # Make the view persistent
 
     def _create_embed_with_footer(self, title, description, color, thumbnail_url, interaction):
-        """Create embed and add footer with user info"""
+        """
+        Create embed and add footer with user info.
+        
+        Helper method to create standardized embeds for button responses
+        with consistent styling and user attribution in the footer.
+        
+        Args:
+            title: The embed title
+            description: The embed description
+            color: The color of the embed
+            thumbnail_url: Optional URL for the embed thumbnail
+            interaction: The Discord interaction that triggered this response
+            
+        Returns:
+            discord.Embed: The created embed with footer
+        """
         embed = discord.Embed(
             title=title,
             description=description + "\n\u200b",
@@ -38,7 +84,19 @@ class NowPlayingView(discord.ui.View):
         return embed
 
     def _check_user_in_voice(self, interaction: discord.Interaction) -> bool:
-        """Check if user is in the same voice channel as the bot"""
+        """
+        Check if user is in the same voice channel as the bot.
+        
+        This method verifies that the user who clicked a button is in the
+        same voice channel as the bot, preventing users from controlling
+        playback from outside the channel.
+        
+        Args:
+            interaction: The Discord interaction to check
+            
+        Returns:
+            bool: True if the user is in the same voice channel as the bot, False otherwise
+        """
         if not interaction.guild.voice_client:  # Bot not in any voice channel
             return False
         
@@ -50,7 +108,17 @@ class NowPlayingView(discord.ui.View):
 
     @discord.ui.button(label="Next ⏭️", style=discord.ButtonStyle.primary, custom_id="skip_button", row=0)
     async def skip_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Skip the current song"""
+        """
+        Skip the current song.
+        
+        This button handler skips the currently playing song by calling
+        the skip command functionality from the SkipCog. It includes
+        permission checks and error handling.
+        
+        Args:
+            interaction: The Discord interaction
+            button: The button that was pressed
+        """
         # Check if user is in the same voice channel
         if not self._check_user_in_voice(interaction):
             await interaction.response.defer()
@@ -84,7 +152,17 @@ class NowPlayingView(discord.ui.View):
 
     @discord.ui.button(label="Loop 🔁", style=discord.ButtonStyle.secondary, custom_id="repeat_button", row=0)
     async def repeat_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Toggle loop mode for the current song"""
+        """
+        Toggle loop mode for the current song.
+        
+        This button handler toggles the loop mode by calling the loop
+        command functionality from the Loop cog. The button changes color
+        to indicate the current loop state.
+        
+        Args:
+            interaction: The Discord interaction
+            button: The button that was pressed
+        """
         # Check if user is in the same voice channel
         if not self._check_user_in_voice(interaction):
             await interaction.response.defer()
@@ -136,7 +214,16 @@ class NowPlayingView(discord.ui.View):
 
     @discord.ui.button(label="Pause ⏸️", style=discord.ButtonStyle.primary, custom_id="pause_resume_button", row=0)
     async def pause_resume_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Toggle between pause and resume states"""
+        """
+        Toggle between pause and resume states.
+        
+        This button handler toggles the playback state by pausing or resuming
+        the music playback. It includes permission checks and error handling.
+        
+        Args:
+            interaction: The Discord interaction
+            button: The button that was pressed
+        """
         # Check if user is in the same voice channel
         if not self._check_user_in_voice(interaction):
             await interaction.response.defer()
@@ -192,7 +279,17 @@ class NowPlayingView(discord.ui.View):
 
     @discord.ui.button(label="Stop ⛔", style=discord.ButtonStyle.danger, custom_id="stop_button", row=0)
     async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Stop playback and leave voice channel"""
+        """
+        Stop playback and leave voice channel.
+        
+        This button handler stops the music playback and disconnects the
+        bot from the voice channel. It includes permission checks and error
+        handling.
+        
+        Args:
+            interaction: The Discord interaction
+            button: The button that was pressed
+        """
         # Check if user is in the same voice channel
         if not self._check_user_in_voice(interaction):
             await interaction.response.defer()

@@ -50,15 +50,26 @@ from spotipy.oauth2 import SpotifyClientCredentials
 from spotipy.cache_handler import CacheFileHandler
 from scripts.caching import playlist_cache
 
+# Load configuration variables from config.json
 config_vars = load_config()
-INACTIVITY_TIMEOUT = config_vars.get('INACTIVITY_TIMEOUT', 60)
+# Set default inactivity timeout to 60 seconds if not specified in config
+INACTIVITY_TIMEOUT = config_vars.get('INACTIVITY_TIMEOUT', 60)  # Default to 60 seconds if not specified
 
 class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
+    """
+    Main music bot class that handles audio playback and queue management.
+    Inherits from PlaylistHandler, AfterPlayingHandler, and SpotifyHandler
+    to organize functionality into logical components.
+    """
     _instances = {}  # Dictionary to store server-specific instances
 
     @classmethod
     def get_instance(cls, guild_id):
-        """Get or create a server-specific music bot instance"""
+        """
+        Get or create a server-specific music bot instance.
+        This implements the singleton pattern per guild to ensure
+        each server has its own isolated music queue and state.
+        """
         if guild_id not in cls._instances:
             cls._instances[guild_id] = cls()
             # Set the guild_id for this instance
@@ -74,43 +85,46 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         return cls._instances[guild_id]
 
     def __init__(self):
-        """Initialize the music bot"""
+        """
+        Initialize the music bot with default values.
+        Each attribute will be specific to a guild instance.
+        """
         # Discord bot instance (set later)
         self.bot = None
         self.guild_id = None  # Will be set when get_instance is called
-        self.queue = []
-        self.current_song = None
-        self.is_playing = False
-        self.voice_client = None
-        self.waiting_for_song = False
-        self.queue_lock = asyncio.Lock()
-        self.download_queue = asyncio.Queue()
-        self.currently_downloading = False
-        self.command_queue = asyncio.Queue()
-        self.command_processor_task = None
-        self.download_lock = asyncio.Lock()
-        self.bot_loop = None
-        self.queued_messages = {}
-        self.current_command_msg = None
-        self.current_command_author = None
-        self.status_messages = {}
-        self.now_playing_message = None
-        self.downloads_dir = Path(__file__).parent.parent / 'downloads'
-        self.cookie_file = Path(__file__).parent.parent / 'cookies.txt'
+        self.queue = []  # Song queue for this server
+        self.current_song = None  # Currently playing song
+        self.is_playing = False  # Whether audio is currently playing
+        self.voice_client = None  # Voice client connection
+        self.waiting_for_song = False  # Flag to indicate waiting for a song to download
+        self.queue_lock = asyncio.Lock()  # Lock to prevent race conditions when modifying queue
+        self.download_queue = asyncio.Queue()  # Queue for songs to be downloaded
+        self.currently_downloading = False  # Flag to indicate if a download is in progress
+        self.command_queue = asyncio.Queue()  # Queue for commands to be processed
+        self.command_processor_task = None  # Task for processing commands
+        self.download_lock = asyncio.Lock()  # Lock to prevent concurrent downloads
+        self.bot_loop = None  # Event loop for async operations
+        self.queued_messages = {}  # Messages shown when songs are queued
+        self.current_command_msg = None  # Current command message
+        self.current_command_author = None  # User who issued the current command
+        self.status_messages = {}  # Status messages for various operations
+        self.now_playing_message = None  # Message showing currently playing song
+        self.downloads_dir = Path(__file__).parent.parent / 'downloads'  # Directory for downloaded files
+        self.cookie_file = Path(__file__).parent.parent / 'cookies.txt'  # Cookie file for authentication
         self.playback_start_time = None  # Track when the current song started playing
         self.in_progress_downloads = {}  # Track downloads in progress
         if not self.downloads_dir.exists():
             self.downloads_dir.mkdir()
-        self.last_activity = time.time()
-        self.inactivity_timeout = INACTIVITY_TIMEOUT
-        self.inactivity_leave = config_vars.get('INACTIVITY_LEAVE', True)
-        self._inactivity_task = None
-        self.last_update = 0
-        self._last_progress = -1
-        self.last_known_ctx = None
-        self.was_skipped = False  # Add flag to track if song was skipped
-        self.cache_dir = Path(__file__).parent.parent / '.cache'
-        self.spotify_cache = self.cache_dir / 'spotify'
+        self.last_activity = time.time()  # Timestamp of last user interaction
+        self.inactivity_timeout = INACTIVITY_TIMEOUT  # Seconds of inactivity before bot leaves
+        self.inactivity_leave = config_vars.get('INACTIVITY_LEAVE', True)  # Whether to leave on inactivity
+        self._inactivity_task = None  # Task for checking inactivity
+        self.last_update = 0  # Timestamp of last progress update
+        self._last_progress = -1  # Last download progress percentage
+        self.last_known_ctx = None  # Last command context for fallback
+        self.was_skipped = False  # Flag to track if song was skipped
+        self.cache_dir = Path(__file__).parent.parent / '.cache'  # Directory for cache files
+        self.spotify_cache = self.cache_dir / 'spotify'  # Directory for Spotify cache
         self.should_stop_downloads = False  # Flag to control download cancellation
         self.current_download_task = None  # Track current download task
         self.current_ydl = None  # Track current YoutubeDL instance
@@ -120,12 +134,15 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.cache_dir.mkdir(exist_ok=True)
         self.spotify_cache.mkdir(exist_ok=True)
 
+        # Load Spotify API credentials from environment file
         load_dotenv(dotenv_path=".spotifyenv")
         client_id = os.getenv('SPOTIPY_CLIENT_ID')
         client_secret = os.getenv('SPOTIPY_CLIENT_SECRET')
         
+        # Check if Spotify credentials are available
         print(f"{GREEN}Spotify credentials found:{RESET} {BLUE if (client_id and client_secret) else RED}{'Yes' if (client_id and client_secret) else 'No'}{RESET}")
         
+        # Initialize Spotify client if credentials are available
         if not client_id or not client_secret:
             print(f"{RED}Warning: Spotify credentials not found. Spotify functionality will be unavailable.{RESET}")
             print(f"{BLUE}https://developer.spotify.com/documentation/web-api/concepts/apps{RESET}")
@@ -133,6 +150,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             self.sp = None
         else:
             try:
+                # Setup Spotify client with token caching
                 cache_handler = CacheFileHandler(
                     cache_path=str(self.spotify_cache / '.spotify-token-cache')
                 )
@@ -146,6 +164,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 print(f"{RED}Error initializing Spotify client: {str(e)}{RESET}")
                 self.sp = None
 
+        # Check for YouTube cookies file (needed for age-restricted content)
         if self.cookie_file.exists():
             print(f"{GREEN}YouTube cookies found:{RESET} {BLUE}Yes{RESET}")
         else:
@@ -154,7 +173,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             print(f'{BLUE}Extract using "Get Cookies" extension and save it as cookies.txt in the root directory where you run the bot.{RESET}')
             print(f"{BLUE}https://github.com/yt-dlp/yt-dlp/wiki/How-to-use-cookies{RESET}\n")
             
-        # Check for Genius lyrics token
+        # Check for Genius lyrics API token
         genius_token_file = Path(__file__).parent.parent / '.geniuslyrics'
         if genius_token_file.exists():
             with open(genius_token_file, 'r') as f:
@@ -166,12 +185,18 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 print(f"{BLUE}https://genius.com/api-clients{RESET}")
                 print(f'{BLUE}Update your {RESET}{YELLOW}.geniuslyrics file{RESET}')
 
-        # Bind voice methods
+        # Bind voice methods from external module
         self.join_voice_channel = lambda ctx: join_voice_channel(self, ctx)
         self.leave_voice_channel = lambda: leave_voice_channel(self)
 
     async def setup(self, bot_instance):
-        """Setup the bot with the event loop"""
+        """
+        Setup the bot with the event loop and initialize necessary components.
+        
+        Args:
+            bot_instance: The Discord bot instance to associate with this music bot
+        """
+        # Store the bot instance for later use
         self.bot = bot_instance
         self.bot_loop = asyncio.get_event_loop()
         await self.start_command_processor()
@@ -180,7 +205,15 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.bot.add_view(NowPlayingView())
 
     async def start_command_processor(self):
-        """Start the command processor task"""
+        """
+        Start the command processor task
+        
+        This method initializes the command processor task if it doesn't already exist.
+        The command processor is responsible for handling all music commands in the background,
+        ensuring they are processed sequentially and don't block the main bot execution.
+        
+        It also prints the location of the config file for reference during startup.
+        """
         if self.command_processor_task is None:
             self.command_processor_task = asyncio.create_task(self.process_command_queue())
             print('----------------------------------------')
@@ -189,28 +222,52 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         print(f"{GREEN}Config file location:{RESET} {BLUE}{Path(__file__).parent.parent / 'config.json'}{RESET}")
 
     async def process_command_queue(self):
-        """Process commands from the queue one at a time"""
+        """
+        Process commands from the queue one at a time.
+        
+        This is an infinite loop that waits for commands to be added to the queue,
+        then processes them in order. It handles errors gracefully to prevent
+        the task from crashing.
+        """
         while True:
             try:
+                # Wait for a command to be added to the queue
                 command_info = await self.command_queue.get()
                 self.last_activity = time.time()
                 ctx, query = command_info
                 print(f"Processing command: {load_config()['PREFIX']}play {query}")
 
                 try:
+                    # Process the play command
                     await self._handle_play_command(ctx, query)
                 except Exception as e:
+                    # Handle errors in command processing
                     print(f"Error processing command: {e}")
                     error_embed = create_embed("Error", f"Failed to process command: {str(e)}", color=0xe74c3c, ctx=ctx)
                     await self.update_or_send_message(ctx, error_embed)
                 finally:
+                    # Mark the command as done
                     self.command_queue.task_done()
             except Exception as e:
+                # Handle errors in the command processor itself
                 print(f"Error in command processor: {str(e)}")
                 await asyncio.sleep(1)
 
     async def _handle_play_command(self, ctx, query):
-        """Internal method to handle a single play command"""
+        """
+        Internal method to handle a single play command.
+        
+        This method:
+        1. Joins the voice channel if not already joined
+        2. Checks if the query is already being downloaded
+        3. Sends a processing message
+        4. Adds the query to the download queue
+        
+        Args:
+            ctx: The command context
+            query: The search query or URL to play
+        """
+        # Join voice channel if not already in one
         if not ctx.voice_client and not await self.join_voice_channel(ctx):
             raise Exception("Could not join voice channel")
         self.last_activity = time.time()
@@ -232,6 +289,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 self.queued_messages[song_info['url']] = queue_msg
             return
 
+        # Create and send a processing embed
         processing_embed = create_embed(
             "Processing",
             f"Searching for {query}",
@@ -248,9 +306,16 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         print(f"Added to download queue: {query}")
 
     async def process_download_queue(self):
-        """Process the download queue sequentially"""
+        """
+        Process the download queue sequentially.
+        
+        This is an infinite loop that waits for downloads to be added to the queue,
+        then processes them in order. It handles errors gracefully to prevent
+        the task from crashing.
+        """
         while True:
             try:
+                # Wait for a download to be added to the queue
                 download_info = await self.download_queue.get()               
                 query = download_info['query']
                 ctx = download_info['ctx']
@@ -337,8 +402,26 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         """
         Cancel all active downloads and clear the download queue
         
+        This method safely cancels any ongoing downloads, clears the download queue,
+        and optionally disconnects from the voice channel. It's used when the bot
+        needs to stop all music-related activities, such as when a user issues a stop
+        command or when the bot is shutting down.
+        
+        The method performs the following steps:
+        1. Sets a flag to stop any active downloads
+        2. Cancels the current download task if one exists
+        3. Closes the current yt-dlp instance
+        4. Clears the download queue
+        5. Removes incomplete downloads from the queue
+        6. Clears the in-progress downloads tracking
+        7. Stops any current playback
+        8. Optionally disconnects from voice
+        
         Args:
             disconnect_voice (bool): Whether to disconnect from voice chat after canceling downloads
+            
+        Returns:
+            bool: True if the operation was successful
         """
         self.should_stop_downloads = True
         
@@ -397,19 +480,75 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 await update_activity(self.bot, self.current_song, self.is_playing)
 
     def _download_hook(self, d):
-        """Custom download hook that checks for cancellation"""
+        """
+        Custom download hook that checks for cancellation
+        
+        This function is passed to yt-dlp as a progress callback. It checks if the 
+        download should be cancelled and raises an exception if so, which will be 
+        caught by the download process.
+        
+        Args:
+            d (dict): The download progress information dictionary from yt-dlp
+            
+        Returns:
+            dict: The same dictionary that was passed in
+            
+        Raises:
+            Exception: If the download has been cancelled
+        """
         if self.should_stop_downloads:
             raise Exception("Download cancelled by user")
         return d
 
     def create_progress_bar(self, percentage, length=10):
-        """Create a progress bar with the given percentage"""
+        """
+        Create a progress bar with the given percentage
+        
+        This utility function generates a visual progress bar using Unicode block 
+        characters, which is used to display download progress in Discord messages.
+        
+        Args:
+            percentage (float): The percentage of completion (0-100)
+            length (int, optional): The length of the progress bar in characters. Defaults to 10.
+            
+        Returns:
+            str: A formatted progress bar string with percentage
+        """
         filled = int(length * (percentage / 100))
         bar = '█' * filled + '░' * (length - filled)
         return f"[{bar}] {percentage}%"
 
     async def download_song(self, query, status_msg=None, ctx=None, skip_url_check=False):
-        """Download a song from YouTube, Spotify, or handle radio stream"""
+        """
+        Download a song from YouTube, Spotify, or handle radio stream
+        
+        This is a core function that handles the downloading and processing of media from
+        various sources. It performs the following key operations:
+        1. Checks for cached content to avoid redundant downloads
+        2. Validates URLs and rejects unsupported content (like YouTube channels)
+        3. Handles different media sources (YouTube, Spotify, radio streams)
+        4. Updates Discord status messages with download progress
+        5. Processes playlists when detected
+        6. Manages download errors and retries
+        
+        The function supports various media sources:
+        - YouTube videos and playlists
+        - Spotify tracks, albums, and playlists
+        - Direct audio stream URLs
+        - Search queries (converted to YouTube searches)
+        
+        Args:
+            query (str): The URL or search query to download
+            status_msg (discord.Message, optional): Discord message to update with progress
+            ctx (discord.Context, optional): Command context for sending messages
+            skip_url_check (bool, optional): Whether to skip URL validation
+            
+        Returns:
+            dict: Information about the downloaded song, or None if download failed
+            
+        Raises:
+            Various exceptions that are caught and handled within the function
+        """
         # Skip if cache checking is stopped
         if not playlist_cache._should_continue_check:
             return None
@@ -555,7 +694,24 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             progress.ctx = ctx or (status_msg.channel if status_msg else None)
             
             async def extract_info(ydl, url, download=True):
-                """Wrap yt-dlp extraction in a cancellable task"""
+                """
+                Wrap yt-dlp extraction in a cancellable task
+                
+                This function wraps the yt-dlp extract_info method in an asynchronous task
+                that can be cancelled. It also handles cache hits by catching the custom
+                CachedVideoFound exception and returning the cached information.
+                
+                Args:
+                    ydl (YoutubeDL): The yt-dlp instance to use for extraction
+                    url (str): The URL to extract information from
+                    download (bool, optional): Whether to download the media. Defaults to True.
+                    
+                Returns:
+                    dict: Information about the extracted media, including file path and metadata
+                    
+                Raises:
+                    Various exceptions from yt-dlp that are caught by the caller
+                """
                 try:
                     self.current_ydl = ydl
                     loop = asyncio.get_event_loop()
@@ -755,6 +911,24 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                         first_song['is_from_playlist'] = True
                                         # Process remaining songs in the background
                                         async def process_remaining_songs():
+                                            """
+                                            Process the remaining songs in a playlist in the background
+                                            
+                                            This function is called after the first song of a playlist has been
+                                            processed and added to the queue. It downloads and processes the
+                                            remaining songs in the playlist asynchronously, adding them to the
+                                            queue as they become available.
+                                            
+                                            The function:
+                                            1. Iterates through the remaining entries in the playlist
+                                            2. Downloads each song using the download_song method
+                                            3. Marks each song as being from a playlist
+                                            4. Adds each song to the queue
+                                            5. Starts playback if needed
+                                            
+                                            Any errors during processing are caught and logged to prevent
+                                            the entire playlist from failing if one song has an issue.
+                                            """
                                             try:
                                                 for entry in entries[1:]:
                                                     if entry:
@@ -948,6 +1122,19 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             raise
 
     async def update_activity(self):
-        """Update the bot's activity status"""
+        """
+        Update the bot's activity status
+        
+        This method delegates to the update_activity function in the activity module
+        to update the bot's Discord presence based on the current playback state.
+        It passes the current song information and playing status to display
+        appropriate information in the bot's status.
+        
+        The bot's status will show:
+        - The currently playing song title when a song is playing
+        - A default message prompting users to use the play command when idle
+        
+        This helps users quickly see what the bot is currently doing.
+        """
         if self.bot:
             await update_activity(self.bot, self.current_song, self.is_playing)

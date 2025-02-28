@@ -11,12 +11,30 @@ from scripts.process_queue import process_queue
 logger = logging.getLogger(__name__)
 
 class RandomCommand(commands.Cog):
+    """
+    Command cog for playing random songs.
+    
+    This cog handles the 'random' command, which plays a song based on a
+    randomly selected word fetched from a random word API.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the RandomCommand cog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         self.random_word_api = "https://random-word-api.herokuapp.com/word"
 
     async def fetch_random_word(self):
-        """Fetch a random word from the Random Word API"""
+        """
+        Fetch a random word from the Random Word API.
+        
+        Returns:
+            str: A random word, or None if the API request fails
+        """
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(self.random_word_api) as response:
@@ -31,7 +49,15 @@ class RandomCommand(commands.Cog):
             return None
 
     async def search_youtube(self, query):
-        """Search YouTube for videos using yt-dlp"""
+        """
+        Search YouTube for videos using yt-dlp.
+        
+        Args:
+            query (str): The search query
+            
+        Returns:
+            dict: Information about the first search result, or None if no results
+        """
         try:
             search_opts = {
                 **BASE_YTDL_OPTIONS,
@@ -53,7 +79,15 @@ class RandomCommand(commands.Cog):
 
     @commands.command(name='random')
     async def random_command(self, ctx):
-        """Play a random song based on a randomly selected word"""
+        """
+        Play a random song based on a randomly selected word.
+        
+        This command fetches a random word from an API, searches YouTube
+        for music related to that word, and adds the first result to the queue.
+        
+        Args:
+            ctx: The command context
+        """
         from bot import MusicBot
         music_bot = MusicBot.get_instance(ctx.guild.id)
         
@@ -152,4 +186,10 @@ class RandomCommand(commands.Cog):
             await ctx.send(embed=embed)
 
 async def setup(bot):
+    """
+    Setup function to add the RandomCommand cog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(RandomCommand(bot))

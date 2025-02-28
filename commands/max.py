@@ -3,13 +3,34 @@ from discord.ext import commands
 from scripts.messages import create_embed
 
 class MaxCog(commands.Cog):
+    """
+    Command cog for playing Radio Max stream.
+    
+    This cog provides a command to play the Radio Max online radio stream.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the MaxCog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         self._last_member = None
 
     @commands.command(name='max')
     async def max(self, ctx):
-        """Play Radio Max stream"""
+        """
+        Play Radio Max stream.
+        
+        This command plays the Radio Max online radio stream by calling
+        the play command with the Radio Max stream URL. This provides
+        a convenient shortcut for users to access this specific stream.
+        
+        Args:
+            ctx: The command context
+        """
         from bot import MusicBot
         music_bot = MusicBot.get_instance(ctx.guild.id)
         
@@ -33,4 +54,10 @@ class MaxCog(commands.Cog):
             ))
 
 async def setup(bot):
+    """
+    Setup function to add the MaxCog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(MaxCog(bot))

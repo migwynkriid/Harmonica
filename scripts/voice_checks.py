@@ -4,7 +4,25 @@ from scripts.messages import create_embed
 async def check_voice_state(ctx, music_bot):
     """
     Check if both the bot and user are in the same voice channel.
-    Returns (bool, discord.Embed or None) - (is_valid, error_embed)
+    
+    This function performs a series of checks to ensure that voice commands
+    can only be used when both the bot and the user are in the same voice channel.
+    It verifies:
+    1. If the bot is currently in a voice channel
+    2. If the user is in a voice channel
+    3. If the user and bot are in the same voice channel
+    
+    If any check fails, the function returns False along with an appropriate
+    error embed that can be sent to the user.
+    
+    Args:
+        ctx: The command context containing information about the invoker
+        music_bot: The music bot instance containing the voice client
+        
+    Returns:
+        tuple: (is_valid, error_embed)
+            - is_valid (bool): True if all checks pass, False otherwise
+            - error_embed (discord.Embed or None): Error message embed if checks fail, None otherwise
     """
     # Check if the bot is in a voice channel
     if not music_bot.voice_client or not music_bot.voice_client.channel:

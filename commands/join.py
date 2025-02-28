@@ -4,14 +4,36 @@ from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 
 class JoinCog(commands.Cog):
+    """
+    Command cog for joining voice channels.
+    
+    This cog handles the 'join' command, which allows users to make
+    the bot join their current voice channel.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the JoinCog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         self._last_member = None
 
     @commands.command(name='join', aliases=['summon'])
     @check_dj_role()
     async def join(self, ctx):
-        """Join the user's voice channel"""
+        """
+        Join the user's voice channel.
+        
+        This command makes the bot join the voice channel that the user
+        is currently in. If the bot is already in a different voice channel,
+        it will move to the user's channel.
+        
+        Args:
+            ctx: The command context
+        """
         from bot import MusicBot
         
         # Get server-specific music bot instance
@@ -25,6 +47,7 @@ class JoinCog(commands.Cog):
         # Connect to voice channel if needed
         if not ctx.guild.voice_client:
             try:
+                # Bot is not in any voice channel, connect to user's channel
                 await ctx.author.voice.channel.connect()
             except discord.ClientException as e:
                 if "already connected" in str(e):
@@ -36,9 +59,17 @@ class JoinCog(commands.Cog):
                 else:
                     raise e
         elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
+            # Bot is in a different voice channel, move to user's channel
             await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
 
+        # Update the server music bot's voice client reference
         server_music_bot.voice_client = ctx.guild.voice_client
 
 async def setup(bot):
+    """
+    Setup function to add the JoinCog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(JoinCog(bot))

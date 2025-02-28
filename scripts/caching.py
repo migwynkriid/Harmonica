@@ -10,29 +10,59 @@ from scripts.paths import get_cache_dir, get_root_dir, get_relative_path, get_ab
 import yt_dlp
 
 class PlaylistCache:
+    """
+    Manages caching of downloaded audio files to reduce redundant downloads.
+    
+    This class maintains a cache of downloaded YouTube videos and Spotify tracks,
+    allowing the bot to reuse previously downloaded files instead of downloading
+    them again. The cache is stored in JSON files in the .cache directory.
+    """
     def __init__(self):
+        """
+        Initialize the cache system and load existing cache data.
+        
+        Sets up the cache directory structure and loads existing cache data from disk.
+        Also imports any uncached files from the downloads directory.
+        """
         self.root_dir = Path(get_root_dir())
         self.cache_dir = Path(get_cache_dir())
         self.cache_file = Path(get_cache_file('filecache.json'))
         self.spotify_cache_file = Path(get_cache_file('spotify_cache.json'))
         self.blacklist_file = Path(get_cache_file('blacklist.json'))
         self.downloads_dir = Path(get_downloads_dir())
-        self.cache_dir.mkdir(exist_ok=True)
+        self.cache_dir.mkdir(exist_ok=True)  # Create cache directory if it doesn't exist
         self._should_continue_check = True
         self._load_cache()
         # Run import asynchronously
         asyncio.run(self._import_uncached_files())
 
     def stop_cache_check(self):
-        """Stop the cache checking process"""
+        """
+        Stop the cache checking process.
+        
+        This method allows the cache checking process to be paused,
+        which can be useful during shutdown or when resources are limited.
+        """
         self._should_continue_check = False
 
     def resume_cache_check(self):
-        """Resume the cache checking process"""
+        """
+        Resume the cache checking process.
+        
+        This method allows the cache checking process to be resumed
+        after it has been stopped.
+        """
         self._should_continue_check = True
 
     def _load_cache(self) -> None:
-        """Load the cache from disk or create a new one if it doesn't exist"""
+        """
+        Load the cache from disk or create a new one if it doesn't exist.
+        
+        This loads three separate cache files:
+        - filecache.json: Main cache for YouTube videos
+        - spotify_cache.json: Cache for Spotify tracks
+        - blacklist.json: List of URLs that should not be cached
+        """
         try:
             if self.cache_file.exists():
                 with open(self.cache_file, 'r') as f:
@@ -52,13 +82,19 @@ class PlaylistCache:
             else:
                 self.blacklist = {}
         except json.JSONDecodeError:
+            # Reset cache if JSON is invalid
             self.cache = {}
             self.spotify_cache = {}
             self.blacklist = {}
         self._cleanup_cache()
 
     def _save_cache(self) -> None:
-        """Save the cache to disk"""
+        """
+        Save the cache to disk in JSON format.
+        
+        Writes all three cache dictionaries (YouTube cache, Spotify cache,
+        and blacklist) to their respective JSON files.
+        """
         with open(self.cache_file, 'w') as f:
             json.dump(self.cache, f, indent=2)
         with open(self.spotify_cache_file, 'w') as f:
@@ -67,7 +103,13 @@ class PlaylistCache:
             json.dump(self.blacklist, f, indent=2)
 
     def _cleanup_cache(self) -> None:
-        """Remove entries for files that no longer exist or have invalid format"""
+        """
+        Remove entries for files that no longer exist or have invalid format.
+        
+        This ensures the cache only contains valid entries pointing to existing files.
+        It checks both YouTube and Spotify caches and removes any entries that
+        point to non-existent files or have invalid data structures.
+        """
         if not self._should_continue_check:
             return
 
@@ -118,11 +160,31 @@ class PlaylistCache:
             self._save_cache()
 
     def _is_valid_youtube_id(self, video_id: str) -> bool:
-        """Check if string looks like a valid YouTube video ID."""
+        """
+        Check if string looks like a valid YouTube video ID.
+        
+        Args:
+            video_id: The string to check
+            
+        Returns:
+            bool: True if the string matches the YouTube ID pattern, False otherwise
+        """
         return bool(re.fullmatch(r"[\w-]{11}", video_id))
 
     async def _get_video_info(self, video_id: str, file_path: str) -> Dict:
-        """Get video info from YouTube"""
+        """
+        Get video info from YouTube.
+        
+        Fetches metadata for a video from YouTube using yt-dlp,
+        including title and thumbnail URL.
+        
+        Args:
+            video_id: The YouTube video ID
+            file_path: Path to the downloaded file
+            
+        Returns:
+            Dict: Dictionary containing video metadata
+        """
         # Get cookie file path from root directory
         cookie_file = os.path.join(get_root_dir(), 'cookies.txt')
         
@@ -168,7 +230,15 @@ class PlaylistCache:
         }
 
     async def _process_chunk(self, chunk):
-        """Process a chunk of files and update cache"""
+        """
+        Process a chunk of files and update cache.
+        
+        Processes a batch of uncached files, fetching metadata for each
+        and adding them to the cache.
+        
+        Args:
+            chunk: List of dictionaries containing video IDs and file paths
+        """
         results = await asyncio.gather(*[self._get_video_info(task['id'], task['path']) for task in chunk])
         for info in results:
             self.cache[info['id']] = info
@@ -176,7 +246,12 @@ class PlaylistCache:
         self._save_cache()
 
     async def _import_uncached_files(self):
-        """Import any files from downloads directory that aren't in the cache"""
+        """
+        Import any files from downloads directory that aren't in the cache.
+        
+        Scans the downloads directory for audio files that match the YouTube ID
+        pattern but aren't yet in the cache, and adds them to the cache.
+        """
         try:
             if not os.path.exists(self.downloads_dir):
                 return
@@ -212,7 +287,15 @@ class PlaylistCache:
             print(f"{RED}Error importing uncached files: {str(e)}{RESET}")
 
     def get_cached_file(self, video_id: str) -> Optional[str]:
-        """Get the cached file path for a video ID if it exists"""
+        """
+        Get the cached file path for a video ID if it exists.
+        
+        Args:
+            video_id: The YouTube video ID
+            
+        Returns:
+            Optional[str]: Absolute path to the cached file, or None if not found
+        """
         if not self._should_continue_check:
             return None
             
@@ -224,7 +307,14 @@ class PlaylistCache:
         return None
 
     def add_to_cache(self, video_id: str, file_path: str, **kwargs) -> None:
-        """Add a file to the cache with its video ID and file path"""
+        """
+        Add a file to the cache with its video ID and file path.
+        
+        Args:
+            video_id: The YouTube video ID
+            file_path: Path to the downloaded file
+            **kwargs: Additional metadata such as title and thumbnail URL
+        """
         if not self._should_continue_check:
             return
             
@@ -241,7 +331,15 @@ class PlaylistCache:
         self._save_cache()
 
     def get_cached_info(self, video_id: str) -> Optional[Dict]:
-        """Get all cached info for a video ID including file path and thumbnail"""
+        """
+        Get all cached info for a video ID including file path and thumbnail.
+        
+        Args:
+            video_id: The YouTube video ID
+            
+        Returns:
+            Optional[Dict]: Dictionary with video metadata, or None if not found
+        """
         if video_id in self.cache:
             info = self.cache[video_id].copy()
             # Convert relative path to absolute only when returning
@@ -256,11 +354,27 @@ class PlaylistCache:
         return None
 
     def is_video_cached(self, video_id: str) -> bool:
-        """Check if a video is in the cache and its file exists"""
+        """
+        Check if a video is in the cache and its file exists.
+        
+        Args:
+            video_id: The YouTube video ID
+            
+        Returns:
+            bool: True if the video is cached and the file exists, False otherwise
+        """
         return self.get_cached_file(video_id) is not None
 
     def get_cached_spotify_track(self, track_id: str) -> Optional[Dict]:
-        """Get cached info for a Spotify track if it exists"""
+        """
+        Get cached info for a Spotify track if it exists.
+        
+        Args:
+            track_id: The Spotify track ID
+            
+        Returns:
+            Optional[Dict]: Dictionary with track metadata, or None if not found
+        """
         if track_id in self.spotify_cache:
             info = self.spotify_cache[track_id].copy()
             # Convert relative path to absolute
@@ -274,7 +388,14 @@ class PlaylistCache:
         return None
 
     def add_spotify_track(self, track_id: str, file_path: str, **kwargs) -> None:
-        """Add a Spotify track to the cache"""
+        """
+        Add a Spotify track to the cache.
+        
+        Args:
+            track_id: The Spotify track ID
+            file_path: Path to the downloaded file
+            **kwargs: Additional metadata such as title, artist, and thumbnail
+        """
         if not self._should_continue_check:
             return
             
@@ -291,11 +412,26 @@ class PlaylistCache:
         self._save_cache()
 
     def is_spotify_track_cached(self, track_id: str) -> bool:
-        """Check if a Spotify track is in the cache and its file exists"""
+        """
+        Check if a Spotify track is in the cache and its file exists.
+        
+        Args:
+            track_id: The Spotify track ID
+            
+        Returns:
+            bool: True if the track is cached and the file exists, False otherwise
+        """
         return self.get_cached_spotify_track(track_id) is not None
 
     def add_to_blacklist(self, video_id: str) -> None:
-        """Add a video ID to the blacklist with timestamp"""
+        """
+        Add a video ID to the blacklist with timestamp.
+        
+        Videos in the blacklist will be skipped during download attempts.
+        
+        Args:
+            video_id: The YouTube video ID to blacklist
+        """
         self.blacklist[video_id] = {
             'timestamp': time.time(),
             'reason': 'Video unavailable'
@@ -303,7 +439,15 @@ class PlaylistCache:
         self._save_cache()
 
     def is_blacklisted(self, video_id: str) -> bool:
-        """Check if a video ID is in the blacklist"""
+        """
+        Check if a video ID is in the blacklist.
+        
+        Args:
+            video_id: The YouTube video ID to check
+            
+        Returns:
+            bool: True if the video is blacklisted, False otherwise
+        """
         return video_id in self.blacklist
 
 # Global instance

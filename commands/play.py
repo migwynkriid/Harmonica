@@ -6,7 +6,20 @@ from scripts.permissions import check_dj_role
 from scripts.process_queue import process_queue
 
 class PlayCog(commands.Cog):
+    """
+    Command cog for playing music in voice channels.
+    
+    This cog handles the 'play' command, which allows users to play music from
+    YouTube, Spotify, or other supported sources in a voice channel.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the PlayCog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         self._last_member = None
         from scripts.config import load_config
@@ -15,7 +28,17 @@ class PlayCog(commands.Cog):
     @commands.command(name='play')
     @check_dj_role()
     async def play(self, ctx, *, query=None):
-        """Play a song in the voice channel"""
+        """
+        Play a song in the voice channel.
+        
+        This command allows users to play music from various sources including
+        YouTube links, YouTube searches, and Spotify links. It handles connecting
+        to voice channels, downloading songs, and managing the music queue.
+        
+        Args:
+            ctx: The command context
+            query: The search query or URL to play
+        """
         from bot import MusicBot
         
         # Get server-specific music bot instance
@@ -51,6 +74,7 @@ class PlayCog(commands.Cog):
         # Connect to voice channel if needed
         if not ctx.guild.voice_client:
             try:
+                # Connect to the author's voice channel
                 await ctx.author.voice.channel.connect()
             except discord.ClientException as e:
                 if "already connected" in str(e):
@@ -62,11 +86,14 @@ class PlayCog(commands.Cog):
                 else:
                     raise e
         elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
+            # Move to the author's voice channel if bot is in a different channel
             await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
 
+        # Update the bot's voice client reference and reset playing state
         server_music_bot.voice_client = ctx.guild.voice_client
         server_music_bot.is_playing = False  # Reset playing state when reconnecting
 
+        # Handle Spotify links differently
         if 'open.spotify.com' in query:
             result = await server_music_bot.handle_spotify_url(query, ctx, status_msg)
             if not result:
@@ -79,6 +106,7 @@ class PlayCog(commands.Cog):
 
             # Only lock when modifying the queue
             async with server_music_bot.queue_lock:
+                # Add the song to the queue with all necessary metadata
                 server_music_bot.queue.append({
                     'title': result['title'],
                     'url': result['url'],
@@ -95,8 +123,10 @@ class PlayCog(commands.Cog):
 
             # These operations don't need the queue lock
             if should_play:
+                # If nothing is playing, start playing the queue
                 await process_queue(server_music_bot)
             else:
+                # If something is already playing, just show the queue position
                 if not result.get('is_from_playlist'):
                     queue_pos = len(server_music_bot.queue)
                     # Check if current song is looped from the Loop cog
@@ -110,6 +140,7 @@ class PlayCog(commands.Cog):
                         if not is_current_looping:
                             description += f"\nPosition in queue: {queue_pos}"
                         
+                    # Create and send the "Added to Queue" embed
                     queue_embed = create_embed(
                         "Added to Queue",
                         description,
@@ -118,7 +149,14 @@ class PlayCog(commands.Cog):
                         ctx=ctx
                     )
                     queue_msg = await ctx.send(embed=queue_embed)
+                    # Store the message for later reference (e.g., for deletion when song plays)
                     server_music_bot.queued_messages[result['url']] = queue_msg
 
 async def setup(bot):
+    """
+    Setup function to add the PlayCog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(PlayCog(bot))

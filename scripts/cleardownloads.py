@@ -6,7 +6,16 @@ import json
 DOWNLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'downloads')
 
 def get_config():
-    """Get configuration from config.json"""
+    """
+    Get configuration from config.json.
+    
+    Reads the AUTO_CLEAR setting from the config.json file to determine
+    whether downloads should be automatically cleared.
+    
+    Returns:
+        bool: True if auto-clear is enabled, False otherwise.
+              Defaults to True if config can't be read.
+    """
     try:
         with open('config.json', 'r') as f:
             config = json.load(f)
@@ -16,7 +25,16 @@ def get_config():
         return True  # Default to True if config can't be read
 
 def clear_downloads_folder():
-    """Clear the downloads folder if auto-clear is enabled"""
+    """
+    Clear the downloads folder if auto-clear is enabled.
+    
+    This function checks the configuration to see if auto-clear is enabled,
+    and if so, removes all files and subdirectories from the downloads folder.
+    This helps prevent the downloads folder from growing too large over time.
+    
+    Returns:
+        None
+    """
     auto_clear = get_config()
     
     if not auto_clear:

@@ -14,14 +14,36 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 class NowPlayingCog(commands.Cog):
+    """
+    Command cog for displaying the currently playing song.
+    
+    This cog handles the 'nowplaying' command, which shows information
+    about the currently playing song, including progress bar and duration.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the NowPlayingCog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         self._last_member = None
 
     @commands.command(name='nowplaying', aliases=['np'])
     @check_dj_role()
     async def nowplaying(self, ctx):
-        """Show the currently playing song"""
+        """
+        Show the currently playing song.
+        
+        This command displays detailed information about the currently playing song,
+        including title, URL, thumbnail, and a progress bar showing the current
+        playback position. For live streams, it shows a LIVE indicator instead.
+        
+        Args:
+            ctx: The command context
+        """
         # Access the music_bot from the global scope
         from bot import MusicBot
         
@@ -43,18 +65,20 @@ class NowPlayingCog(commands.Cog):
         is_stream = server_music_bot.current_song.get('is_stream', False)
         total_duration = server_music_bot.current_song.get('duration', 0) if not is_stream else 0
         
-        # Format the current time
+        # Format the current time in MM:SS format
         current_time = f"{int(current_position // 60):02d}:{int(current_position % 60):02d}"
         
         # Create the progress information based on whether it's a stream or not
         if is_stream:
+            # For live streams, show a LIVE indicator with elapsed time
             progress_info = f"🔴 LIVE - {current_time}"
         else:
-            # Calculate percentage and create progress bar
+            # For regular songs, calculate percentage and create progress bar
             percentage = min((current_position / total_duration * 100) if total_duration > 0 else 0, 100)
             total_time = f"{int(total_duration // 60):02d}:{int(total_duration % 60):02d}"
             
             # Create progress bar with ▬ and :radio_button:
+            # The bar has 20 segments, and we calculate which segment the playback is at
             position_segment = int((percentage / 5) + 0.5)  # Round to nearest segment (each segment is 5%)
             progress_bar = "▬" * position_segment + ":radio_button:" + "▬" * (20 - position_segment - 1)
             
@@ -63,6 +87,7 @@ class NowPlayingCog(commands.Cog):
         # Create description with title and progress
         description = f"[{server_music_bot.current_song['title']}]({server_music_bot.current_song['url']})\n\n{progress_info}"
 
+        # Create the embed with song information
         embed = create_embed(
             "Now playing 🎵",
             description,
@@ -71,7 +96,7 @@ class NowPlayingCog(commands.Cog):
             ctx=ctx
         )
 
-        # Create the view with buttons if enabled
+        # Create the view with buttons if enabled in config
         view = create_now_playing_view()
         # Only pass the view if it's not None
         kwargs = {'embed': embed}
@@ -80,4 +105,10 @@ class NowPlayingCog(commands.Cog):
         await ctx.send(**kwargs)
 
 async def setup(bot):
+    """
+    Setup function to add the NowPlayingCog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(NowPlayingCog(bot))

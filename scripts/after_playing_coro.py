@@ -4,8 +4,26 @@ from scripts.play_next import play_next
 from scripts.messages import update_or_send_message, create_embed
 
 class AfterPlayingHandler:
+    """
+    Handler class for managing what happens after a song finishes playing.
+    
+    This class provides functionality for handling the transition between songs,
+    updating the now playing message, and starting the next song in the queue.
+    It is designed to be used as a mixin with the MusicBot class.
+    """
+    
     async def after_playing_coro(self, error, ctx):
-        """Coroutine called after a song finishes"""
+        """
+        Coroutine called after a song finishes playing.
+        
+        This method handles the transition between songs, updates the now playing
+        message, and starts the next song in the queue if available.
+        
+        Args:
+            error: Error that occurred during playback, if any
+            ctx: Discord command context
+        """
+        # Handle any playback errors
         if error:
             print(f"Error in playback: {error}")
         
@@ -13,13 +31,14 @@ class AfterPlayingHandler:
         if hasattr(self, 'playback_state'):
             self.playback_state = "stopped"
 
-        # Add delay after song ends to ensure clean state
+        # Add a short delay to ensure a clean state after the song ends
         await asyncio.sleep(0.5)
 
         # Check if there's an after_song_callback (for loop mode)
         if hasattr(self, 'after_song_callback') and self.after_song_callback:
             await self.after_song_callback()
         
+        # Check the status of the download queue
         if not self.download_queue.empty():
             print(f"Download queue size: {self.download_queue.qsize()}")
         if not self.currently_downloading and not self.download_queue.empty():
@@ -27,9 +46,12 @@ class AfterPlayingHandler:
         if len(self.queue) == 0 and not self.download_queue.empty():
             print("Waiting for next song to finish downloading...")
             await asyncio.sleep(1)
+            
+        # Play the next song if available
         if len(self.queue) > 0 or not self.download_queue.empty():
             await play_next(ctx)
         else:
+            # Update the now playing message to show that the song has finished
             if self.now_playing_message and self.current_song and isinstance(self.current_song, dict):
                 try:
                     # Check if the song is looped
@@ -40,7 +62,7 @@ class AfterPlayingHandler:
                     if is_looped and not (hasattr(self, 'was_skipped') and self.was_skipped):
                         await self.now_playing_message.delete()
                     else:
-                        # For non-looped songs or skipped songs, show appropriate message
+                        # For non-looped songs or skipped songs, show an appropriate message
                         title = "Skipped song" if hasattr(self, 'was_skipped') and self.was_skipped else "Finished playing"
                         
                         finished_embed = create_embed(
@@ -50,7 +72,7 @@ class AfterPlayingHandler:
                             thumbnail_url=self.current_song.get('thumbnail'),
                             ctx=ctx
                         )
-                        # Remove buttons when song is finished
+                        # Remove buttons when the song is finished
                         await self.now_playing_message.edit(embed=finished_embed, view=None)
                         
                         # Reset the skipped flag after updating the message
@@ -59,6 +81,7 @@ class AfterPlayingHandler:
                 except Exception as e:
                     print(f"Error updating finished message: {str(e)}")
             
+            # Reset the playback state
             self.is_playing = False
             self.current_song = None
             await self.update_activity()

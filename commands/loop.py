@@ -5,12 +5,39 @@ from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 
 class Loop(commands.Cog):
+    """
+    Command cog for looping songs in the music queue.
+    
+    This cog handles the 'loop' command, which allows users to toggle
+    loop mode for the currently playing song, repeating it a specified
+    number of times in the queue.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the Loop cog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
-        self.looped_songs = set()
+        self.looped_songs = set()  # Set to track which songs are currently looped
 
     async def _toggle_loop(self, ctx, count: int = 999):
-        """Core loop functionality that can be used by both command and button"""
+        """
+        Core loop functionality that can be used by both command and button.
+        
+        This internal method handles the actual looping logic, including
+        adding the song to the queue multiple times and setting up the
+        callback for future repeats.
+        
+        Args:
+            ctx: The command context
+            count (int): Number of times to add the song to the queue (default: 999)
+            
+        Returns:
+            tuple: (bool, dict/embed) - Success status and result information
+        """
         from bot import MusicBot
         music_bot = MusicBot.get_instance(ctx.guild.id)
         
@@ -26,6 +53,7 @@ class Loop(commands.Cog):
         is_song_looped = current_song_url in self.looped_songs
         
         if not is_song_looped:
+            # Enable looping for this song
             self.looped_songs.add(current_song_url)
             
             # Find the position of the current song in the queue (if it exists)
@@ -54,7 +82,7 @@ class Loop(commands.Cog):
                 'count': count
             }
         else:
-            # Remove song from looped songs set
+            # Disable looping for this song
             self.looped_songs.remove(current_song_url)
             
             # Clear the callback when loop is disabled
@@ -71,7 +99,20 @@ class Loop(commands.Cog):
     @commands.command(name='loop', aliases=['repeat'])
     @check_dj_role()
     async def loop(self, ctx, count: int = 999):
-        """Toggle loop mode for the current song. Optionally specify number of times to add the song."""
+        """
+        Toggle loop mode for the current song.
+        
+        This command allows users to toggle loop mode for the currently playing song.
+        When enabled, the song will be added to the queue multiple times and will
+        continue to be re-added after it finishes playing.
+        
+        Usage: !loop [count]
+        count: Number of times to add the song to the queue (default: 999)
+        
+        Args:
+            ctx: The command context
+            count (int): Number of times to add the song to the queue (default: 999)
+        """
         
         # Check if user is in voice chat
         if not ctx.author.voice:
@@ -103,4 +144,10 @@ class Loop(commands.Cog):
         await ctx.send(embed=embed)
 
 async def setup(bot):
+    """
+    Setup function to add the Loop cog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(Loop(bot))

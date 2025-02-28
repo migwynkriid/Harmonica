@@ -3,7 +3,20 @@ import os
 from scripts.constants import BLUE, GREEN, RESET
 
 class CommandLogger:
+    """
+    Logger class for tracking command usage in the bot.
+    
+    This class provides functionality to log commands used in the bot,
+    recording the username, command, server name, and timestamp.
+    Logs are written to a file and also printed to the console.
+    """
+    
     def __init__(self):
+        """
+        Initialize the CommandLogger.
+        
+        Sets up the log file path based on the root directory of the bot.
+        """
         self.log_file = "commandlog.txt"
         self.root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.log_path = os.path.join(self.root_dir, self.log_file)
@@ -11,6 +24,10 @@ class CommandLogger:
     def log_command(self, username: str, command: str, server_name: str = "Unknown Server") -> None:
         """
         Log a command with username and timestamp to the command log file.
+        
+        This method writes a log entry to the command log file and also prints
+        the command usage to the console with color formatting. The log entry
+        includes the timestamp, username, command, and server name.
         
         Args:
             username (str): The username of the command sender

@@ -3,6 +3,15 @@ import sys
 import subprocess
 
 def check_ffmpeg_in_path():
+    """
+    Check if FFmpeg is available in the system PATH.
+    
+    Attempts to run 'ffmpeg -version' to verify that FFmpeg is installed
+    and accessible from the command line.
+    
+    Returns:
+        bool: True if FFmpeg is found in PATH, False otherwise
+    """
     try:
         subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
         return True
@@ -10,6 +19,14 @@ def check_ffmpeg_in_path():
         return False
 
 def install_ffmpeg_windows():
+    """
+    Install FFmpeg on Windows using winget.
+    
+    Attempts to install FFmpeg using the Windows Package Manager (winget).
+    
+    Returns:
+        bool: True if installation was successful, False otherwise
+    """
     try:
         print("FFmpeg not found. Installing FFmpeg using winget...")
         subprocess.run(['winget', 'install', 'FFmpeg (Essentials Build)'], check=True)
@@ -20,6 +37,15 @@ def install_ffmpeg_windows():
         return False
 
 def install_ffmpeg_macos():
+    """
+    Install FFmpeg on macOS using Homebrew or MacPorts.
+    
+    First attempts to install using Homebrew, and if that fails,
+    tries using MacPorts as a fallback.
+    
+    Returns:
+        bool: True if installation was successful, False otherwise
+    """
     try:
         print("FFmpeg not found. Attempting to install FFmpeg using Homebrew...")
         try:
@@ -40,6 +66,15 @@ def install_ffmpeg_macos():
         return False
 
 def install_ffmpeg_linux():
+    """
+    Install FFmpeg on Linux using apt package manager.
+    
+    Attempts to install FFmpeg using apt-get, which is available on
+    Debian-based distributions like Ubuntu.
+    
+    Returns:
+        bool: True if installation was successful, False otherwise
+    """
     try:
         print("FFmpeg not found. Installing FFmpeg using apt...")
         subprocess.run(['sudo', 'apt', 'install', 'ffmpeg', '-y'], check=True)
@@ -50,6 +85,16 @@ def install_ffmpeg_linux():
         return False
 
 def get_ffmpeg_path():
+    """
+    Get the path to FFmpeg, installing it if necessary.
+    
+    This function checks if FFmpeg is available in the system PATH,
+    and if not, attempts to install it using the appropriate method
+    for the current operating system.
+    
+    Returns:
+        str: The command or path to use for FFmpeg
+    """
     if sys.platform.startswith('win'):
         if check_ffmpeg_in_path():
             return 'ffmpeg'

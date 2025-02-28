@@ -8,14 +8,37 @@ from scripts.voice_checks import check_voice_state
 import time
 
 class ReplayCog(commands.Cog):
+    """
+    Command cog for replaying the current song.
+    
+    This cog provides the 'replay' command, which restarts the currently
+    playing song from the beginning without stopping playback.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the ReplayCog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         self._last_member = None
 
     @commands.command(name='replay')
     @check_dj_role()
     async def replay(self, ctx):
-        """Restart the currently playing song from the beginning"""
+        """
+        Restart the currently playing song from the beginning.
+        
+        This command restarts the currently playing song from the beginning
+        without removing it from the queue or stopping playback. It works by
+        creating a new audio source with the seek position set to 0.
+        This command requires DJ permissions.
+        
+        Args:
+            ctx: The command context
+        """
         from bot import MusicBot
         music_bot = MusicBot.get_instance(ctx.guild.id)
         
@@ -60,4 +83,10 @@ class ReplayCog(commands.Cog):
             await ctx.send(embed=create_embed("Error", f"An error occurred while replaying: {str(e)}", color=0xe74c3c, ctx=ctx))
 
 async def setup(bot):
+    """
+    Setup function to add the ReplayCog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(ReplayCog(bot))

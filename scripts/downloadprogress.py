@@ -8,7 +8,21 @@ config_vars = load_config()
 SHOW_PROGRESS_BAR = config_vars.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', True)
 
 class DownloadProgress:
+    """
+    Handles the display and updating of download progress in Discord messages.
+    
+    This class creates and updates embeds with download progress information,
+    including progress bars, file sizes, and video information.
+    """
+    
     def __init__(self, status_msg, view):
+        """
+        Initialize the download progress tracker.
+        
+        Args:
+            status_msg: The Discord message object to update with progress
+            view: The Discord UI view associated with the message
+        """
         self.status_msg = status_msg
         self.view = view
         self.last_update = 0
@@ -17,11 +31,31 @@ class DownloadProgress:
         self.download_complete = False  # Track if download is complete
         
     def create_progress_bar(self, percentage, width=20):
+        """
+        Create a text-based progress bar.
+        
+        Args:
+            percentage: The percentage of completion (0-100)
+            width: The width of the progress bar in characters
+            
+        Returns:
+            str: A text-based progress bar using block characters
+        """
         filled = int(width * (percentage / 100))
         bar = "▓" * filled + "░" * (width - filled)
         return bar
         
     async def progress_hook(self, d):
+        """
+        Hook function called by yt-dlp during the download process.
+        
+        This method is called repeatedly during a download to update
+        the progress display. It creates an embed with download information
+        and updates the status message.
+        
+        Args:
+            d: Dictionary containing download information from yt-dlp
+        """
         if d['status'] == 'downloading':
             current_time = time.time()
             if current_time - self.last_update < 2:

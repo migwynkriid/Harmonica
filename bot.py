@@ -56,41 +56,47 @@ from scripts.paths import get_downloads_dir, get_root_dir, get_absolute_path
 # Load environment variables
 load_dotenv()
 
-# Load configuration
+# Load configuration from config.json
 config_vars = load_config()
-OWNER_ID = config_vars['OWNER_ID']
-PREFIX = config_vars['PREFIX']
-LOG_LEVEL = config_vars['LOG_LEVEL']
-INACTIVITY_TIMEOUT = config_vars['INACTIVITY_TIMEOUT']
-AUTO_LEAVE_EMPTY = config_vars['AUTO_LEAVE_EMPTY']
-DEFAULT_VOLUME = config_vars['DEFAULT_VOLUME']
-AUTO_CLEAR_DOWNLOADS = config_vars['AUTO_CLEAR_DOWNLOADS']
-SHOW_PROGRESS_BAR = config_vars['SHOW_PROGRESS_BAR']
+OWNER_ID = config_vars['OWNER_ID']  # Discord user ID of the bot owner
+PREFIX = config_vars['PREFIX']  # Command prefix (e.g., !)
+LOG_LEVEL = config_vars['LOG_LEVEL']  # Logging verbosity level
+INACTIVITY_TIMEOUT = config_vars['INACTIVITY_TIMEOUT']  # Time in seconds before bot leaves due to inactivity
+AUTO_LEAVE_EMPTY = config_vars['AUTO_LEAVE_EMPTY']  # Whether to leave voice channel when empty
+DEFAULT_VOLUME = config_vars['DEFAULT_VOLUME']  # Default playback volume
+AUTO_CLEAR_DOWNLOADS = config_vars['AUTO_CLEAR_DOWNLOADS']  # Whether to clear downloads folder automatically
+SHOW_PROGRESS_BAR = config_vars['SHOW_PROGRESS_BAR']  # Whether to show download progress bar
 # Set up logging
 setup_logging(LOG_LEVEL)
 
-YTDLP_PATH = get_ytdlp_path()
-FFMPEG_PATH = get_ffmpeg_path()
+# Get paths to external tools
+YTDLP_PATH = get_ytdlp_path()  # Path to yt-dlp executable
+FFMPEG_PATH = get_ffmpeg_path()  # Path to ffmpeg executable
 
-ROOT_DIR = Path(get_root_dir())
-DOWNLOADS_DIR = ROOT_DIR / get_downloads_dir()
-OWNER_ID = OWNER_ID
+# Set up directories
+ROOT_DIR = Path(get_root_dir())  # Root directory of the bot
+DOWNLOADS_DIR = ROOT_DIR / get_downloads_dir()  # Directory for downloaded audio files
+OWNER_ID = OWNER_ID  # Redefine for clarity
 
+# Create downloads directory if it doesn't exist
 if not DOWNLOADS_DIR.exists():
     DOWNLOADS_DIR.mkdir()
 
+# Set up Discord intents (permissions)
 intents = discord.Intents.default()
-intents.message_content = True
-intents.voice_states = True
+intents.message_content = True  # Allow bot to read message content
+intents.voice_states = True  # Allow bot to track voice state changes
 
+# Initialize the bot with configuration
 bot = commands.Bot(
     command_prefix=PREFIX,
     intents=intents,
-    help_command=None,
-    case_insensitive=True,
-    owner_id=int(OWNER_ID)
+    help_command=None,  # Disable default help command
+    case_insensitive=True,  # Make commands case-insensitive
+    owner_id=int(OWNER_ID)  # Set bot owner
 )
 
+# Initialize command logger
 command_logger = CommandLogger()
 
 @bot.event
@@ -122,7 +128,7 @@ async def on_command_error(ctx, error):
 
 @bot.event
 async def on_voice_state_update(member, before, after):
-    """Event handler for voice state updates"""
+    """Event handler for voice state updates - tracks when users join/leave voice channels"""
     global music_bot
     # Get the server-specific instance of MusicBot
     if member.guild and member.guild.id:
@@ -132,7 +138,7 @@ async def on_voice_state_update(member, before, after):
 music_bot = None
 @bot.event
 async def on_ready():
-    """Called when the bot is ready"""
+    """Called when the bot is ready and connected to Discord"""
     global music_bot 
     clear_downloads_folder()
     set_high_priority()
@@ -186,4 +192,5 @@ async def on_ready():
             instance.bot = bot
 
 bot.remove_command('help')
+# Start the bot with the Discord token from environment variables
 bot.run(os.getenv('DISCORD_TOKEN'))
