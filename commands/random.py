@@ -89,7 +89,7 @@ class RandomCommand(commands.Cog):
             ctx: The command context
         """
         from bot import MusicBot
-        music_bot = MusicBot.get_instance(ctx.guild.id)
+        music_bot = MusicBot.get_instance(str(ctx.guild.id))
         
         try:
             # Check if user is in a voice channel
@@ -152,11 +152,15 @@ class RandomCommand(commands.Cog):
                 })
 
                 # Check if we should start playing
-                should_play = not music_bot.is_playing and not music_bot.waiting_for_song and not music_bot.voice_client.is_playing()
+                should_play = not music_bot.is_playing and not music_bot.waiting_for_song
+                if music_bot.voice_client:
+                    should_play = should_play and not music_bot.voice_client.is_playing()
+                else:
+                    should_play = True
 
             # Start playing if needed
             if should_play:
-                await process_queue(music_bot)
+                await process_queue(music_bot, ctx)
             else:
                 queue_pos = len(music_bot.queue)
                 # Check if current song is looped

@@ -1,8 +1,10 @@
 import discord
 import time
+import concurrent.futures
 from datetime import datetime
 from scripts.format_size import format_size
 from scripts.config import load_config
+import asyncio
 
 config_vars = load_config()
 SHOW_PROGRESS_BAR = config_vars.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', True)
@@ -45,7 +47,7 @@ class DownloadProgress:
         bar = "▓" * filled + "░" * (width - filled)
         return bar
         
-    async def progress_hook(self, d):
+    def progress_hook(self, d):
         """
         Hook function called by yt-dlp during the download process.
         
@@ -100,6 +102,30 @@ class DownloadProgress:
                         text=f"Requested by {self.ctx.author.display_name}",
                         icon_url=self.ctx.author.display_avatar.url
                     )
-                await self.status_msg.edit(embed=embed)               
+                
+                # Use asyncio.create_task to run the message edit in the background
+                if self.status_msg:
+                    try:
+                        # First try to get the event loop from the running context
+                        loop = asyncio.get_event_loop()
+                    except RuntimeError:
+                        # If that fails, get a new event loop
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                    
+                    if loop.is_running():
+                        # Use run_coroutine_threadsafe without timeout to avoid the error
+                        future = asyncio.run_coroutine_threadsafe(
+                            self.status_msg.edit(embed=embed, view=self.view),
+                            loop
+                        )
+                        # Optionally wait for the result but don't use timeout
+                        try:
+                            future.result(0.5)  # Wait for a short time but don't block indefinitely
+                        except (asyncio.TimeoutError, concurrent.futures.TimeoutError):
+                            pass  # Ignore timeout, the update will happen asynchronously
+                    else:
+                        # If loop is not running, create a new task
+                        loop.run_until_complete(self.status_msg.edit(embed=embed, view=self.view))
             except Exception as e:
                 print(f"Error updating progress: {str(e)}")

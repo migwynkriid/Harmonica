@@ -12,7 +12,7 @@ from scripts.constants import RED, GREEN, BLUE, RESET
 config = load_config()
 DEFAULT_VOLUME = config.get('DEFAULT_VOLUME', 100)
 
-async def process_queue(music_bot):
+async def process_queue(music_bot, ctx=None):
     """
     Process the song queue.
     
@@ -26,6 +26,7 @@ async def process_queue(music_bot):
     
     Args:
         music_bot: The music bot instance containing the queue and voice client
+        ctx: Optional context to use if the song's context is missing
     """
     # Check if music_bot is None, if so, return immediately
     if not music_bot:
@@ -45,30 +46,34 @@ async def process_queue(music_bot):
         song = music_bot.queue.pop(0)
         
         # Get the context for the song
-        ctx = song.get('ctx')
-        if not ctx:
-            # If context is missing, print a warning and use the last known context
-            print("Warning: Missing context in song, using last known context")
-            if hasattr(music_bot, 'last_known_ctx'):
-                ctx = music_bot.last_known_ctx
+        song_ctx = song.get('ctx')
+        if not song_ctx:
+            # If context is missing, use the provided ctx or the last known context
+            if ctx:
+                song_ctx = ctx
             else:
-                # If no context is available, print an error and return
-                print("Error: No context available for playback")
-                music_bot.waiting_for_song = False
-                if music_bot.queue:
-                    # Try to play the next song in the queue
-                    await process_queue(music_bot)
-                return
+                # If context is missing, print a warning and use the last known context
+                print("Warning: Missing context in song, using last known context")
+                if hasattr(music_bot, 'last_known_ctx'):
+                    song_ctx = music_bot.last_known_ctx
+                else:
+                    # If no context is available, print an error and return
+                    print("Error: No context available for playback")
+                    music_bot.waiting_for_song = False
+                    if music_bot.queue:
+                        # Try to play the next song in the queue
+                        await process_queue(music_bot, ctx)
+                    return
 
         # Update the last known context
-        music_bot.last_known_ctx = ctx
+        music_bot.last_known_ctx = song_ctx
 
         # Check if the bot is connected to a voice channel
         if not music_bot.voice_client or not music_bot.voice_client.is_connected():
             try:
                 # Try to join the voice channel
                 if hasattr(music_bot, 'join_voice_channel'):
-                    connected = await music_bot.join_voice_channel(ctx)
+                    connected = await music_bot.join_voice_channel(song_ctx)
                     if not connected:
                         # If connection fails, print an error and return
                         print("Failed to connect to voice channel")
@@ -103,13 +108,13 @@ async def process_queue(music_bot):
             music_bot.is_playing = False
             
             if music_bot.queue:
-                await process_queue(music_bot)
+                await process_queue(music_bot, ctx)
             return
 
         # Use the original requester if available, otherwise use the context
-        requester = song.get('requester', ctx.author)
-        ctx_with_requester = ctx
-        if requester and requester != ctx.author:
+        requester = song.get('requester', song_ctx.author)
+        ctx_with_requester = song_ctx
+        if requester and requester != song_ctx.author:
             # Create a context-like object with the requester information
             class DummyCtx:
                 def __init__(self, author):
@@ -135,7 +140,7 @@ async def process_queue(music_bot):
                 kwargs['view'] = view
                 
             # Send the now playing message
-            music_bot.now_playing_message = await ctx.send(**kwargs)
+            music_bot.now_playing_message = await song_ctx.send(**kwargs)
 
         # Update bot presence with current song
         try:
@@ -181,7 +186,7 @@ async def process_queue(music_bot):
                 music_bot.playback_state = "playing"
                 
                 # Log the now playing message with server name
-                server_name = ctx.guild.name if ctx and hasattr(ctx, 'guild') and ctx.guild else "Unknown Server"
+                server_name = song_ctx.guild.name if song_ctx and hasattr(song_ctx, 'guild') and song_ctx.guild else "Unknown Server"
                 print(f"{GREEN}Now playing:{RESET}{BLUE} {song['title']}{RESET}{GREEN} in server: {RESET}{BLUE}{server_name}{RESET}")
                 
                 # Set volume
@@ -191,8 +196,8 @@ async def process_queue(music_bot):
                 music_bot.voice_client.play(
                     volume_transformer,
                     after=lambda e: asyncio.run_coroutine_threadsafe(
-                        music_bot.after_playing_coro(e, ctx), 
-                        music_bot.bot_loop
+                        music_bot.after_playing_coro(e, song_ctx), 
+                        music_bot.bot_loop or asyncio.get_event_loop()
                     )
                 )
         except Exception as e:
@@ -202,7 +207,7 @@ async def process_queue(music_bot):
             music_bot.is_playing = False
             
             if music_bot.queue:
-                await process_queue(music_bot)
+                await process_queue(music_bot, ctx)
     except Exception as e:
         # If an error occurs in the process_queue function, print the error and try to play the next song
         print(f"Error in process_queue: {str(e)}")
@@ -210,7 +215,7 @@ async def process_queue(music_bot):
         music_bot.is_playing = False
         
         if music_bot.queue:
-            await process_queue(music_bot)
+            await process_queue(music_bot, ctx)
     finally:
         # Reset the waiting flag regardless of success or failure
         music_bot.waiting_for_song = False

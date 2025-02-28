@@ -73,24 +73,24 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         each server has its own isolated music queue and state.
         """
         if guild_id not in cls._instances:
-            cls._instances[guild_id] = cls(show_credentials=not cls._credentials_shown)
+            # Never show credentials automatically - we'll do it explicitly in on_ready
+            cls._instances[guild_id] = cls(show_credentials=False)
             # Set the guild_id for this instance
             cls._instances[guild_id].guild_id = guild_id
-            
-            # If this is the first instance, mark credentials as shown
-            if not cls._credentials_shown:
-                cls._credentials_shown = True
             
             # If we have a setup instance with a bot reference, copy it to the new instance
             if 'setup' in cls._instances and cls._instances['setup'].bot:
                 cls._instances[guild_id].bot = cls._instances['setup'].bot
                 
+            # Ensure bot_loop is initialized
+            if not cls._instances[guild_id].bot_loop:
+                cls._instances[guild_id].bot_loop = asyncio.get_event_loop()
+                
         return cls._instances[guild_id]
 
-    def __init__(self, show_credentials=True):
+    def __init__(self, show_credentials=False):
         """
         Initialize the music bot with default values.
-        Each attribute will be specific to a guild instance.
         
         Args:
             show_credentials (bool): Whether to show credential status messages
@@ -145,10 +145,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         client_id = os.getenv('SPOTIPY_CLIENT_ID')
         client_secret = os.getenv('SPOTIPY_CLIENT_SECRET')
         
-        # Check if Spotify credentials are available
-        if show_credentials:
-            print(f"{GREEN}Spotify credentials found:{RESET} {BLUE if (client_id and client_secret) else RED}{'Yes' if (client_id and client_secret) else 'No'}{RESET}")
-        
         # Initialize Spotify client if credentials are available
         if not client_id or not client_secret:
             if show_credentials:
@@ -173,29 +169,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     print(f"{RED}Error initializing Spotify client: {str(e)}{RESET}")
                 self.sp = None
 
-        # Check for YouTube cookies file (needed for age-restricted content)
-        if self.cookie_file.exists():
-            if show_credentials:
-                print(f"{GREEN}YouTube cookies found:{RESET} {BLUE}Yes{RESET}")
-        else:
-            if show_credentials:
-                print(f"{GREEN}YouTube cookies found:{RESET} {RED}No{RESET}")
-                print(f"{RED}Warning: YouTube cookies not found, YouTube functionality might be limited.{RESET}")
-                print(f'{BLUE}Extract using "Get Cookies" extension and save it as cookies.txt in the root directory where you run the bot.{RESET}')
-                print(f"{BLUE}https://github.com/yt-dlp/yt-dlp/wiki/How-to-use-cookies{RESET}\n")
-            
-        # Check for Genius lyrics API token
-        genius_token_file = Path(__file__).parent.parent / '.geniuslyrics'
-        if genius_token_file.exists():
-            with open(genius_token_file, 'r') as f:
-                content = f.read().strip()
-                has_token = content and not content.endswith('=')
-            if show_credentials:
-                print(f"{GREEN}Genius lyrics token found:{RESET} {BLUE if has_token else RED}{'Yes' if has_token else 'No'}{RESET}")
-                if not has_token:
-                    print(f"{RED}Warning: Genius lyrics token not found.\n{BLUE}AZLyrics will be used as a fallback.{RESET}")
-                    print(f"{BLUE}https://genius.com/api-clients{RESET}")
-                    print(f'{BLUE}Update your {RESET}{YELLOW}.geniuslyrics file{RESET}')
+        # We'll skip showing YouTube and Genius credentials here
+        # They will be shown when show_credentials() is called
 
         # Bind voice methods from external module
         self.join_voice_channel = lambda ctx: join_voice_channel(self, ctx)
@@ -228,7 +203,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         """
         if self.command_processor_task is None:
             self.command_processor_task = asyncio.create_task(self.process_command_queue())
-            print('----------------------------------------')
         
         # Config file
         print(f"{GREEN}Config file location:{RESET} {BLUE}{Path(__file__).parent.parent / 'config.json'}{RESET}")
@@ -977,11 +951,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     'outtmpl': os.path.join(self.downloads_dir, '%(id)s.%(ext)s'),
                     'cookiefile': self.cookie_file if self.cookie_file.exists() else None,
                     'progress_hooks': [
-                        lambda d: self._download_hook(d),
-                        lambda d: asyncio.run_coroutine_threadsafe(
-                            progress.progress_hook(d),
-                            self.bot_loop if self.bot_loop else asyncio.get_event_loop()
-                        ) if status_msg else None
+                        self._download_hook,
+                        lambda d: progress.progress_hook(d)
                     ],
                     'default_search': 'ytsearch'
                 }
@@ -1166,3 +1137,47 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         """
         if self.bot:
             await update_activity(self.bot, self.current_song, self.is_playing)
+
+    def show_credentials(self):
+        """
+        Display credential status for Spotify, YouTube, and Genius
+        This method can be called explicitly when needed
+        """
+        # Load Spotify API credentials from environment file
+        load_dotenv(dotenv_path=".spotifyenv")
+        client_id = os.getenv('SPOTIPY_CLIENT_ID')
+        client_secret = os.getenv('SPOTIPY_CLIENT_SECRET')
+        
+        # Check if Spotify credentials are available
+        print(f"{GREEN}Spotify credentials found:{RESET} {BLUE if (client_id and client_secret) else RED}{'Yes' if (client_id and client_secret) else 'No'}{RESET}")
+        
+        # Check for YouTube cookies file (needed for age-restricted content)
+        if self.cookie_file.exists():
+            print(f"{GREEN}YouTube cookies found:{RESET} {BLUE}Yes{RESET}")
+        else:
+            print(f"{GREEN}YouTube cookies found:{RESET} {RED}No{RESET}")
+            print(f"{RED}Warning: YouTube cookies not found, YouTube functionality might be limited.{RESET}")
+            print(f'{BLUE}Extract using "Get Cookies" extension and save it as cookies.txt in the root directory where you run the bot.{RESET}')
+            print(f"{BLUE}https://github.com/yt-dlp/yt-dlp/wiki/How-to-use-cookies{RESET}\n")
+            
+        # Check for Genius lyrics API token
+        genius_token_file = Path(__file__).parent.parent / '.geniuslyrics'
+        if genius_token_file.exists():
+            with open(genius_token_file, 'r') as f:
+                content = f.read().strip()
+                has_token = content and not content.endswith('=')
+            print(f"{GREEN}Genius lyrics token found:{RESET} {BLUE if has_token else RED}{'Yes' if has_token else 'No'}{RESET}")
+            if not has_token:
+                print(f"{RED}Warning: Genius lyrics token not found.\n{BLUE}AZLyrics will be used as a fallback.{RESET}")
+                print(f"{BLUE}https://genius.com/api-clients{RESET}")
+                print(f'{BLUE}Update your {RESET}{YELLOW}.geniuslyrics file{RESET}')
+                print(f"{BLUE}Format: client_access_token=your_token_here{RESET}")
+            print(f"----------------------------------------")
+
+    def __del__(self):
+        """Destructor to clean up resources when the bot instance is deleted"""
+        try:
+            # Clean up any resources that need explicit closing
+            pass
+        except Exception as e:
+            print(f"Error during MusicBot cleanup: {str(e)}")

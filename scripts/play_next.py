@@ -7,6 +7,7 @@ from scripts.messages import create_embed, should_send_now_playing
 from scripts.config import load_config, FFMPEG_OPTIONS
 from scripts.ui_components import create_now_playing_view
 from scripts.constants import RED, GREEN, BLUE, RESET
+from scripts.process_queue import process_queue
 
 # Get default volume from config
 config = load_config()
@@ -68,7 +69,7 @@ async def play_next(ctx):
                     if not os.path.exists(server_music_bot.current_song['file_path']):
                         print(f"Error: File not found: {server_music_bot.current_song['file_path']}")
                         if len(server_music_bot.queue) > 0:
-                            await play_next(ctx)  # Recursively try the next song
+                            await process_queue(server_music_bot, ctx)  # Recursively try the next song
                         return
                         
                     # If we have a download progress object, wait for download to complete
@@ -198,17 +199,17 @@ async def play_next(ctx):
                                 audio_source,
                                 after=lambda e: asyncio.run_coroutine_threadsafe(
                                     server_music_bot.after_playing_coro(e, ctx), 
-                                    server_music_bot.bot_loop
+                                    server_music_bot.bot_loop or asyncio.get_event_loop()
                                 )
                             )
                     except Exception as e:
                         print(f"Error starting playback: {str(e)}")
                         if len(server_music_bot.queue) > 0:
-                            await play_next(ctx)
+                            await process_queue(server_music_bot, ctx)
             except Exception as e:
                 print(f"Error in play_next: {str(e)}")
                 if len(server_music_bot.queue) > 0:
-                    await play_next(ctx)
+                    await process_queue(server_music_bot, ctx)
         else:
             server_music_bot.current_song = None
             # Update activity

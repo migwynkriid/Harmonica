@@ -143,6 +143,22 @@ async def on_ready():
     clear_downloads_folder()
     set_high_priority()
     prefix = config_vars.get('PREFIX', '!')  # Get prefix from config
+    
+    # Setup a MusicBot instance for initialization
+    setup_bot = MusicBot.get_instance('setup')
+    
+    # Display the ASCII art logo first
+    with open('scripts/consoleprint.txt', 'r') as f: print(f"{BLUE}{f.read()}{RESET}")
+    commit_count = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD']).decode('utf-8').strip()
+    print(f"{GREEN}\nCurrent commit count: {BLUE}{commit_count}{RESET}")
+    print(f"{GREEN}YT-DLP version: {BLUE}{yt_dlp.version.__version__}{RESET}")
+    print(f"----------------------------------------")
+    
+    # Now show the credentials
+    setup_bot.show_credentials()
+    MusicBot._credentials_shown = True
+    
+    # Continue with the rest of initialization
     from scripts.activity import update_activity
     await update_activity(bot)
     owner_name = f"{RED}Not found.\nOwner could not be fetched. Do you share a server with the bot?\nPlease check your config.json{RESET}"
@@ -154,11 +170,6 @@ async def on_ready():
     except Exception as e:
         owner_name = f"{RED}Error contacting owner: {str(e)}{RESET}"
 
-    with open('scripts/consoleprint.txt', 'r') as f: print(f"{BLUE}{f.read()}{RESET}")
-    commit_count = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD']).decode('utf-8').strip()
-    print(f"{GREEN}\nCurrent commit count: {BLUE}{commit_count}{RESET}")
-    print(f"{GREEN}YT-DLP version: {BLUE}{yt_dlp.version.__version__}{RESET}")
-    print(f"----------------------------------------")
     print(f"{GREEN}Logged in as {RESET}{BLUE}{bot.user.name}")
     print(f"{GREEN}Bot ID: {RESET}{BLUE}{bot.user.id}")
     print(f"{GREEN}Bot Invite URL: {RESET}{BLUE}{discord.utils.oauth_url(bot.user.id)}{RESET}")
@@ -170,7 +181,6 @@ async def on_ready():
     config = load_config()
     auto_update = config.get('AUTO_UPDATE', True)
     status_color = GREEN if auto_update else RED
-    prefix = config_vars['PREFIX']
     disabled_msg = f'Disabled. To update your instance - use {prefix}update'
     update_msg = f"{GREEN}Auto update: {BLUE if auto_update else RED}{'Enabled' if auto_update else disabled_msg}{RESET}"
     print(update_msg)
@@ -185,11 +195,15 @@ async def on_ready():
         music_bot = MusicBot  # Store the class, not an instance
         # Initialize the bot for setup purposes (shared resources)
         setup_instance = MusicBot.get_instance('setup')
+        # Ensure the bot_loop is set to the current event loop
+        setup_instance.bot_loop = asyncio.get_event_loop()
         await setup_instance.setup(bot)
         
         # Set the bot reference for all existing instances
         for guild_id, instance in MusicBot._instances.items():
             instance.bot = bot
+            # Ensure each instance has the same event loop
+            instance.bot_loop = setup_instance.bot_loop
 
 bot.remove_command('help')
 # Start the bot with the Discord token from environment variables
