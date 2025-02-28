@@ -21,6 +21,7 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from pathlib import Path
 from pytz import timezone
+from urllib.parse import urlparse
 from scripts.constants import RED, GREEN, BLUE, RESET, YELLOW
 from scripts.activity import update_activity
 from scripts.after_playing_coro import AfterPlayingHandler
@@ -607,7 +608,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             self._last_progress = -1
             if not skip_url_check:
                 if is_playlist_url(query):
-                    ctx = ctx or status_msg.channel if status_msg else None
+                    ctx = (ctx or status_msg.channel) if status_msg else None
                     await self._handle_playlist(query, ctx, status_msg)
                     return None
                 if 'open.spotify.com/' in query:
@@ -813,8 +814,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 if is_live:
                                     query = f"https://www.youtube.com/live/{video_id}"
                             except Exception as e:
-                                print(f"Error checking livestream status: {str(e)}")
-                    
+                                print(f"Error checking livestream status: {e}")
+                                # Don't assume it's not live if we can't check, continue with normal download
+                                is_live = False
                     # Handle YouTube Mix playlists
                     is_youtube_mix = 'start_radio=1' in query or 'list=RD' in query
                     if is_youtube_mix:
@@ -985,16 +987,28 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         # Handle search results that return a playlist
                         if not info.get('entries'):
                             raise Exception("No results found for your search.\nPlease try again with another search term")
-                        info = info['entries'][0]
-                        file_path = os.path.join(self.downloads_dir, f"{info['id']}.{info.get('ext', 'opus')}")
+                        # Make sure we have a valid entry
+                        if len(info['entries']) > 0 and info['entries'][0]:
+                            info = info['entries'][0]
+                            file_path = os.path.join(self.downloads_dir, f"{info['id']}.{info.get('ext', 'opus')}")
+                        else:
+                            raise Exception("No valid results found for your search")
                     
                     elif info.get('_type') == 'playlist' and is_playlist_url(query):
                         # Handle actual playlist URLs
                         if not info.get('entries'):
                             raise Exception("Playlist is empty")
 
-                        ctx = ctx or status_msg.channel if status_msg else None
+                        ctx = (ctx or status_msg.channel) if status_msg else None
+                        
+                        # Check if entries list is not empty before accessing
+                        if not info['entries']:
+                            raise Exception("No videos found in the playlist")
+                            
                         first_video = info['entries'][0]
+                        if not first_video:
+                            raise Exception("First video in playlist is invalid")
+                            
                         video_thumbnail = first_video.get('thumbnail')
                         playlist_title = info.get('title', 'Unknown Playlist')
                         playlist_url = info.get('webpage_url', query)
@@ -1090,10 +1104,13 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 # Check for video unavailable message and add to blacklist
                 if ('Video unavailable' in error_msg and 'youtube' in query.lower()) or 'No video formats found' in error_msg:
                     video_id = None
-                    if 'youtube.com/watch' in query:
-                        video_id = query.split('watch?v=')[1].split('&')[0]
-                    elif 'youtu.be/' in query:
-                        video_id = query.split('youtu.be/')[1].split('?')[0]
+                    try:
+                        if 'youtube.com/watch' in query:
+                            video_id = query.split('watch?v=')[1].split('&')[0] if 'watch?v=' in query else None
+                        elif 'youtu.be/' in query:
+                            video_id = query.split('youtu.be/')[1].split('?')[0] if 'youtu.be/' in query else None
+                    except Exception as e:
+                        print(f"Error extracting video ID for blacklisting: {e}")
                         
                     if video_id:
                         print(f"{RED}Video ID {video_id} is unavailable, blacklisting...{RESET}")
