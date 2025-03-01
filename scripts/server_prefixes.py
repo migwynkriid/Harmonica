@@ -8,6 +8,41 @@ SERVER_PREFIXES_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
 # Lock for thread-safe file operations
 _file_lock = asyncio.Lock()
 
+def init_server_prefixes_sync():
+    """
+    Initialize the server prefixes file if it doesn't exist.
+    This is a synchronous version to be called during bot startup.
+    
+    Returns:
+        dict: A dictionary mapping guild IDs to their custom prefixes
+    """
+    if not os.path.exists(SERVER_PREFIXES_FILE):
+        # Create empty file if it doesn't exist
+        with open(SERVER_PREFIXES_FILE, 'w') as f:
+            json.dump({}, f, indent=4)
+        print(f"Created new server_prefixes.json file at {SERVER_PREFIXES_FILE}")
+        return {}
+    
+    try:
+        with open(SERVER_PREFIXES_FILE, 'r') as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        # If the file is corrupted, create a new empty one
+        with open(SERVER_PREFIXES_FILE, 'w') as f:
+            json.dump({}, f, indent=4)
+        print(f"Recreated server_prefixes.json due to JSON decode error")
+        return {}
+
+async def init_server_prefixes():
+    """
+    Initialize the server prefixes file if it doesn't exist.
+    This should be called during bot startup to ensure the file exists.
+    
+    Returns:
+        dict: A dictionary mapping guild IDs to their custom prefixes
+    """
+    return await load_server_prefixes()
+
 async def load_server_prefixes():
     """
     Load server prefixes from the JSON file.
@@ -19,6 +54,7 @@ async def load_server_prefixes():
         if not os.path.exists(SERVER_PREFIXES_FILE):
             # Create empty file if it doesn't exist
             await save_server_prefixes({})
+            print(f"Created new server_prefixes.json file at {SERVER_PREFIXES_FILE}")
             return {}
         
         try:
@@ -27,6 +63,7 @@ async def load_server_prefixes():
         except json.JSONDecodeError:
             # If the file is corrupted, create a new empty one
             await save_server_prefixes({})
+            print(f"Recreated server_prefixes.json due to JSON decode error")
             return {}
 
 async def save_server_prefixes(prefixes):
@@ -55,20 +92,27 @@ async def get_prefix(bot, message):
     Returns:
         str: The prefix for the guild
     """
+    # Import config here to avoid circular imports
+    from scripts.config import config_vars
+    default_prefix = config_vars.get('PREFIX', '!')
+    
     # If DM channel, use default prefix
     if message.guild is None:
-        from scripts.config import config_vars
-        return config_vars.get('PREFIX', '!')
+        return default_prefix
     
-    prefixes = await load_server_prefixes()
-    guild_id = str(message.guild.id)  # Convert to string for JSON compatibility
-    
-    # Return custom prefix if it exists, otherwise return default prefix
-    if guild_id in prefixes:
-        return prefixes[guild_id]
-    else:
-        from scripts.config import config_vars
-        return config_vars.get('PREFIX', '!')
+    try:
+        prefixes = await load_server_prefixes()
+        guild_id = str(message.guild.id)  # Convert to string for JSON compatibility
+        
+        # Return custom prefix if it exists, otherwise return default prefix
+        if guild_id in prefixes:
+            return prefixes[guild_id]
+        else:
+            return default_prefix
+    except Exception as e:
+        # If any error occurs, fallback to default prefix
+        print(f"Error loading server prefixes: {e}. Using default prefix.")
+        return default_prefix
 
 async def set_prefix(guild_id, new_prefix):
     """

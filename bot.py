@@ -52,7 +52,7 @@ from scripts.activity import update_activity
 from scripts.spotify import get_spotify_album_details, get_spotify_track_details, get_spotify_playlist_details
 from scripts.priority import set_high_priority
 from scripts.paths import get_downloads_dir, get_root_dir, get_absolute_path
-from scripts.server_prefixes import get_prefix
+from scripts.server_prefixes import get_prefix, init_server_prefixes, init_server_prefixes_sync
 import signal
 
 # Load environment variables
@@ -83,6 +83,9 @@ OWNER_ID = OWNER_ID  # Redefine for clarity
 # Create downloads directory if it doesn't exist
 if not DOWNLOADS_DIR.exists():
     DOWNLOADS_DIR.mkdir()
+
+# Initialize server prefixes file synchronously before bot startup
+init_server_prefixes_sync()
 
 # Set up Discord intents (permissions)
 intents = discord.Intents.default()
@@ -161,7 +164,6 @@ async def on_ready():
     MusicBot._credentials_shown = True
     
     # Continue with the rest of initialization
-    from scripts.activity import update_activity
     await update_activity(bot)
     owner_name = f"{RED}Not found.\nOwner could not be fetched. Do you share a server with the bot?\nPlease check your config.json{RESET}"
     try:
