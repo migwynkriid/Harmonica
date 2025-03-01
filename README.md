@@ -170,7 +170,7 @@ A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, 
 ### Common Issues
 - **FFmpeg Issues**: 
   - Windows: Relaunch after first install
-  - macOS: Manual placement in root directory
+  - macOS: Automatic installation
   - Linux: Automatic installation
 
 - **YouTube Sign-In Error/403 Error**: Check/update cookies.txt
