@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Discord.py](https://img.shields.io/badge/Discord.py-2.0+-blue.svg)](https://discordpy.readthedocs.io/en/stable/)
 [![YT-DLP](https://img.shields.io/badge/YT--DLP-Latest-red.svg)](https://github.com/yt-dlp/yt-dlp)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Unlicense-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
 [![SpotiPy](https://img.shields.io/badge/SpotiPy-2.23.0-brightgreen.svg)](https://spotipy.readthedocs.io/)
 
