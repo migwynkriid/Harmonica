@@ -6,13 +6,37 @@ from scripts.messages import create_embed
 from scripts.config import config_vars
 
 class ClearCache(commands.Cog):
+    """
+    Command cog for clearing the bot's cache files.
+    
+    This cog provides the 'clearcache' command, which allows the bot owner
+    to clear various cache files used by the bot, such as blacklist, file cache,
+    and Spotify cache.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the ClearCache cog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         self.pending_confirmation = set()
 
     @commands.command(name='clearcache')
     async def clear_cache(self, ctx, action=None):
-        """Clear the bot's cache files. Owner only command."""
+        """
+        Clear the bot's cache files. Owner only command.
+        
+        This command clears various cache files used by the bot, including
+        blacklist, file cache, and Spotify cache. It requires confirmation
+        to prevent accidental cache clearing.
+        
+        Args:
+            ctx: The command context
+            action: Optional action parameter, 'confirm' to confirm cache clearing
+        """
         # Check if user is the owner
         if str(ctx.author.id) != str(config_vars.get('OWNER_ID')):
             await ctx.send(embed=create_embed(
@@ -79,4 +103,10 @@ class ClearCache(commands.Cog):
             ))
 
 async def setup(bot):
+    """
+    Setup function to add the ClearCache cog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(ClearCache(bot))

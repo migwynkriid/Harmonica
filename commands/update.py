@@ -15,20 +15,39 @@ with open('config.json', 'r') as f:
 OWNER_ID = int(config['OWNER_ID'])
 
 async def setup(bot):
+    """
+    Setup function to add the update command to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     bot.add_command(updateytdlp)
     return None
 
 @commands.command(name='update')
 @commands.is_owner()
 async def updateytdlp(ctx):
+    """
+    Update the bot by pulling from git and installing required packages.
+    
+    This command performs two main tasks:
+    1. Pulls the latest code from the git repository
+    2. Updates all packages listed in requirements.txt
+    
+    This command is restricted to the bot owner only.
+    
+    Args:
+        ctx: The command context
+    """
     if ctx.author.id != OWNER_ID:
         await ctx.send(embed=discord.Embed(title="Error", description="This command is only available to the bot owner.", color=0xe74c3c))
         return
-    """Update required packages and yt-dlp executable"""
+    
     try:
+        # Send initial status message
         status_msg = await ctx.send(embed=discord.Embed(title="Updating bot...", description="Installing required packages...", color=0x2ecc71))
         
-        # Get current commit hash and count
+        # Get current commit hash and count before update
         try:
             current_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
             current_count = subprocess.run(["git", "rev-list", "--count", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
@@ -36,7 +55,7 @@ async def updateytdlp(ctx):
             current_commit = "unknown"
             current_count = "?"
         
-        # Git pull from repository
+        # Git pull from repository to update code
         try:
             subprocess.run(["git", "pull", "https://github.com/migwynkriid/Harmonica"], check=True, capture_output=True, text=True)
             # Get new commit hash and count after pull
@@ -56,7 +75,7 @@ async def updateytdlp(ctx):
             packages_updated = False
             error_msg = e.stderr
         
-        # Create final status message
+        # Create final status message with update results
         description = ""
         if git_updated:
             if current_commit != new_commit:

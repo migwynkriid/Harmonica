@@ -12,7 +12,16 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 def create_token_file(filepath, token_prefix):
-    """Helper function to create token files if they don't exist"""
+    """
+    Helper function to create token files if they don't exist.
+    
+    Args:
+        filepath (str): Path to the token file
+        token_prefix (str): Prefix for the token in the file
+        
+    Returns:
+        bool: True if file exists or was created successfully, False otherwise
+    """
     if not os.path.exists(filepath):
         try:
             with open(filepath, 'w') as f:
@@ -23,7 +32,18 @@ def create_token_file(filepath, token_prefix):
     return True
 
 def clean_song_title(title):
-    """Remove text within brackets from song title"""
+    """
+    Remove text within brackets from song title.
+    
+    This function removes text within parentheses and square brackets
+    to improve lyrics search accuracy.
+    
+    Args:
+        title (str): The song title to clean
+        
+    Returns:
+        str: The cleaned song title
+    """
     import re
     # Remove text within parentheses () and square brackets []
     cleaned = re.sub(r'\([^)]*\)|\[[^\]]*\]', '', title)
@@ -31,7 +51,18 @@ def clean_song_title(title):
     return ' '.join(cleaned.split())
 
 def clean_lyrics(lyrics):
-    """Remove text within brackets and unwanted lines from lyrics"""
+    """
+    Remove text within brackets and unwanted lines from lyrics.
+    
+    This function cleans up lyrics by removing annotations, contributor
+    information, and other non-lyric text.
+    
+    Args:
+        lyrics (str): The raw lyrics text
+        
+    Returns:
+        str: The cleaned lyrics
+    """
     import re
     # Remove text within parentheses () and square brackets []
     cleaned = re.sub(r'\([^)]*\)|\[[^\]]*\]', '', lyrics)
@@ -49,7 +80,16 @@ def clean_lyrics(lyrics):
 def split_into_chunks(text, max_size):
     """
     Split text into chunks without breaking words.
-    Each chunk will be at most max_size characters.
+    
+    This function splits a large text into smaller chunks that fit within
+    Discord's message size limits, while preserving word boundaries.
+    
+    Args:
+        text (str): The text to split
+        max_size (int): Maximum size of each chunk in characters
+        
+    Returns:
+        list: List of text chunks
     """
     # Split text into lines first to preserve line breaks
     lines = text.split('\n')
@@ -102,7 +142,15 @@ def split_into_chunks(text, max_size):
     return chunks
 
 async def setup(bot):
-    """Setup function that runs when the extension is loaded"""
+    """
+    Setup function that runs when the extension is loaded.
+    
+    This function adds the lyrics command to the bot and ensures
+    the necessary configuration files exist.
+    
+    Args:
+        bot: The bot instance
+    """
     bot.add_command(lyrics)
     
     # Create .geniuslyrics file if it doesn't exist
@@ -112,7 +160,19 @@ async def setup(bot):
     return None
 
 async def send_lyrics_embed(ctx, title, artist, lyrics, source=""):
-    """Helper function to send lyrics in an embed"""
+    """
+    Helper function to send lyrics in an embed.
+    
+    This function formats and sends the lyrics as a Discord embed,
+    splitting them into chunks if necessary to fit within Discord's limits.
+    
+    Args:
+        ctx: The command context
+        title (str): The song title
+        artist (str): The artist name
+        lyrics (str): The song lyrics
+        source (str): The source of the lyrics (e.g., "Genius", "AZLyrics")
+    """
     # Clean the lyrics before displaying
     cleaned_lyrics = clean_lyrics(lyrics)
     
@@ -138,9 +198,31 @@ async def send_lyrics_embed(ctx, title, artist, lyrics, source=""):
 
 @commands.command(name='lyrics')
 async def lyrics(ctx):
-    """Get lyrics for the current song"""
+    """
+    Get lyrics for the currently playing song.
+    
+    This command attempts to find and display lyrics for the currently playing song.
+    It first tries to use the Genius API if a token is available, then falls back
+    to AZLyrics if Genius fails or no token is provided.
+    
+    Args:
+        ctx: The command context
+    """
     # Access the music_bot from the global scope
-    from bot import music_bot
+    from bot import MusicBot
+    music_bot = MusicBot.get_instance(str(ctx.guild.id))
+
+    # If MusicBot doesn't have a voice client but Discord does, try to sync them
+    if not music_bot.voice_client and ctx.guild.voice_client:
+        music_bot.voice_client = ctx.guild.voice_client
+        
+        # Try to find the correct instance if this one doesn't have current_song
+        if not music_bot.current_song:
+            for instance_id, instance in MusicBot._instances.items():
+                if instance.current_song:
+                    music_bot.current_song = instance.current_song
+                    music_bot.is_playing = True
+                    break
     
     if not music_bot:
         await ctx.send(embed=create_embed("Error", "Music bot is not initialized yet. Please wait a moment and try again.", color=0xe74c3c, ctx=ctx))

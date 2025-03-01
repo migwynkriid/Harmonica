@@ -17,8 +17,30 @@ from scripts.constants import RED, GREEN, RESET
 from scripts.logging import setup_logging, get_ytdlp_logger, CachedVideoFound
 
 class SpotifyHandler:
+    """
+    Handler for processing and managing Spotify content.
+    
+    This class provides methods for extracting track information from Spotify
+    URLs (tracks, albums, and playlists) and downloading the corresponding
+    audio content via YouTube. It also handles caching of Spotify tracks to
+    avoid redundant downloads.
+    """
+    
     async def handle_spotify_url(self, url, ctx, status_msg=None):
-        """Handle Spotify URLs by extracting track info and downloading via YouTube"""
+        """
+        Handle Spotify URLs by extracting track info and downloading via YouTube.
+        
+        This method parses a Spotify URL to determine its type (track, album, or playlist)
+        and delegates to the appropriate handler method.
+        
+        Args:
+            url: The Spotify URL to process
+            ctx: Discord command context
+            status_msg: Optional message to update with progress
+            
+        Returns:
+            dict or None: Song information if successful, None otherwise
+        """
         try:
             if not self.sp:
                 raise ValueError("Spotify functionality is not available. Please check your Spotify credentials in .spotifyenv")
@@ -44,7 +66,21 @@ class SpotifyHandler:
             return None
 
     async def handle_spotify_track(self, track_id, ctx, status_msg=None):
-        """Handle a single Spotify track"""
+        """
+        Handle a single Spotify track.
+        
+        This method first checks if the track is already in the cache.
+        If found, it uses the cached file; otherwise, it searches for the track
+        on YouTube, downloads it, and adds it to both the cache and the queue.
+        
+        Args:
+            track_id: The Spotify track ID
+            ctx: Discord command context
+            status_msg: Optional message to update with progress
+            
+        Returns:
+            dict or None: Song information if successful, None otherwise
+        """
         try:
             # Check cache first
             cached_info = playlist_cache.get_cached_spotify_track(track_id)
@@ -184,8 +220,6 @@ class SpotifyHandler:
                     self.queued_messages[song_info['url']] = queue_msg
             
             return song_info
-            
-            return None
 
         except Exception as e:
             print(f"Error handling Spotify track: {str(e)}")
@@ -199,7 +233,20 @@ class SpotifyHandler:
             raise
 
     async def handle_spotify_album(self, album_id, ctx, status_msg=None):
-        """Handle a Spotify album"""
+        """
+        Handle a Spotify album.
+        
+        This method extracts all tracks from a Spotify album and processes them
+        in the background, allowing the first track to start playing immediately.
+        
+        Args:
+            album_id: The Spotify album ID
+            ctx: Discord command context
+            status_msg: Optional message to update with progress
+            
+        Returns:
+            dict or None: Information about the first track if successful, None otherwise
+        """
         try:
             album = self.sp.album(album_id)
             if not album:
@@ -213,7 +260,8 @@ class SpotifyHandler:
                     thumbnail_url=album['images'][0]['url'] if album['images'] else None,
                     ctx=ctx
                 ))
-                await status_msg.delete(delay=5)
+                # Don't delete the message here, let it be handled later
+                # await status_msg.delete(delay=5)
 
             tracks = []
             results = self.sp.album_tracks(album_id)
@@ -241,11 +289,11 @@ class SpotifyHandler:
                         try:
                             await status_msg.delete()
                         except discord.NotFound:
-                            pass
+                            print(f"Note: Processing message already deleted")
                         except Exception as e:
                             print(f"Note: Could not delete processing message: {e}")
                     
-                    song_info = {
+                    first_song = {
                         'title': cached_info.get('title', 'Unknown'),
                         'url': cached_info.get('url', f'https://open.spotify.com/track/{track_id}'),
                         'file_path': cached_info['file_path'],
@@ -255,35 +303,28 @@ class SpotifyHandler:
                         'duration': await get_audio_duration(cached_info['file_path']),
                         'ctx': ctx
                     }
-                    self.queue.append(song_info)
+                    self.queue.append(first_song)
                 else:
                     # Download if not in cache
                     search_query = f"{first_track['name']} {artists}"
-                    song_info = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
-                    if song_info:
-                        # Cache the downloaded song with Spotify track ID
+                    first_song = await self.download_song(search_query, status_msg=None, ctx=ctx)
+                    if first_song:
+                        # Cache the first track
                         playlist_cache.add_spotify_track(
                             track_id,
-                            song_info['file_path'],
-                            title=song_info['title'],
-                            thumbnail=song_info.get('thumbnail'),
+                            first_song['file_path'],
+                            title=first_song['title'],
+                            thumbnail=first_song.get('thumbnail'),
                             artist=artists
                         )
-                        print(f"{GREEN}Added Spotify track to cache: {track_id} - {song_info.get('title', 'Unknown')}{RESET}")
+                        print(f"{GREEN}Added Spotify track to cache: {track_id} - {first_song.get('title', 'Unknown')}{RESET}")
                         
-                        # Create a proper queue entry for the first song
-                        queue_entry = {
-                            'title': song_info.get('title', 'Unknown'),
-                            'url': song_info.get('url', f'https://open.spotify.com/track/{track_id}'),
-                            'file_path': song_info['file_path'],
-                            'thumbnail': song_info.get('thumbnail'),
-                            'duration': await get_audio_duration(song_info['file_path']),
-                            'is_stream': song_info.get('is_stream', False),
-                            'is_from_playlist': True,
-                            'requester': ctx.author,
-                            'ctx': ctx
-                        }
-                        self.queue.append(queue_entry)
+                        first_song['is_from_playlist'] = True
+                        first_song['requester'] = ctx.author
+                        first_song['duration'] = await get_audio_duration(first_song['file_path'])
+                        first_song['ctx'] = ctx
+                        
+                        self.queue.append(first_song)
                 
                 if not self.is_playing and not self.voice_client.is_playing():
                     await process_queue(self)
@@ -296,14 +337,27 @@ class SpotifyHandler:
                     f"Album: {album['name']}"
                 ))
 
-            return song_info if tracks else None
+            return first_song if tracks else None
 
         except Exception as e:
             print(f"Error handling Spotify album: {str(e)}")
             raise
 
     async def handle_spotify_playlist(self, playlist_id, ctx, status_msg=None):
-        """Handle a Spotify playlist"""
+        """
+        Handle a Spotify playlist.
+        
+        This method extracts all tracks from a Spotify playlist and processes them
+        in the background, allowing the first track to start playing immediately.
+        
+        Args:
+            playlist_id: The Spotify playlist ID
+            ctx: Discord command context
+            status_msg: Optional message to update with progress
+            
+        Returns:
+            dict or None: Information about the first track if successful, None otherwise
+        """
         try:
             playlist = self.sp.playlist(playlist_id)
             if not playlist:
@@ -363,7 +417,7 @@ class SpotifyHandler:
                         try:
                             await status_msg.delete()
                         except discord.NotFound:
-                            pass
+                            print(f"Note: Processing message already deleted")
                         except Exception as e:
                             print(f"Note: Could not delete processing message: {e}")
                     
@@ -418,7 +472,19 @@ class SpotifyHandler:
             raise
 
     async def _process_spotify_tracks(self, tracks, ctx, status_msg, source_name):
-        """Process remaining Spotify tracks in the background"""
+        """
+        Process remaining Spotify tracks in the background.
+        
+        This method downloads each track in the list and adds it to the queue.
+        It runs asynchronously to allow the first track to start playing immediately
+        while the rest are processed in the background.
+        
+        Args:
+            tracks: List of Spotify track objects
+            ctx: Discord command context
+            status_msg: Optional message to update with progress
+            source_name: Name of the source (album or playlist)
+        """
         try:
             total_tracks = len(tracks)
             processed = 0

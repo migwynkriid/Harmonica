@@ -52,45 +52,52 @@ from scripts.activity import update_activity
 from scripts.spotify import get_spotify_album_details, get_spotify_track_details, get_spotify_playlist_details
 from scripts.priority import set_high_priority
 from scripts.paths import get_downloads_dir, get_root_dir, get_absolute_path
+import signal
 
 # Load environment variables
 load_dotenv()
 
-# Load configuration
+# Load configuration from config.json
 config_vars = load_config()
-OWNER_ID = config_vars['OWNER_ID']
-PREFIX = config_vars['PREFIX']
-LOG_LEVEL = config_vars['LOG_LEVEL']
-INACTIVITY_TIMEOUT = config_vars['INACTIVITY_TIMEOUT']
-AUTO_LEAVE_EMPTY = config_vars['AUTO_LEAVE_EMPTY']
-DEFAULT_VOLUME = config_vars['DEFAULT_VOLUME']
-AUTO_CLEAR_DOWNLOADS = config_vars['AUTO_CLEAR_DOWNLOADS']
-SHOW_PROGRESS_BAR = config_vars['SHOW_PROGRESS_BAR']
+OWNER_ID = config_vars['OWNER_ID']  # Discord user ID of the bot owner
+PREFIX = config_vars['PREFIX']  # Command prefix (e.g., !)
+LOG_LEVEL = config_vars['LOG_LEVEL']  # Logging verbosity level
+INACTIVITY_TIMEOUT = config_vars['INACTIVITY_TIMEOUT']  # Time in seconds before bot leaves due to inactivity
+AUTO_LEAVE_EMPTY = config_vars['AUTO_LEAVE_EMPTY']  # Whether to leave voice channel when empty
+DEFAULT_VOLUME = config_vars['DEFAULT_VOLUME']  # Default playback volume
+AUTO_CLEAR_DOWNLOADS = config_vars['AUTO_CLEAR_DOWNLOADS']  # Whether to clear downloads folder automatically
+SHOW_PROGRESS_BAR = config_vars['SHOW_PROGRESS_BAR']  # Whether to show download progress bar
 # Set up logging
 setup_logging(LOG_LEVEL)
 
-YTDLP_PATH = get_ytdlp_path()
-FFMPEG_PATH = get_ffmpeg_path()
+# Get paths to external tools
+YTDLP_PATH = get_ytdlp_path()  # Path to yt-dlp executable
+FFMPEG_PATH = get_ffmpeg_path()  # Path to ffmpeg executable
 
-ROOT_DIR = Path(get_root_dir())
-DOWNLOADS_DIR = ROOT_DIR / get_downloads_dir()
-OWNER_ID = OWNER_ID
+# Set up directories
+ROOT_DIR = Path(get_root_dir())  # Root directory of the bot
+DOWNLOADS_DIR = ROOT_DIR / get_downloads_dir()  # Directory for downloaded audio files
+OWNER_ID = OWNER_ID  # Redefine for clarity
 
+# Create downloads directory if it doesn't exist
 if not DOWNLOADS_DIR.exists():
     DOWNLOADS_DIR.mkdir()
 
+# Set up Discord intents (permissions)
 intents = discord.Intents.default()
-intents.message_content = True
-intents.voice_states = True
+intents.message_content = True  # Allow bot to read message content
+intents.voice_states = True  # Allow bot to track voice state changes
 
+# Initialize the bot with configuration
 bot = commands.Bot(
     command_prefix=PREFIX,
     intents=intents,
-    help_command=None,
-    case_insensitive=True,
-    owner_id=int(OWNER_ID)
+    help_command=None,  # Disable default help command
+    case_insensitive=True,  # Make commands case-insensitive
+    owner_id=int(OWNER_ID)  # Set bot owner
 )
 
+# Initialize command logger
 command_logger = CommandLogger()
 
 @bot.event
@@ -99,7 +106,8 @@ async def on_command(ctx):
     command_name = ctx.command.name if ctx.command else "unknown"
     full_command = ctx.message.content
     username = str(ctx.author)
-    command_logger.log_command(username, full_command)
+    server_name = ctx.guild.name if ctx.guild else "DM"
+    command_logger.log_command(username, full_command, server_name)
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -121,18 +129,37 @@ async def on_command_error(ctx, error):
 
 @bot.event
 async def on_voice_state_update(member, before, after):
-    """Event handler for voice state updates"""
+    """Event handler for voice state updates - tracks when users join/leave voice channels"""
     global music_bot
-    await handle_voice_state_update(music_bot, member, before, after)
+    # Get the server-specific instance of MusicBot
+    if member.guild and member.guild.id:
+        server_music_bot = MusicBot.get_instance(str(member.guild.id))
+        await handle_voice_state_update(server_music_bot, member, before, after)
 
 music_bot = None
 @bot.event
 async def on_ready():
-    """Called when the bot is ready"""
+    """Called when the bot is ready and connected to Discord"""
     global music_bot 
     clear_downloads_folder()
     set_high_priority()
     prefix = config_vars.get('PREFIX', '!')  # Get prefix from config
+    
+    # Setup a MusicBot instance for initialization
+    setup_bot = MusicBot.get_instance('setup')
+    
+    # Display the ASCII art logo first
+    with open('scripts/consoleprint.txt', 'r') as f: print(f"{BLUE}{f.read()}{RESET}")
+    commit_count = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD']).decode('utf-8').strip()
+    print(f"{GREEN}\nCurrent commit count: {BLUE}{commit_count}{RESET}")
+    print(f"{GREEN}YT-DLP version: {BLUE}{yt_dlp.version.__version__}{RESET}")
+    print(f"----------------------------------------")
+    
+    # Now show the credentials
+    setup_bot.show_credentials()
+    MusicBot._credentials_shown = True
+    
+    # Continue with the rest of initialization
     from scripts.activity import update_activity
     await update_activity(bot)
     owner_name = f"{RED}Not found.\nOwner could not be fetched. Do you share a server with the bot?\nPlease check your config.json{RESET}"
@@ -144,11 +171,6 @@ async def on_ready():
     except Exception as e:
         owner_name = f"{RED}Error contacting owner: {str(e)}{RESET}"
 
-    with open('scripts/consoleprint.txt', 'r') as f: print(f"{BLUE}{f.read()}{RESET}")
-    commit_count = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD']).decode('utf-8').strip()
-    print(f"{GREEN}\nCurrent commit count: {BLUE}{commit_count}{RESET}")
-    print(f"{GREEN}YT-DLP version: {BLUE}{yt_dlp.version.__version__}{RESET}")
-    print(f"----------------------------------------")
     print(f"{GREEN}Logged in as {RESET}{BLUE}{bot.user.name}")
     print(f"{GREEN}Bot ID: {RESET}{BLUE}{bot.user.id}")
     print(f"{GREEN}Bot Invite URL: {RESET}{BLUE}{discord.utils.oauth_url(bot.user.id)}{RESET}")
@@ -160,7 +182,6 @@ async def on_ready():
     config = load_config()
     auto_update = config.get('AUTO_UPDATE', True)
     status_color = GREEN if auto_update else RED
-    prefix = config_vars['PREFIX']
     disabled_msg = f'Disabled. To update your instance - use {prefix}update'
     update_msg = f"{GREEN}Auto update: {BLUE if auto_update else RED}{'Enabled' if auto_update else disabled_msg}{RESET}"
     print(update_msg)
@@ -172,8 +193,32 @@ async def on_ready():
     await load_commands(bot)
     update_checker.start(bot) 
     if not music_bot:
-        music_bot = MusicBot()
-        await music_bot.setup(bot)
+        music_bot = MusicBot  # Store the class, not an instance
+        # Initialize the bot for setup purposes (shared resources)
+        setup_instance = MusicBot.get_instance('setup')
+        # Ensure the bot_loop is set to the current event loop
+        setup_instance.bot_loop = asyncio.get_event_loop()
+        await setup_instance.setup(bot)
+        
+        # Set the bot reference for all existing instances
+        for guild_id, instance in MusicBot._instances.items():
+            instance.bot = bot
+            # Ensure each instance has the same event loop
+            instance.bot_loop = setup_instance.bot_loop
 
 bot.remove_command('help')
+
+# Add signal handlers for immediate shutdown
+def signal_handler(sig, frame):
+    # Clear the current line to remove the ^C character
+    print('\r', end='')
+    print(f"{RED}Shutting down...{RESET}")
+    # Use os._exit which exits immediately without cleanup
+    os._exit(0)
+
+# Register signal handlers
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
+# Start the bot with the Discord token from environment variables
 bot.run(os.getenv('DISCORD_TOKEN'))

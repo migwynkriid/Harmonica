@@ -1,16 +1,16 @@
-discord.py[voice]
+discord.py[voice]  # Discord API wrapper with voice support
 #PyNaCl>=1.5.0
-PyNaCl
+PyNaCl  # Required for voice functionality
 #python-dotenv>=1.0.0
-python-dotenv
+python-dotenv  # For loading environment variables from .env file
 #requests>=2.31.0
-requests
+requests  # HTTP library for API requests
 #pytz>=2024.2
-pytz
+pytz  # Timezone support for logging and timestamps
 #spotipy==2.23.0
-spotipy
-lyricsgenius
-azapi
-yt-dlp
-psutil
-audioop-lts; platform_system=="darwin"
+spotipy  # Spotify API client
+lyricsgenius  # API client for Genius lyrics service
+azapi  # Alternative lyrics API
+yt-dlp  # YouTube downloader, core functionality
+psutil  # Process and system utilities for monitoring
+audioop-lts; platform_system=="darwin"  # Audio operations library for macOS

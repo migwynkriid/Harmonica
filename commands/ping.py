@@ -6,12 +6,36 @@ import asyncio
 from scripts.messages import create_embed
 
 class PingCog(commands.Cog):
+    """
+    Command cog for checking bot latency.
+    
+    This cog handles the 'ping' command, which measures and displays
+    various latency metrics to assess the bot's connection quality.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the PingCog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         self._last_member = None
 
     @commands.command(name='ping', help='Show bot latency and connection info')
     async def ping(self, ctx):
+        """
+        Show bot latency and connection information.
+        
+        This command measures and displays three types of latency:
+        1. WebSocket Latency: Discord WebSocket protocol latency
+        2. API Latency: Time taken for API calls to complete
+        3. Message Latency: Round-trip time for sending and editing a message
+        
+        Args:
+            ctx: The command context
+        """
         # Start timing
         start_time = time.perf_counter()
 
@@ -52,4 +76,10 @@ class PingCog(commands.Cog):
         await msg.edit(embed=result_embed)
 
 async def setup(bot):
+    """
+    Setup function to add the PingCog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(PingCog(bot))

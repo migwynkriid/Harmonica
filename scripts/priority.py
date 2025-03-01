@@ -4,7 +4,20 @@ import psutil
 import logging
 
 def set_high_priority():
-    """Set high priority for the current process on Windows only."""
+    """
+    Set high priority for the current process on Windows only.
+    
+    This function attempts to elevate the process priority of the bot
+    to improve performance, particularly for audio processing tasks.
+    It only works on Windows systems and sets the process to HIGH_PRIORITY_CLASS,
+    which is the highest priority that can be set without administrator privileges.
+    
+    The function logs the priority change if successful, or logs an error
+    if the operation fails.
+    
+    Returns:
+        bool: True if priority was successfully changed, False otherwise
+    """
     # Skip if not Windows
     if not sys.platform == 'win32':
         logging.info("Priority setting skipped - Windows only feature")

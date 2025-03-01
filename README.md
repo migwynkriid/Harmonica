@@ -5,10 +5,22 @@
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Discord.py](https://img.shields.io/badge/Discord.py-2.0+-blue.svg)](https://discordpy.readthedocs.io/en/stable/)
 [![YT-DLP](https://img.shields.io/badge/YT--DLP-Latest-red.svg)](https://github.com/yt-dlp/yt-dlp)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Unlicense-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
 [![SpotiPy](https://img.shields.io/badge/SpotiPy-2.23.0-brightgreen.svg)](https://spotipy.readthedocs.io/)
 
+</div>
+
+<div align="center">
+  
+<div style="border: 2px solid #5865F2; border-radius: 10px; padding: 20px; margin: 20px 0; background-color: #f6f8fa;">
+
+# ⚙️ Public Harmonica Instance for your server
+
+<a href="https://discord.com/oauth2/authorize?client_id=1341757638433833021&scope=bot+applications.commands">
+  <img src="https://img.shields.io/badge/Invite%20Harmonica-Add%20to%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Invite Harmonica" width="300">
+</a>
+</div>
 </div>
 
 A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, direct links, and livestreams in your Discord voice channels.
@@ -19,6 +31,7 @@ A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, 
 
 ### 🎵 Music Support
 - Multi-platform support (YouTube, Spotify, direct links)
+- Multi-server support
 - High-quality audio streaming
 - Livestream support
 - Playlist support
@@ -157,16 +170,17 @@ A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, 
 ### Common Issues
 - **FFmpeg Issues**: 
   - Windows: Relaunch after first install
-  - macOS: Manual placement in root directory
+  - macOS: Automatic installation
   - Linux: Automatic installation
 
 - **YouTube Sign-In Error/403 Error**: Check/update cookies.txt
-
-- **Known Limitations**:
-  - ❌ Multiple server support (WIP)
 
 ## 📋 System Requirements
 - Python 3.8+
 - FFmpeg
 - Stable internet connection
 - Discord Bot Token
+
+## License notes:
+
+This project is licensed under the Unlicense. Giving the user complete freedom to use, modify, and distribute the software. This repository primarily uses yt-dlp, which is licensed under GPL-2.0. This repository does not bundle or modify yt-dlp—it only installs it if necessary. For more information, visit: https://github.com/yt-dlp/yt-dlp.

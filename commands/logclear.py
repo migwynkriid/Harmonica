@@ -8,13 +8,28 @@ with open('config.json', 'r') as f:
 OWNER_ID = int(config['OWNER_ID'])
 
 async def setup(bot):
+    """
+    Setup function to add the logclear command to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     bot.add_command(logclear)
     return None
 
 @commands.command(name='logclear')
 @commands.is_owner()
 async def logclear(ctx):
-    """Clear the log file - Owner only command"""
+    """
+    Clear the log file.
+    
+    This command clears the contents of the main log file by overwriting it
+    with a minimal placeholder. This helps manage log file size and cleanup.
+    This command is restricted to the bot owner only.
+    
+    Args:
+        ctx: The command context
+    """
     if ctx.author.id != OWNER_ID:
         await ctx.send(embed=discord.Embed(title="Error", description="This command is only available to the bot owner.", color=0xe74c3c))
         return

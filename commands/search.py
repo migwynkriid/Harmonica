@@ -9,13 +9,37 @@ from scripts.voice import join_voice_channel
 from scripts.process_queue import process_queue
 
 class SearchCog(commands.Cog):
+    """
+    Command cog for searching and selecting YouTube videos.
+    
+    This cog handles the 'search' command, which allows users to search
+    for songs on YouTube and select from a list of results to play.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the SearchCog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         self._last_member = None
         self.config = load_config()
 
     async def search_youtube(self, query):
-        """Search YouTube for videos using yt-dlp"""
+        """
+        Search YouTube for videos using yt-dlp.
+        
+        This method uses yt-dlp to search YouTube for videos matching
+        the given query and returns the top 5 results.
+        
+        Args:
+            query (str): The search query
+            
+        Returns:
+            list: List of video entries from YouTube search results
+        """
         try:
             search_opts = {
                 **BASE_YTDL_OPTIONS,
@@ -36,9 +60,22 @@ class SearchCog(commands.Cog):
 
     @commands.command(name='search')
     async def search(self, ctx, *, query: str = None):
-        """Search for a song on YouTube and select from results"""
-        from bot import music_bot
+        """
+        Search for a song on YouTube and select from results.
+        
+        This command searches YouTube for videos matching the query
+        and presents the user with a list of results to choose from
+        using reaction emojis. Once selected, the video is downloaded
+        and added to the queue.
+        
+        Args:
+            ctx: The command context
+            query (str): The search query
+        """
+        from bot import MusicBot
+        music_bot = MusicBot.get_instance(ctx.guild.id)
 
+        # Check if a query was provided
         if not query:
             prefix = self.config['PREFIX']
             usage_embed = create_embed(
@@ -63,6 +100,7 @@ class SearchCog(commands.Cog):
         embed = discord.Embed(title="Search Results", color=discord.Color.blue())
         number_emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
         
+        # Add each search result to the embed
         for i, entry in enumerate(results):
             title = entry.get('title', 'N/A')
             embed.add_field(
@@ -74,6 +112,7 @@ class SearchCog(commands.Cog):
         embed.set_footer(text="React with 1️⃣-5️⃣ to select a song")
         message = await ctx.send(embed=embed)
 
+        # Define check function for reaction validation
         def check(reaction, user):
             return (
                 user == ctx.author 
@@ -115,6 +154,7 @@ class SearchCog(commands.Cog):
             except (discord.NotFound, discord.Forbidden, discord.HTTPException):
                 pass  # Silently handle any Discord errors
             
+            # Get the selected video based on the reaction
             selected_index = number_emojis.index(str(reaction.emoji))
             selected_video = results[selected_index]
             video_url = f"https://www.youtube.com/watch?v={selected_video['id']}"
@@ -140,10 +180,11 @@ class SearchCog(commands.Cog):
             elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
                 await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
 
+            # Update the music bot's voice client reference
             music_bot.voice_client = ctx.guild.voice_client
             music_bot.is_playing = False  # Reset playing state when reconnecting
 
-            # Create processing message
+            # Create processing message to show while downloading
             processing_embed = create_embed(
                 "Processing",
                 f"Searching for {selected_video['title']}",
@@ -175,8 +216,10 @@ class SearchCog(commands.Cog):
 
             # These operations don't need the queue lock
             if should_play:
+                # Start playing if nothing is currently playing
                 await process_queue(music_bot)
             else:
+                # Otherwise, add to queue and show queue position
                 queue_pos = len(music_bot.queue)
                 queue_embed = create_embed(
                     "Added to Queue 🎵",
@@ -189,10 +232,17 @@ class SearchCog(commands.Cog):
                 music_bot.queued_messages[result['url']] = queue_msg
                 
         except asyncio.TimeoutError:
+            # Handle timeout if user doesn't select a result
             await message.clear_reactions()
             await message.edit(content="Search timed out!", embed=None)
         except Exception as e:
             await ctx.send(embed=create_embed("Error", f"An error occurred: {str(e)}", color=0xe74c3c, ctx=ctx))
 
 async def setup(bot):
+    """
+    Setup function to add the SearchCog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(SearchCog(bot))

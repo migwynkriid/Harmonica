@@ -7,7 +7,23 @@ from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 
 class StatsCog(commands.Cog):
+    """
+    Command cog for displaying bot statistics.
+    
+    This cog provides the 'stats' command, which shows bandwidth usage
+    and system statistics for the bot, including network, CPU, and memory usage.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the StatsCog.
+        
+        Sets up bandwidth tracking by loading existing data or creating
+        a new bandwidth tracking file if one doesn't exist.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         self._last_member = None
         self.bandwidth_file = 'bandwidth.json'
@@ -27,12 +43,27 @@ class StatsCog(commands.Cog):
             self._save_bandwidth_data()
     
     def _save_bandwidth_data(self):
-        """Save bandwidth data to JSON file"""
+        """
+        Save bandwidth data to JSON file.
+        
+        This helper method writes the current bandwidth statistics to
+        the bandwidth JSON file for persistence between bot restarts.
+        """
         with open(self.bandwidth_file, 'w') as f:
             json.dump(self.bandwidth_data, f, indent=4)
     
     def _update_bandwidth_stats(self):
-        """Update bandwidth statistics"""
+        """
+        Update bandwidth statistics.
+        
+        This method calculates the current bandwidth usage by comparing
+        the current network counters with the previously saved values.
+        It handles counter resets (e.g., after system restart) and
+        updates the persistent bandwidth data.
+        
+        Returns:
+            tuple: A tuple containing (total_bytes_sent, total_bytes_recv)
+        """
         current_bytes = psutil.net_io_counters()
         
         # If counters were reset, start fresh
@@ -60,13 +91,31 @@ class StatsCog(commands.Cog):
     @commands.command(name='stats')
     @check_dj_role()
     async def stats(self, ctx):
-        """Show bandwidth and system statistics"""
+        """
+        Show bandwidth and system statistics.
+        
+        This command displays the total network bandwidth used by the bot
+        (upload and download) as well as current system statistics like
+        CPU and memory usage. This command requires DJ permissions.
+        
+        Args:
+            ctx: The command context
+        """
         try:
             # Update and get bandwidth stats
             bytes_sent, bytes_recv = self._update_bandwidth_stats()
             
             # Convert to more readable format
             def format_bytes(bytes_count):
+                """
+                Format bytes into human-readable format.
+                
+                Args:
+                    bytes_count: The number of bytes to format
+                    
+                Returns:
+                    str: A human-readable string representation of the byte count
+                """
                 for unit in ['B', 'KB', 'MB', 'GB']:
                     if bytes_count < 1024:
                         return f"{bytes_count:.2f} {unit}"
@@ -89,4 +138,10 @@ class StatsCog(commands.Cog):
             await ctx.send(embed=create_embed("Error", f"Failed to get statistics: {str(e)}", color=0xe74c3c, ctx=ctx))
 
 async def setup(bot):
+    """
+    Setup function to add the StatsCog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(StatsCog(bot))

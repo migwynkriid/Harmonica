@@ -5,13 +5,36 @@ import logging
 from datetime import datetime, timezone, timedelta
 
 class HelpCog(commands.Cog):
+    """
+    Command cog for displaying help information.
+    
+    This cog handles the 'help' command, which provides users with
+    information about all available commands organized by category.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the HelpCog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         self.config = load_config()
 
     @commands.command(name='help')
     async def help_command(self, ctx):
-        """Send an embedded message with all commands and explanations"""
+        """
+        Send an embedded message with all commands and explanations.
+        
+        This command displays all available commands organized into categories:
+        - Music Commands: Commands related to music playback
+        - Voice & Search Commands: Commands for voice channel management and search
+        - Admin Commands: Owner-only commands for bot management
+        
+        Args:
+            ctx: The command context
+        """
         prefix = self.config['PREFIX']
         
         # Create embeds for different categories
@@ -78,4 +101,10 @@ class HelpCog(commands.Cog):
             await ctx.send(embed=admin_embed)
 
 async def setup(bot):
+    """
+    Setup function to add the HelpCog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(HelpCog(bot))

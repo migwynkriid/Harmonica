@@ -4,14 +4,39 @@ import json
 import os
 
 class Log(commands.Cog):
+    """
+    Command cog for retrieving bot log files.
+    
+    This cog handles the 'log' command, which allows the bot owner
+    to view the most recent log entries from the bot's log files.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the Log cog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         with open('config.json', 'r') as f:
             config = json.load(f)
         self.OWNER_ID = int(config['OWNER_ID'])
 
     def read_last_lines(self, filename, max_lines=1000):
-        """Read the last N lines of a file"""
+        """
+        Read the last N lines of a file.
+        
+        This method efficiently reads the last specified number of lines
+        from a file without loading the entire file into memory.
+        
+        Args:
+            filename (str): The path to the file to read
+            max_lines (int): Maximum number of lines to read
+            
+        Returns:
+            list: The last N lines of the file as a list of strings
+        """
         try:
             with open(filename, 'r', encoding='utf-8') as f:
                 f.seek(0, 2)  # Seek to end of file
@@ -44,7 +69,16 @@ class Log(commands.Cog):
     @commands.command(name='log')
     @commands.is_owner()
     async def log(self, ctx):
-        """Send the last 1000 lines of both log files - Owner only command"""
+        """
+        Send the last 1000 lines of both log files.
+        
+        This command retrieves the last 1000 lines from both the system log
+        and command log files, and sends them as text file attachments.
+        This command is restricted to the bot owner only.
+        
+        Args:
+            ctx: The command context
+        """
         if ctx.author.id != self.OWNER_ID:
             await ctx.send(embed=discord.Embed(
                 title="Error",
@@ -78,4 +112,10 @@ class Log(commands.Cog):
             await ctx.send(f"Error processing log files: {str(e)}")
 
 async def setup(bot):
+    """
+    Setup function to add the Log cog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(Log(bot))

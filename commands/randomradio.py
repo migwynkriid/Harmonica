@@ -5,13 +5,37 @@ import aiohttp
 import random
 
 class RandomRadioCog(commands.Cog):
+    """
+    Command cog for playing random radio stations.
+    
+    This cog provides the 'randomradio' command, which fetches and plays
+    a random radio station from the Radio Browser API.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the RandomRadioCog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         self._last_member = None
         self.api_base = "https://de1.api.radio-browser.info/json/stations"
 
     async def get_random_station(self, retry_count=0):
-        """Fetch a random radio station from the Radio Browser API"""
+        """
+        Fetch a random radio station from the Radio Browser API.
+        
+        This method queries the Radio Browser API with different parameters
+        based on the retry count to find a suitable radio station.
+        
+        Args:
+            retry_count (int): Number of previous failed attempts
+            
+        Returns:
+            dict: A dictionary containing station information, or None if no station found
+        """
         async with aiohttp.ClientSession() as session:
             # Adjust parameters based on retry count
             params = {
@@ -51,10 +75,24 @@ class RandomRadioCog(commands.Cog):
         return None
 
     async def try_play_station(self, ctx, station, status_msg):
-        """Try to play a radio station and handle potential errors"""
+        """
+        Try to play a radio station and handle potential errors.
+        
+        This method attempts to play the provided radio station,
+        handling voice channel connection and queue management.
+        
+        Args:
+            ctx: The command context
+            station (dict): The radio station information
+            status_msg: The status message to update
+            
+        Returns:
+            bool: True if successfully started playing, False otherwise
+        """
         try:
             # Get the bot instance
-            from bot import music_bot
+            from bot import MusicBot
+            music_bot = MusicBot.get_instance(ctx.guild.id)
             
             # Check if user is in a voice channel
             if not ctx.author.voice:
@@ -123,7 +161,16 @@ class RandomRadioCog(commands.Cog):
 
     @commands.command(name='randomradio')
     async def randomradio(self, ctx):
-        """Play a random radio station from Radio Browser"""
+        """
+        Play a random radio station from Radio Browser.
+        
+        This command fetches a random radio station from the Radio Browser API
+        and plays it in the user's voice channel. If a station fails to play,
+        it will automatically try another one up to a maximum of 3 attempts.
+        
+        Args:
+            ctx: The command context
+        """
         # Check if user is in voice chat
         if not ctx.author.voice:
             await ctx.send(embed=create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c, ctx=ctx))
@@ -199,4 +246,10 @@ class RandomRadioCog(commands.Cog):
         ))
 
 async def setup(bot):
+    """
+    Setup function to add the RandomRadioCog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(RandomRadioCog(bot))

@@ -11,12 +11,30 @@ from scripts.process_queue import process_queue
 logger = logging.getLogger(__name__)
 
 class RandomCommand(commands.Cog):
+    """
+    Command cog for playing random songs.
+    
+    This cog handles the 'random' command, which plays a song based on a
+    randomly selected word fetched from a random word API.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the RandomCommand cog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         self.random_word_api = "https://random-word-api.herokuapp.com/word"
 
     async def fetch_random_word(self):
-        """Fetch a random word from the Random Word API"""
+        """
+        Fetch a random word from the Random Word API.
+        
+        Returns:
+            str: A random word, or None if the API request fails
+        """
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(self.random_word_api) as response:
@@ -31,7 +49,15 @@ class RandomCommand(commands.Cog):
             return None
 
     async def search_youtube(self, query):
-        """Search YouTube for videos using yt-dlp"""
+        """
+        Search YouTube for videos using yt-dlp.
+        
+        Args:
+            query (str): The search query
+            
+        Returns:
+            dict: Information about the first search result, or None if no results
+        """
         try:
             search_opts = {
                 **BASE_YTDL_OPTIONS,
@@ -53,8 +79,17 @@ class RandomCommand(commands.Cog):
 
     @commands.command(name='random')
     async def random_command(self, ctx):
-        """Play a random song based on a randomly selected word"""
-        from bot import music_bot
+        """
+        Play a random song based on a randomly selected word.
+        
+        This command fetches a random word from an API, searches YouTube
+        for music related to that word, and adds the first result to the queue.
+        
+        Args:
+            ctx: The command context
+        """
+        from bot import MusicBot
+        music_bot = MusicBot.get_instance(str(ctx.guild.id))
         
         try:
             # Check if user is in a voice channel
@@ -89,6 +124,7 @@ class RandomCommand(commands.Cog):
             
             if not word:
                 await status_msg.edit(embed=create_embed("Error", "Failed to fetch a random word. Please try again.", discord.Color.red(), ctx=ctx))
+                await status_msg.delete(delay=5)  # Delete after 5 seconds
                 return
 
             # Search using the word
@@ -96,11 +132,13 @@ class RandomCommand(commands.Cog):
             result = await self.search_youtube(search_query)
             if not result:
                 await status_msg.edit(embed=create_embed("Error", f"No results found for '{search_query}'. Trying another word...", discord.Color.orange(), ctx=ctx))
+                await status_msg.delete(delay=5)  # Delete after 5 seconds
                 return
             
             # Download the song using the URL
             download_result = await music_bot.download_song(result['url'], status_msg=status_msg, ctx=ctx, skip_url_check=True)
             if not download_result:
+                await status_msg.delete(delay=5)  # Delete after 5 seconds
                 return
 
             # Add to queue
@@ -117,11 +155,16 @@ class RandomCommand(commands.Cog):
                 })
 
                 # Check if we should start playing
-                should_play = not music_bot.is_playing and not music_bot.waiting_for_song and not music_bot.voice_client.is_playing()
+                should_play = not music_bot.is_playing and not music_bot.waiting_for_song
+                if music_bot.voice_client:
+                    should_play = should_play and not music_bot.voice_client.is_playing()
+                else:
+                    should_play = True
 
             # Start playing if needed
             if should_play:
-                await process_queue(music_bot)
+                await status_msg.delete()  # Delete the "Feeling lucky?" message
+                await process_queue(music_bot, ctx)
             else:
                 queue_pos = len(music_bot.queue)
                 # Check if current song is looped
@@ -142,13 +185,23 @@ class RandomCommand(commands.Cog):
                     thumbnail_url=download_result.get('thumbnail'),
                     ctx=ctx
                 )
+                await status_msg.delete()  # Delete the "Feeling lucky?" message
                 queue_msg = await ctx.send(embed=queue_embed)
                 music_bot.queued_messages[download_result['url']] = queue_msg
 
         except Exception as e:
             logger.error(f"Error in random command: {str(e)}")
+            if 'status_msg' in locals():
+                await status_msg.delete()  # Delete the "Feeling lucky?" message
             embed = create_embed("Error", f"An error occurred: {str(e)}", discord.Color.red(), ctx=ctx)
-            await ctx.send(embed=embed)
+            error_msg = await ctx.send(embed=embed)
+            await error_msg.delete(delay=5)  # Delete error message after 5 seconds
 
 async def setup(bot):
+    """
+    Setup function to add the RandomCommand cog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(RandomCommand(bot))

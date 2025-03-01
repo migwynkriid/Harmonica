@@ -3,7 +3,19 @@ import asyncio
 from typing import Optional
 
 async def get_audio_duration(file_path) -> float:
-    """Get audio file duration using an optimized ffprobe command asynchronously"""
+    """
+    Get audio file duration using an optimized ffprobe command asynchronously.
+    
+    This function uses ffprobe to extract the duration of an audio file without
+    loading the entire file into memory. It runs ffprobe as a subprocess and
+    parses the JSON output to extract the duration value.
+    
+    Args:
+        file_path: Path to the audio file
+        
+    Returns:
+        float: Duration of the audio file in seconds, or 0.0 if an error occurs
+    """
     try:
         process = await asyncio.create_subprocess_exec(
             'ffprobe', '-v', 'error', 

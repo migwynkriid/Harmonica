@@ -8,15 +8,51 @@ from scripts.voice_checks import check_voice_state
 import time
 
 class ReplayCog(commands.Cog):
+    """
+    Command cog for replaying the current song.
+    
+    This cog provides the 'replay' command, which restarts the currently
+    playing song from the beginning without stopping playback.
+    """
+    
     def __init__(self, bot):
+        """
+        Initialize the ReplayCog.
+        
+        Args:
+            bot: The bot instance
+        """
         self.bot = bot
         self._last_member = None
 
     @commands.command(name='replay')
     @check_dj_role()
     async def replay(self, ctx):
-        """Restart the currently playing song from the beginning"""
-        from bot import music_bot
+        """
+        Restart the currently playing song from the beginning.
+        
+        This command restarts the currently playing song from the beginning
+        without removing it from the queue or stopping playback. It works by
+        creating a new audio source with the seek position set to 0.
+        This command requires DJ permissions.
+        
+        Args:
+            ctx: The command context
+        """
+        from bot import MusicBot
+        music_bot = MusicBot.get_instance(str(ctx.guild.id))
+        
+        # If MusicBot doesn't have a voice client but Discord does, try to sync them
+        if not music_bot.voice_client and ctx.guild.voice_client:
+            music_bot.voice_client = ctx.guild.voice_client
+            
+            # Try to find the correct instance if this one doesn't have current_song
+            if not music_bot.current_song:
+                for instance_id, instance in MusicBot._instances.items():
+                    if instance.current_song:
+                        music_bot.current_song = instance.current_song
+                        music_bot.is_playing = True
+                        break
         
         try:
             # Check voice state
@@ -38,7 +74,7 @@ class ReplayCog(commands.Cog):
             ffmpeg_options['options'] = ffmpeg_options.get('options', '') + ' -ss 0'
             
             # Create new source with seek
-            source = discord.FFmpegOpusAudio(current_song['file_path'], **ffmpeg_options)
+            source = discord.FFmpegPCMAudio(current_song['file_path'], **ffmpeg_options)
             
             # Call read() on the audio source before playing to prevent speed-up issue
             source.read()
@@ -59,4 +95,10 @@ class ReplayCog(commands.Cog):
             await ctx.send(embed=create_embed("Error", f"An error occurred while replaying: {str(e)}", color=0xe74c3c, ctx=ctx))
 
 async def setup(bot):
+    """
+    Setup function to add the ReplayCog to the bot.
+    
+    Args:
+        bot: The bot instance
+    """
     await bot.add_cog(ReplayCog(bot))
