@@ -51,6 +51,7 @@ def load_config():
         "MESSAGES": {
             "SHOW_PROGRESS_BAR": True,                  # if True, show download progress bar in Discord messages
             "DISCORD_UI_BUTTONS": False,                # if True, show Discord UI buttons
+            "SHOW_ACTIVITY_STATUS": True,               # if True, update bot's Discord status with current song name
         },
         "PERMISSIONS": {
             "REQUIRES_DJ_ROLE": False,                  # if True, require a DJ role to use certain commands
@@ -130,6 +131,7 @@ def load_config():
         'MIX_PLAYLIST_LIMIT': config.get('DOWNLOADS', {}).get('MIX_PLAYLIST_LIMIT', default_config['DOWNLOADS']['MIX_PLAYLIST_LIMIT']),
         'SHUFFLE_DOWNLOAD': config.get('DOWNLOADS', {}).get('SHUFFLE_DOWNLOAD', default_config['DOWNLOADS']['SHUFFLE_DOWNLOAD']),
         'SHOW_PROGRESS_BAR': config.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', default_config['MESSAGES']['SHOW_PROGRESS_BAR']),
+        'SHOW_ACTIVITY_STATUS': config.get('MESSAGES', {}).get('SHOW_ACTIVITY_STATUS', default_config['MESSAGES']['SHOW_ACTIVITY_STATUS']),
         'AUTO_UPDATE': config.get('AUTO_UPDATE', default_config['AUTO_UPDATE']),
         'SPONSORBLOCK': config.get('SPONSORBLOCK', default_config['SPONSORBLOCK']),
     }

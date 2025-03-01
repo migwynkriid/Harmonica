@@ -2,6 +2,7 @@ import asyncio
 import discord
 from scripts.play_next import play_next
 from scripts.messages import update_or_send_message, create_embed
+from scripts.activity import update_activity
 
 class AfterPlayingHandler:
     """
@@ -81,7 +82,10 @@ class AfterPlayingHandler:
                 except Exception as e:
                     print(f"Error updating finished message: {str(e)}")
             
+            # Update activity status
+            if self.bot:
+                await update_activity(self.bot, is_playing=False)
+            
             # Reset the playback state
             self.is_playing = False
             self.current_song = None
-            await self.update_activity()

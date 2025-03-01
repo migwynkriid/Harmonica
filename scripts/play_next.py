@@ -8,6 +8,7 @@ from scripts.config import load_config, FFMPEG_OPTIONS
 from scripts.ui_components import create_now_playing_view
 from scripts.constants import RED, GREEN, BLUE, RESET
 from scripts.process_queue import process_queue
+from scripts.activity import update_activity
 
 # Get default volume from config
 config = load_config()
@@ -172,7 +173,7 @@ async def play_next(ctx):
                     # Update bot presence
                     try:
                         if server_music_bot.bot:
-                            await server_music_bot.bot.change_presence(activity=discord.Game(name=f"{server_music_bot.current_song['title']}"))
+                            await update_activity(server_music_bot.bot, server_music_bot.current_song, is_playing=True)
                     except Exception as e:
                         print(f"Error updating presence: {str(e)}")
                     
@@ -213,7 +214,6 @@ async def play_next(ctx):
         else:
             server_music_bot.current_song = None
             # Update activity
-            from scripts.activity import update_activity
             if server_music_bot.bot:
                 await update_activity(server_music_bot.bot)
             if server_music_bot.download_queue.empty():

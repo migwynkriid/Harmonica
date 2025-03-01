@@ -2,6 +2,7 @@ import discord
 import asyncio
 import time
 from pathlib import Path
+from scripts.activity import update_activity
 from scripts.duration import get_audio_duration
 from scripts.messages import create_embed, should_send_now_playing
 from scripts.config import FFMPEG_OPTIONS, load_config
@@ -145,8 +146,8 @@ async def process_queue(music_bot, ctx=None):
         # Update bot presence with current song
         try:
             if music_bot.bot:
-                # Update the bot's presence to show the currently playing song
-                await music_bot.bot.change_presence(activity=discord.Game(name=f"{song['title']}"))
+                # Use the update_activity function to respect the SHOW_ACTIVITY_STATUS setting
+                await update_activity(music_bot.bot, song, is_playing=True)
         except Exception as e:
             # If an error occurs while updating presence, print the error
             print(f"Error updating presence: {str(e)}")
