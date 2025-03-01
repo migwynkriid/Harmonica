@@ -208,16 +208,13 @@ async def on_ready():
 
 bot.remove_command('help')
 
-# Add signal handlers for graceful shutdown
+# Add signal handlers for immediate shutdown
 def signal_handler(sig, frame):
-    print(f"\n{YELLOW}Received signal {sig}, shutting down gracefully...{RESET}")
-    # Cancel all running tasks
-    for task in asyncio.all_tasks(asyncio.get_event_loop()):
-        if not task.done() and task != asyncio.current_task():
-            task.cancel()
-    
-    print(f"{GREEN}Harmonica bot shutdown complete.{RESET}")
-    sys.exit(0)
+    # Clear the current line to remove the ^C character
+    print('\r', end='')
+    print(f"{RED}Shutting down...{RESET}")
+    # Use os._exit which exits immediately without cleanup
+    os._exit(0)
 
 # Register signal handlers
 signal.signal(signal.SIGINT, signal_handler)

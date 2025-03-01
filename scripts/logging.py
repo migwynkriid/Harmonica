@@ -116,6 +116,10 @@ class OutputCapture:
         Args:
             message: The message to write
         """
+        # Skip keyboard interrupt character
+        if message.strip() == "^C":
+            return
+            
         # Write to terminal
         self.terminal.write(message)
         # Remove color codes and clean up the message
