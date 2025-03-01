@@ -15,7 +15,7 @@
   
 <div style="border: 2px solid #5865F2; border-radius: 10px; padding: 20px; margin: 20px 0; background-color: #f6f8fa;">
 
-# 🎉 Add Harmonica to Your Server! 🎉
+# ⚙️ Public Harmnonica Instance for your server
 
 <a href="https://discord.com/oauth2/authorize?client_id=1341757638433833021&scope=bot+applications.commands">
   <img src="https://img.shields.io/badge/Invite%20Harmonica-Add%20to%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Invite Harmonica" width="300">
@@ -23,18 +23,6 @@
 
 <table>
 <tr>
-<td>
-  <b>🚀 Instant Setup</b><br>
-  No configuration needed
-</td>
-<td>
-  <b>🎵 High-Quality Audio</b><br>
-  Premium music experience
-</td>
-<td>
-  <b>💯 Always Online</b><br>
-  Reliable 24/7 uptime
-</td>
 </tr>
 </table>
 
