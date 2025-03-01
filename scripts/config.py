@@ -29,12 +29,15 @@ def load_config():
     If the file doesn't exist, it creates a new one with default values.
     It also ensures that the config has all required keys and removes deprecated ones.
     
+    Note: Server-specific prefixes are stored separately in server_prefixes.json
+    and can be modified using the prefix command.
+    
     Returns:
         dict: A dictionary containing all configuration values
     """
     default_config = {
         "OWNER_ID": "220301180562046977",               # Owner ID
-        "PREFIX": "!",                                  # Prefix for commands
+        "PREFIX": "!",                                  # Default prefix for commands (can be overridden per server)
         "LOG_LEVEL": "INFO",                            # Logging level
         "AUTO_UPDATE": True,                            # Enable/disable automatic updates
         "VOICE": {

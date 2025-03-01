@@ -160,6 +160,7 @@ A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, 
 - `!ping` - Show bot status
 - `!version` - Show bot version
 - `!log` - Log current context
+- `!prefix` - Change command prefix
 - `!restart` - Restart bot (Owner)
 - `!logclear` - Clear logs (Owner)
 - `!update` - Update bot files (Owner)
