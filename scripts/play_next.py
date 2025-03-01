@@ -107,7 +107,7 @@ async def play_next(ctx):
                             # Add null check for bot instance
                             if server_music_bot.bot:
                                 # Add null check before accessing the cog
-                                loop_cog = server_music_bot.bot.get_cog('Loop') if server_music_bot.bot else None
+                                loop_cog = server_music_bot.bot.get_cog('Loop') if hasattr(server_music_bot.bot, 'get_cog') else None
                                 is_looped = loop_cog and previous_song and previous_song['url'] in loop_cog.looped_songs if loop_cog else False
 
                                 # For looped songs that weren't skipped, just delete the message
