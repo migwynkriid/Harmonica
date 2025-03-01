@@ -35,7 +35,8 @@ class HelpCog(commands.Cog):
         Args:
             ctx: The command context
         """
-        prefix = self.config['PREFIX']
+        # Use the actual command prefix from the context
+        prefix = ctx.prefix
         
         # Create embeds for different categories
         music_embed = discord.Embed(title="Help - Music Commands", description="Music playback related commands:", color=0x3498db)
@@ -67,6 +68,7 @@ class HelpCog(commands.Cog):
         voice_embed.add_field(name=f"{prefix}max", value="Play Radio Max stream.", inline=True)
         voice_embed.add_field(name=f"{prefix}ping", value="Show bot latency and connection info.", inline=True)
         voice_embed.add_field(name=f"{prefix}alias", value="Manage aliases", inline=True)
+        voice_embed.add_field(name=f"{prefix}prefix", value="Change the command prefix for this server.", inline=True)
         
         # Admin commands embed (Owner Only)
         user_id = str(ctx.author.id)

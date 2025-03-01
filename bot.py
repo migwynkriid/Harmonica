@@ -52,6 +52,7 @@ from scripts.activity import update_activity
 from scripts.spotify import get_spotify_album_details, get_spotify_track_details, get_spotify_playlist_details
 from scripts.priority import set_high_priority
 from scripts.paths import get_downloads_dir, get_root_dir, get_absolute_path
+from scripts.server_prefixes import get_prefix
 import signal
 
 # Load environment variables
@@ -90,7 +91,7 @@ intents.voice_states = True  # Allow bot to track voice state changes
 
 # Initialize the bot with configuration
 bot = commands.Bot(
-    command_prefix=PREFIX,
+    command_prefix=get_prefix,  # Use dynamic prefix function
     intents=intents,
     help_command=None,  # Disable default help command
     case_insensitive=True,  # Make commands case-insensitive
