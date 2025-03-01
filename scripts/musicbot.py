@@ -843,7 +843,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             )
 
                             if is_live:
-                                print(f"Livestream detected: {query}")
                                 # Extract the direct stream URL from formats list
                                 direct_stream_url = None
                                 formats = info_dict.get('formats', [])
@@ -852,7 +851,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 for format in formats:
                                     if format.get('acodec') != 'none' and format.get('vcodec') == 'none':
                                         direct_stream_url = format.get('url')
-                                        print(f"Found audio-only format: {format.get('format_id')}")
                                         break
                                 
                                 # If no audio-only format, use the best available format
@@ -861,16 +859,12 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                     for format in formats:
                                         if format.get('acodec') != 'none':
                                             direct_stream_url = format.get('url')
-                                            print(f"Using format with audio: {format.get('format_id')}")
                                             break
                                 
                                 # Last resort: use the general URL or the query itself
                                 if not direct_stream_url:
                                     direct_stream_url = info_dict.get('url', query)
-                                    print(f"Using fallback URL")
-                                
-                                print(f"Final stream URL: {direct_stream_url}")
-                                
+                                                                
                                 # Clean up the title by removing date, time and (live) suffix if present
                                 title = info_dict.get('title', 'Livestream')
                                 if title.endswith(datetime.now().strftime("%Y-%m-%d %H:%M")):
