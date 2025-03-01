@@ -2,6 +2,7 @@ import asyncio
 import discord
 from scripts.play_next import play_next
 from scripts.messages import update_or_send_message, create_embed
+from scripts.activity import update_activity
 
 class AfterPlayingHandler:
     """
@@ -55,8 +56,10 @@ class AfterPlayingHandler:
             if self.now_playing_message and self.current_song and isinstance(self.current_song, dict):
                 try:
                     # Check if the song is looped
-                    loop_cog = self.bot.get_cog('Loop')
-                    is_looped = loop_cog and self.current_song['url'] in loop_cog.looped_songs
+                    loop_cog = None
+                    if hasattr(self, 'bot') and self.bot and hasattr(self.bot, 'get_cog'):
+                        loop_cog = self.bot.get_cog('Loop')
+                    is_looped = loop_cog and self.current_song['url'] in loop_cog.looped_songs if loop_cog else False
 
                     # For looped songs that weren't skipped, just delete the message
                     if is_looped and not (hasattr(self, 'was_skipped') and self.was_skipped):
@@ -81,7 +84,10 @@ class AfterPlayingHandler:
                 except Exception as e:
                     print(f"Error updating finished message: {str(e)}")
             
+            # Update activity status
+            if hasattr(self, 'bot') and self.bot:
+                await update_activity(self.bot, is_playing=False)
+            
             # Reset the playback state
             self.is_playing = False
             self.current_song = None
-            await self.update_activity()

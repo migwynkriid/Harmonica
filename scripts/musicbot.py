@@ -678,7 +678,18 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 
             # Create DownloadProgress instance with ctx
             progress = DownloadProgress(status_msg, None)
-            progress.ctx = ctx or (status_msg.channel if status_msg else None)
+            progress.title = query if not is_url(query) else ""
+            progress.ctx = ctx
+            
+            # Initialize the progress updater
+            try:
+                progress.start_updater(self.bot_loop)
+            except Exception as e:
+                print(f"Error starting progress updater: {e}")
+            
+            # Configure yt-dlp options with progress hooks
+            ytdl_opts = YTDL_OPTIONS.copy()
+            ytdl_opts['progress_hooks'] = [progress.progress_hook]
             
             async def extract_info(ydl, url, download=True):
                 """
@@ -953,7 +964,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     'cookiefile': self.cookie_file if self.cookie_file.exists() else None,
                     'progress_hooks': [
                         self._download_hook,
-                        lambda d: progress.progress_hook(d)
+                        progress.progress_hook
                     ],
                     'default_search': 'ytsearch'
                 }

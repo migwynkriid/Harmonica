@@ -8,6 +8,7 @@ from scripts.config import load_config, FFMPEG_OPTIONS
 from scripts.ui_components import create_now_playing_view
 from scripts.constants import RED, GREEN, BLUE, RESET
 from scripts.process_queue import process_queue
+from scripts.activity import update_activity
 
 # Get default volume from config
 config = load_config()
@@ -106,7 +107,7 @@ async def play_next(ctx):
                             # Add null check for bot instance
                             if server_music_bot.bot:
                                 # Add null check before accessing the cog
-                                loop_cog = server_music_bot.bot.get_cog('Loop') if server_music_bot.bot else None
+                                loop_cog = server_music_bot.bot.get_cog('Loop') if hasattr(server_music_bot.bot, 'get_cog') else None
                                 is_looped = loop_cog and previous_song and previous_song['url'] in loop_cog.looped_songs if loop_cog else False
 
                                 # For looped songs that weren't skipped, just delete the message
@@ -172,7 +173,7 @@ async def play_next(ctx):
                     # Update bot presence
                     try:
                         if server_music_bot.bot:
-                            await server_music_bot.bot.change_presence(activity=discord.Game(name=f"{server_music_bot.current_song['title']}"))
+                            await update_activity(server_music_bot.bot, server_music_bot.current_song, is_playing=True)
                     except Exception as e:
                         print(f"Error updating presence: {str(e)}")
                     
@@ -213,7 +214,6 @@ async def play_next(ctx):
         else:
             server_music_bot.current_song = None
             # Update activity
-            from scripts.activity import update_activity
             if server_music_bot.bot:
                 await update_activity(server_music_bot.bot)
             if server_music_bot.download_queue.empty():

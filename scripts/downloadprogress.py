@@ -5,6 +5,7 @@ from datetime import datetime
 from scripts.format_size import format_size
 from scripts.config import load_config
 import asyncio
+import functools
 
 config_vars = load_config()
 SHOW_PROGRESS_BAR = config_vars.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', True)
@@ -31,6 +32,8 @@ class DownloadProgress:
         self.title = ""
         self.ctx = None  # Store ctx for footer info
         self.download_complete = False  # Track if download is complete
+        self.message_queue = asyncio.Queue()
+        self.update_task = None
         
     def create_progress_bar(self, percentage, width=20):
         """
@@ -46,19 +49,62 @@ class DownloadProgress:
         filled = int(width * (percentage / 100))
         bar = "▓" * filled + "░" * (width - filled)
         return bar
+    
+    def start_updater(self, loop=None):
+        """
+        Start the message updater task.
         
+        Args:
+            loop: The event loop to use for the task
+        """
+        if self.update_task is None or self.update_task.done():
+            if loop is None:
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+            
+            self.update_task = loop.create_task(self._message_updater())
+    
+    async def _message_updater(self):
+        """
+        Background task that processes message updates from the queue.
+        """
+        while True:
+            try:
+                # Get the next message update from the queue
+                embed = await self.message_queue.get()
+                
+                # Update the message
+                if self.status_msg:
+                    try:
+                        await self.status_msg.edit(embed=embed, view=self.view)
+                    except Exception as e:
+                        print(f"Error updating message: {str(e)}")
+                
+                # Mark the task as done
+                self.message_queue.task_done()
+                
+                # Small delay to prevent rate limiting
+                await asyncio.sleep(0.5)
+            except Exception as e:
+                print(f"Error in message updater: {str(e)}")
+                await asyncio.sleep(1)
+    
     def progress_hook(self, d):
         """
         Hook function called by yt-dlp during the download process.
         
         This method is called repeatedly during a download to update
         the progress display. It creates an embed with download information
-        and updates the status message.
+        and adds it to the update queue.
         
         Args:
             d: Dictionary containing download information from yt-dlp
         """
         if d['status'] == 'downloading':
+            # Throttle updates to avoid too many message edits
             current_time = time.time()
             if current_time - self.last_update < 2:
                 return
@@ -66,20 +112,28 @@ class DownloadProgress:
             self.last_update = current_time
             
             try:
-                if d['status'] == 'finished':
+                # Check if download is finished
+                if d.get('status') == 'finished':
                     self.download_complete = True
                     return
-                    
+                
+                # Extract download information
                 downloaded = d.get('downloaded_bytes', 0)
                 total = d.get('total_bytes', 0) or d.get('total_bytes_estimate', 0)
                 if total == 0:
                     return
+                    
+                # Calculate progress percentage and format sizes
                 percentage = (downloaded / total) * 100
                 downloaded_size = format_size(downloaded)
                 total_size = format_size(total)
+                
+                # Get video information
                 info = d.get('info_dict', {})
                 video_title = info.get('title', self.title)
                 video_url = info.get('webpage_url', '')
+                
+                # Create status message with progress information
                 status = f"[{video_title}]({video_url})\n"
                 
                 if SHOW_PROGRESS_BAR:
@@ -87,45 +141,49 @@ class DownloadProgress:
                     status += f"{progress_bar}\n\n"
                 
                 status += f"Size: {downloaded_size} / {total_size}"
+                
+                # Create embed with download information
                 embed = discord.Embed(
                     title="Downloading",
                     description=status,
                     color=0x3498db,
                     timestamp=datetime.now()
                 )
+                
                 # Add thumbnail if available
                 thumbnail_url = info.get('thumbnail')
                 if thumbnail_url:
                     embed.set_thumbnail(url=thumbnail_url)
+                
+                # Add footer with requester information
                 if self.ctx and hasattr(self.ctx, 'author') and self.ctx.author:
                     embed.set_footer(
                         text=f"Requested by {self.ctx.author.display_name}",
                         icon_url=self.ctx.author.display_avatar.url
                     )
                 
-                # Use asyncio.create_task to run the message edit in the background
+                # Add the embed to the update queue
                 if self.status_msg:
+                    # Start the updater task if it's not running
                     try:
-                        # First try to get the event loop from the running context
-                        loop = asyncio.get_event_loop()
-                    except RuntimeError:
-                        # If that fails, get a new event loop
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                    
-                    if loop.is_running():
-                        # Use run_coroutine_threadsafe without timeout to avoid the error
-                        future = asyncio.run_coroutine_threadsafe(
-                            self.status_msg.edit(embed=embed, view=self.view),
-                            loop
-                        )
-                        # Optionally wait for the result but don't use timeout
+                        loop = None
                         try:
-                            future.result(0.5)  # Wait for a short time but don't block indefinitely
-                        except (asyncio.TimeoutError, concurrent.futures.TimeoutError):
-                            pass  # Ignore timeout, the update will happen asynchronously
-                    else:
-                        # If loop is not running, create a new task
-                        loop.run_until_complete(self.status_msg.edit(embed=embed, view=self.view))
+                            loop = asyncio.get_running_loop()
+                        except RuntimeError:
+                            try:
+                                loop = asyncio.get_event_loop()
+                            except RuntimeError:
+                                loop = asyncio.new_event_loop()
+                                asyncio.set_event_loop(loop)
+                        
+                        # Start the message updater if it's not already running
+                        self.start_updater(loop)
+                        
+                        # Add the embed to the queue
+                        if not self.message_queue.full():
+                            # Use put_nowait to avoid blocking
+                            self.message_queue.put_nowait(embed)
+                    except Exception as e:
+                        print(f"Error queueing message update: {str(e)}")
             except Exception as e:
-                print(f"Error updating progress: {str(e)}")
+                print(f"Error in progress hook: {str(e)}")
