@@ -169,7 +169,7 @@ async def process_queue(music_bot, ctx=None):
                 if song.get('is_stream'):
                     # Create an audio source for the stream
                     audio_source = discord.FFmpegPCMAudio(
-                        song['url'],
+                        song['file_path'],  # Use file_path which contains the direct stream URL
                         **FFMPEG_OPTIONS
                     )
                 else:

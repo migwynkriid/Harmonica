@@ -844,16 +844,33 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
                             if is_live:
                                 print(f"Livestream detected: {query}")
-                                # Convert watch URL to live URL if needed
-                                webpage_url = info_dict.get('webpage_url', query)
-                                if 'youtube.com/watch' in webpage_url:
-                                    video_id = info_dict.get('id', webpage_url.split('watch?v=')[1].split('&')[0])
-                                    query = f"https://www.youtube.com/live/{video_id}"
-                                    # Re-extract info with the live URL
-                                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                                        self.current_download_task = asyncio.create_task(extract_info(ydl, query, download=False))
-                                        info_dict = await self.current_download_task
-
+                                # Extract the direct stream URL from formats list
+                                direct_stream_url = None
+                                formats = info_dict.get('formats', [])
+                                
+                                # First try to find an audio-only format for efficiency
+                                for format in formats:
+                                    if format.get('acodec') != 'none' and format.get('vcodec') == 'none':
+                                        direct_stream_url = format.get('url')
+                                        print(f"Found audio-only format: {format.get('format_id')}")
+                                        break
+                                
+                                # If no audio-only format, use the best available format
+                                if not direct_stream_url and formats:
+                                    # Try to find a format with both audio and video
+                                    for format in formats:
+                                        if format.get('acodec') != 'none':
+                                            direct_stream_url = format.get('url')
+                                            print(f"Using format with audio: {format.get('format_id')}")
+                                            break
+                                
+                                # Last resort: use the general URL or the query itself
+                                if not direct_stream_url:
+                                    direct_stream_url = info_dict.get('url', query)
+                                    print(f"Using fallback URL")
+                                
+                                print(f"Final stream URL: {direct_stream_url}")
+                                
                                 # Clean up the title by removing date, time and (live) suffix if present
                                 title = info_dict.get('title', 'Livestream')
                                 if title.endswith(datetime.now().strftime("%Y-%m-%d %H:%M")):
@@ -862,8 +879,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                     title = title[:-6].strip()  # Remove (live) suffix
                                 result = {
                                     'title': title,
-                                    'url': query,
-                                    'file_path': info_dict.get('url', query),
+                                    'url': query,  # Keep the YouTube URL for display
+                                    'file_path': direct_stream_url,  # Use the direct stream URL for playback
                                     'is_stream': True,
                                     'is_live': True,
                                     'thumbnail': info_dict.get('thumbnail'),
