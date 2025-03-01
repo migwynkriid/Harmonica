@@ -33,15 +33,15 @@ async def update_activity(bot, current_song=None, is_playing=False):
             
             if show_activity:
                 # Normal behavior - show current song or play command
-                if current_song and is_playing:
+                if current_song and is_playing and isinstance(current_song, dict) and 'title' in current_song:
                     activity = discord.Activity(
                         type=discord.ActivityType.playing,
-                        name=f" {current_song['title']}"
+                        name=f"{current_song['title']}"
                     )
                 else:
                     activity = discord.Activity(
                         type=discord.ActivityType.playing,
-                        name=f"nothing! use {prefix}play "
+                        name=f"nothing! use {prefix}play"
                     )
             else:
                 # When activity status is disabled, only show help message
