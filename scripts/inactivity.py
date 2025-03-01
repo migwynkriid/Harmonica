@@ -1,6 +1,7 @@
 import asyncio
 import time
 from scripts.clear_queue import clear_queue
+from scripts.constants import GREEN, BLUE, RESET
 
 async def start_inactivity_checker(bot_instance):
     """
@@ -34,24 +35,30 @@ async def check_inactivity(bot_instance):
         try:
             await asyncio.sleep(60)
             
-            if bot_instance.voice_client and bot_instance.voice_client.is_connected():
-                # Reset activity timer if music is playing or there are songs in queue
-                if bot_instance.voice_client.is_playing() or bot_instance.queue:
-                    bot_instance.last_activity = time.time()
-                # Only disconnect if inactive AND no music is playing/queued
-                elif (time.time() - bot_instance.last_activity > bot_instance.inactivity_timeout and 
-                      bot_instance.inactivity_leave and 
-                      not bot_instance.voice_client.is_playing() and 
-                      not bot_instance.queue):
-                    print(f"Leaving voice channel due to {bot_instance.inactivity_timeout} seconds of inactivity")
-                    # Cancel any active downloads before disconnecting
-                    await bot_instance.cancel_downloads()
-                    await bot_instance.voice_client.disconnect()
-                    # Clear queue for this specific server
-                    if hasattr(bot_instance, 'guild_id'):
-                        clear_queue(bot_instance.guild_id)
-                    else:
-                        clear_queue()
+            # Get all server instances
+            for guild_id, server_bot in bot_instance.__class__._instances.items():
+                # Skip the setup instance
+                if guild_id == 'setup':
+                    continue
+                    
+                if server_bot.voice_client and server_bot.voice_client.is_connected():
+                    # Reset activity timer if music is playing or there are songs in queue
+                    if server_bot.voice_client.is_playing() or server_bot.queue:
+                        server_bot.last_activity = time.time()
+                    # Only disconnect if inactive AND no music is playing/queued
+                    elif (time.time() - server_bot.last_activity > server_bot.inactivity_timeout and 
+                          server_bot.inactivity_leave and 
+                          not server_bot.voice_client.is_playing() and 
+                          not server_bot.queue):
+                        # Get the server name from the voice client's guild
+                        server_name = server_bot.voice_client.guild.name if server_bot.voice_client.guild else "Unknown Server"
+                        print(f"{GREEN}Left voice chat in {RESET}{BLUE}{server_name}{RESET}{GREEN} due to inactivity{RESET}")
+                        # Cancel any active downloads before disconnecting
+                        await server_bot.cancel_downloads()
+                        await server_bot.voice_client.disconnect()
+                        # Clear queue for this specific server
+                        clear_queue(guild_id)
+                        
         except Exception as e:
             print(f"Error in inactivity checker: {str(e)}")
             await asyncio.sleep(60)
