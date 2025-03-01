@@ -20,10 +20,7 @@
 <a href="https://discord.com/oauth2/authorize?client_id=1341757638433833021&scope=bot+applications.commands">
   <img src="https://img.shields.io/badge/Invite%20Harmonica-Add%20to%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Invite Harmonica" width="300">
 </a>
-
-
 </div>
-
 ---
 
 A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, direct links, and livestreams in your Discord voice channels.
