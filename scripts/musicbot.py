@@ -960,6 +960,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
                         except asyncio.CancelledError:
                             print("Info extraction cancelled")
+                            await progress.cleanup()
                             raise Exception("Download cancelled")
                         except Exception as e:
                             print(f"Error checking livestream status: {e}")
@@ -986,7 +987,11 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         info = await self.current_download_task
                     except asyncio.CancelledError:
                         print("Download cancelled")
+                        await progress.cleanup()
                         raise Exception("Download cancelled")
+                    
+                    # Clean up the progress tracker after successful download
+                    await progress.cleanup()
                     
                     if info.get('_type') == 'playlist' and not is_playlist_url(query):
                         # Handle search results that return a playlist
@@ -1129,6 +1134,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         ctx=ctx if ctx else status_msg.channel
                     )
                     await status_msg.edit(embed=error_embed)
+                await progress.cleanup()
                 raise
 
         except Exception as e:
@@ -1141,6 +1147,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     ctx=ctx if ctx else status_msg.channel
                 )
                 await status_msg.edit(embed=error_embed)
+            await progress.cleanup()
             raise
 
     async def update_activity(self):

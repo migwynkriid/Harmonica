@@ -52,6 +52,7 @@ from scripts.activity import update_activity
 from scripts.spotify import get_spotify_album_details, get_spotify_track_details, get_spotify_playlist_details
 from scripts.priority import set_high_priority
 from scripts.paths import get_downloads_dir, get_root_dir, get_absolute_path
+import signal
 
 # Load environment variables
 load_dotenv()
@@ -206,5 +207,21 @@ async def on_ready():
             instance.bot_loop = setup_instance.bot_loop
 
 bot.remove_command('help')
+
+# Add signal handlers for graceful shutdown
+def signal_handler(sig, frame):
+    print(f"\n{YELLOW}Received signal {sig}, shutting down gracefully...{RESET}")
+    # Cancel all running tasks
+    for task in asyncio.all_tasks(asyncio.get_event_loop()):
+        if not task.done() and task != asyncio.current_task():
+            task.cancel()
+    
+    print(f"{GREEN}Harmonica bot shutdown complete.{RESET}")
+    sys.exit(0)
+
+# Register signal handlers
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
 # Start the bot with the Discord token from environment variables
 bot.run(os.getenv('DISCORD_TOKEN'))

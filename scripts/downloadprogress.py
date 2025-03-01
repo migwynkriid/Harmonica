@@ -71,26 +71,66 @@ class DownloadProgress:
         """
         Background task that processes message updates from the queue.
         """
-        while True:
-            try:
-                # Get the next message update from the queue
-                embed = await self.message_queue.get()
-                
-                # Update the message
-                if self.status_msg:
+        try:
+            while True:
+                try:
+                    # Get the next message update from the queue with a timeout
+                    # This allows the task to be cancelled properly
                     try:
-                        await self.status_msg.edit(embed=embed, view=self.view)
-                    except Exception as e:
-                        print(f"Error updating message: {str(e)}")
-                
-                # Mark the task as done
-                self.message_queue.task_done()
-                
-                # Small delay to prevent rate limiting
-                await asyncio.sleep(0.5)
-            except Exception as e:
-                print(f"Error in message updater: {str(e)}")
-                await asyncio.sleep(1)
+                        embed = await asyncio.wait_for(self.message_queue.get(), timeout=1.0)
+                    except asyncio.TimeoutError:
+                        # Check if we should exit
+                        if self.download_complete and self.message_queue.empty():
+                            break
+                        continue
+                    
+                    # Update the message
+                    if self.status_msg:
+                        try:
+                            await self.status_msg.edit(embed=embed, view=self.view)
+                        except Exception as e:
+                            print(f"Error updating message: {str(e)}")
+                    
+                    # Mark the task as done
+                    self.message_queue.task_done()
+                    
+                    # Small delay to prevent rate limiting
+                    await asyncio.sleep(0.5)
+                except asyncio.CancelledError:
+                    # Handle task cancellation
+                    break
+                except Exception as e:
+                    print(f"Error in message updater: {str(e)}")
+                    await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            # Handle task cancellation
+            pass
+    
+    async def cleanup(self):
+        """
+        Clean up resources and cancel the update task.
+        
+        This method should be called when the download is complete
+        or when the bot is shutting down.
+        """
+        self.download_complete = True
+        
+        # Wait for the queue to be empty
+        if not self.message_queue.empty():
+            try:
+                await asyncio.wait_for(self.message_queue.join(), timeout=5.0)
+            except asyncio.TimeoutError:
+                pass
+        
+        # Cancel the update task if it's running
+        if self.update_task and not self.update_task.done():
+            self.update_task.cancel()
+            try:
+                await asyncio.wait_for(self.update_task, timeout=2.0)
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                pass
+        
+        self.update_task = None
     
     def progress_hook(self, d):
         """
