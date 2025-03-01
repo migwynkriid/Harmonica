@@ -65,6 +65,20 @@ class NowPlayingCog(commands.Cog):
         is_stream = server_music_bot.current_song.get('is_stream', False)
         total_duration = server_music_bot.current_song.get('duration', 0) if not is_stream else 0
         
+        # If duration is not set but we have a file path, try to get the duration
+        if total_duration == 0 and not is_stream and 'file_path' in server_music_bot.current_song:
+            file_path = server_music_bot.current_song['file_path']
+            # Check if duration is in the cache
+            total_duration = server_music_bot.duration_cache.get(file_path, 0)
+            if total_duration == 0:
+                # Calculate duration if not cached
+                total_duration = await get_audio_duration(file_path)
+                if total_duration > 0:
+                    # Cache the duration for future use
+                    server_music_bot.duration_cache[file_path] = total_duration
+                    # Update the current song with the duration
+                    server_music_bot.current_song['duration'] = total_duration
+        
         # Format the current time in MM:SS format
         current_time = f"{int(current_position // 60):02d}:{int(current_position % 60):02d}"
         
