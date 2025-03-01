@@ -11,6 +11,41 @@
 
 </div>
 
+<div align="center">
+  
+<div style="border: 2px solid #5865F2; border-radius: 10px; padding: 20px; margin: 20px 0; background-color: #f6f8fa;">
+
+# 🎉 Add Harmonica to Your Server! 🎉
+
+<a href="https://discord.com/oauth2/authorize?client_id=1341757638433833021&scope=bot+applications.commands">
+  <img src="https://img.shields.io/badge/Invite%20Harmonica-Add%20to%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Invite Harmonica" width="300">
+</a>
+
+<table>
+<tr>
+<td>
+  <b>🚀 Instant Setup</b><br>
+  No configuration needed
+</td>
+<td>
+  <b>🎵 High-Quality Audio</b><br>
+  Premium music experience
+</td>
+<td>
+  <b>💯 Always Online</b><br>
+  Reliable 24/7 uptime
+</td>
+</tr>
+</table>
+
+### Why host when you can use our public bot? Get high-quality music without any setup!
+### Just click the button above to add Harmonica to your server in seconds.
+
+</div>
+</div>
+
+---
+
 A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, direct links, and livestreams in your Discord voice channels.
 
 ![Bot Preview](https://github.com/user-attachments/assets/1ee417c8-db7c-458c-987d-95dcd909ee47)
