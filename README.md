@@ -21,13 +21,7 @@
   <img src="https://img.shields.io/badge/Invite%20Harmonica-Add%20to%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Invite Harmonica" width="300">
 </a>
 
-<table>
-<tr>
-</tr>
-</table>
 
-
-</div>
 </div>
 
 ---
