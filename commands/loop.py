@@ -47,7 +47,7 @@ class Loop(commands.Cog):
             
         # Check if there's a song playing
         if not music_bot.current_song:
-            return False, create_embed("Error", "No song is currently playing!", color=0xe74c3c, ctx=ctx)
+            return False, "No song is currently playing!"
             
         current_song_url = music_bot.current_song['url']
         is_song_looped = current_song_url in self.looped_songs
@@ -127,7 +127,7 @@ class Loop(commands.Cog):
         success, result = await self._toggle_loop(ctx, count)
         
         if not success:
-            await ctx.send(result)
+            await ctx.send(embed=create_embed("Error", result, color=0xe74c3c, ctx=ctx))
             return
 
         color = 0x3498db if result['enabled'] else 0xe74c3c
