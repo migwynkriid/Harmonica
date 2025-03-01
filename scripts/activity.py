@@ -13,7 +13,7 @@ async def update_activity(bot, current_song=None, is_playing=False):
       - When no song is playing, it shows "nothing! use {prefix}play"
     
     If SHOW_ACTIVITY_STATUS is False:
-      - Always shows "use {prefix}help" regardless of playback status
+      - Always shows "in {count} servers" displaying the number of servers the bot is in
     
     Args:
         bot: The Discord bot instance
@@ -44,10 +44,11 @@ async def update_activity(bot, current_song=None, is_playing=False):
                         name=f"nothing! use {prefix}play"
                     )
             else:
-                # When activity status is disabled, only show help message
+                # When activity status is disabled, show server count
+                server_count = len(bot.guilds)
                 activity = discord.Activity(
                     type=discord.ActivityType.playing,
-                    name=f"use {prefix}help"
+                    name=f"in {server_count} servers, use {prefix}help"
                 )
                 
             await bot.change_presence(activity=activity)
