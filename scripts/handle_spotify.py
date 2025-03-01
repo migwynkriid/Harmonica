@@ -260,7 +260,8 @@ class SpotifyHandler:
                     thumbnail_url=album['images'][0]['url'] if album['images'] else None,
                     ctx=ctx
                 ))
-                await status_msg.delete(delay=5)
+                # Don't delete the message here, let it be handled later
+                # await status_msg.delete(delay=5)
 
             tracks = []
             results = self.sp.album_tracks(album_id)
@@ -288,11 +289,11 @@ class SpotifyHandler:
                         try:
                             await status_msg.delete()
                         except discord.NotFound:
-                            pass
+                            print(f"Note: Processing message already deleted")
                         except Exception as e:
                             print(f"Note: Could not delete processing message: {e}")
                     
-                    song_info = {
+                    first_song = {
                         'title': cached_info.get('title', 'Unknown'),
                         'url': cached_info.get('url', f'https://open.spotify.com/track/{track_id}'),
                         'file_path': cached_info['file_path'],
@@ -302,35 +303,28 @@ class SpotifyHandler:
                         'duration': await get_audio_duration(cached_info['file_path']),
                         'ctx': ctx
                     }
-                    self.queue.append(song_info)
+                    self.queue.append(first_song)
                 else:
                     # Download if not in cache
                     search_query = f"{first_track['name']} {artists}"
-                    song_info = await self.download_song(search_query, status_msg=status_msg, ctx=ctx)
-                    if song_info:
-                        # Cache the downloaded song with Spotify track ID
+                    first_song = await self.download_song(search_query, status_msg=None, ctx=ctx)
+                    if first_song:
+                        # Cache the first track
                         playlist_cache.add_spotify_track(
                             track_id,
-                            song_info['file_path'],
-                            title=song_info['title'],
-                            thumbnail=song_info.get('thumbnail'),
+                            first_song['file_path'],
+                            title=first_song['title'],
+                            thumbnail=first_song.get('thumbnail'),
                             artist=artists
                         )
-                        print(f"{GREEN}Added Spotify track to cache: {track_id} - {song_info.get('title', 'Unknown')}{RESET}")
+                        print(f"{GREEN}Added Spotify track to cache: {track_id} - {first_song.get('title', 'Unknown')}{RESET}")
                         
-                        # Create a proper queue entry for the first song
-                        queue_entry = {
-                            'title': song_info.get('title', 'Unknown'),
-                            'url': song_info.get('url', f'https://open.spotify.com/track/{track_id}'),
-                            'file_path': song_info['file_path'],
-                            'thumbnail': song_info.get('thumbnail'),
-                            'duration': await get_audio_duration(song_info['file_path']),
-                            'is_stream': song_info.get('is_stream', False),
-                            'is_from_playlist': True,
-                            'requester': ctx.author,
-                            'ctx': ctx
-                        }
-                        self.queue.append(queue_entry)
+                        first_song['is_from_playlist'] = True
+                        first_song['requester'] = ctx.author
+                        first_song['duration'] = await get_audio_duration(first_song['file_path'])
+                        first_song['ctx'] = ctx
+                        
+                        self.queue.append(first_song)
                 
                 if not self.is_playing and not self.voice_client.is_playing():
                     await process_queue(self)
@@ -343,7 +337,7 @@ class SpotifyHandler:
                     f"Album: {album['name']}"
                 ))
 
-            return song_info if tracks else None
+            return first_song if tracks else None
 
         except Exception as e:
             print(f"Error handling Spotify album: {str(e)}")
@@ -423,7 +417,7 @@ class SpotifyHandler:
                         try:
                             await status_msg.delete()
                         except discord.NotFound:
-                            pass
+                            print(f"Note: Processing message already deleted")
                         except Exception as e:
                             print(f"Note: Could not delete processing message: {e}")
                     

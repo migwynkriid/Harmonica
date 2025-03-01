@@ -571,14 +571,24 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 color=0xe74c3c,
                                 ctx=ctx
                             ))
-                            await status_msg.delete(delay=10)
+                            try:
+                                await status_msg.delete(delay=10)
+                            except discord.NotFound:
+                                print(f"Note: Status message already deleted")
+                            except Exception as e:
+                                print(f"Note: Could not delete status message: {e}")
                         return None
                         
                     cached_info = playlist_cache.get_cached_info(video_id)
                     if cached_info and os.path.exists(cached_info['file_path']):
                         print(f"{GREEN}Found cached YouTube file: {video_id} - {cached_info.get('title', 'Unknown')}{RESET}")
                         if status_msg:
-                            await status_msg.delete()
+                            try:
+                                await status_msg.delete()
+                            except discord.NotFound:
+                                print(f"Note: Status message already deleted")
+                            except Exception as e:
+                                print(f"Note: Could not delete processing message: {e}")
                         return {
                             'title': cached_info.get('title', 'Unknown'),  # Use cached title
                             'url': query,
