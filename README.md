@@ -179,3 +179,7 @@ A self-hosted Discord bot that uses YT-DLP to play audio from YouTube, Spotify, 
 - FFmpeg
 - Stable internet connection
 - Discord Bot Token
+
+## License notes:
+
+This project is licensed under the Unlicense. Giving the user complete freedom to use, modify, and distribute the software. This repository primarily uses yt-dlp, which is licensed under GPL-2.0. This repository does not bundle or modify yt-dlp—it only installs it if necessary. For more information, visit: https://github.com/yt-dlp/yt-dlp.
