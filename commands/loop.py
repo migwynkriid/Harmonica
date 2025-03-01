@@ -43,15 +43,12 @@ class Loop(commands.Cog):
             
         # If MusicBot doesn't have a voice client but Discord does, try to sync them
         if not music_bot.voice_client and ctx.guild.voice_client:
-            print(f"Syncing voice client from Discord to MusicBot in _toggle_loop")
             music_bot.voice_client = ctx.guild.voice_client
             
             # Try to find the correct instance if this one doesn't have current_song
             if not music_bot.current_song:
-                print(f"Looking for MusicBot instance with current song data in _toggle_loop")
                 for instance_id, instance in MusicBot._instances.items():
                     if instance.current_song:
-                        print(f"Found instance with song data: {instance_id}")
                         music_bot.current_song = instance.current_song
                         music_bot.is_playing = True
                         break
@@ -120,24 +117,6 @@ class Loop(commands.Cog):
         """
         from bot import MusicBot
         music_bot = MusicBot.get_instance(str(ctx.guild.id))
-        
-        # Debug logging
-        print(f"Loop command called for server {ctx.guild.id}")
-        print(f"Server ID type: {type(ctx.guild.id)}")
-        print(f"Voice client exists: {music_bot.voice_client is not None}")
-        if music_bot.voice_client:
-            print(f"Voice client is playing: {music_bot.voice_client.is_playing()}")
-        print(f"Current song: {music_bot.current_song}")
-        print(f"is_playing flag: {music_bot.is_playing}")
-        
-        # Check Discord's voice client directly
-        if ctx.guild.voice_client:
-            print(f"Discord voice client exists and is playing: {ctx.guild.voice_client.is_playing()}")
-        else:
-            print(f"Discord voice client does not exist")
-        
-        # Check all available instances
-        print(f"Available MusicBot instances: {list(MusicBot._instances.keys())}")
         
         # Check if user is in voice chat
         if not ctx.author.voice:

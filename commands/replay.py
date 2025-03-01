@@ -40,7 +40,19 @@ class ReplayCog(commands.Cog):
             ctx: The command context
         """
         from bot import MusicBot
-        music_bot = MusicBot.get_instance(ctx.guild.id)
+        music_bot = MusicBot.get_instance(str(ctx.guild.id))
+        
+        # If MusicBot doesn't have a voice client but Discord does, try to sync them
+        if not music_bot.voice_client and ctx.guild.voice_client:
+            music_bot.voice_client = ctx.guild.voice_client
+            
+            # Try to find the correct instance if this one doesn't have current_song
+            if not music_bot.current_song:
+                for instance_id, instance in MusicBot._instances.items():
+                    if instance.current_song:
+                        music_bot.current_song = instance.current_song
+                        music_bot.is_playing = True
+                        break
         
         try:
             # Check voice state

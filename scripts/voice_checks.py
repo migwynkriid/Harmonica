@@ -24,6 +24,19 @@ async def check_voice_state(ctx, music_bot):
             - is_valid (bool): True if all checks pass, False otherwise
             - error_embed (discord.Embed or None): Error message embed if checks fail, None otherwise
     """
+    # If MusicBot doesn't have a voice client but Discord does, try to sync them
+    if not music_bot.voice_client and ctx.guild.voice_client:
+        music_bot.voice_client = ctx.guild.voice_client
+        
+        # Try to find the correct instance if this one doesn't have current_song
+        if not music_bot.current_song:
+            from bot import MusicBot
+            for instance_id, instance in MusicBot._instances.items():
+                if instance.current_song:
+                    music_bot.current_song = instance.current_song
+                    music_bot.is_playing = True
+                    break
+    
     # Check if the bot is in a voice channel
     if not music_bot.voice_client or not music_bot.voice_client.channel:
         return False, create_embed("Error", "I'm not in a voice channel", color=0xe74c3c, ctx=ctx)

@@ -210,7 +210,19 @@ async def lyrics(ctx):
     """
     # Access the music_bot from the global scope
     from bot import MusicBot
-    music_bot = MusicBot.get_instance(ctx.guild.id)
+    music_bot = MusicBot.get_instance(str(ctx.guild.id))
+
+    # If MusicBot doesn't have a voice client but Discord does, try to sync them
+    if not music_bot.voice_client and ctx.guild.voice_client:
+        music_bot.voice_client = ctx.guild.voice_client
+        
+        # Try to find the correct instance if this one doesn't have current_song
+        if not music_bot.current_song:
+            for instance_id, instance in MusicBot._instances.items():
+                if instance.current_song:
+                    music_bot.current_song = instance.current_song
+                    music_bot.is_playing = True
+                    break
     
     if not music_bot:
         await ctx.send(embed=create_embed("Error", "Music bot is not initialized yet. Please wait a moment and try again.", color=0xe74c3c, ctx=ctx))
