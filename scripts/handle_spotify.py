@@ -529,9 +529,15 @@ class SpotifyHandler:
                         
                     self.queue.append(song_info)
                     processed += 1
+                    
+                    # Add a small delay between tracks to prevent blocking
+                    await asyncio.sleep(0.1)
                 except Exception as e:
                     print(f"{RED}Error processing cached track {track_id}: {str(e)}{RESET}")
                     continue
+            
+            # Save cache after processing all cached tracks
+            await asyncio.get_event_loop().run_in_executor(None, playlist_cache._save_cache)
             
             # Now process uncached tracks normally
             for track in uncached_tracks:
@@ -554,7 +560,8 @@ class SpotifyHandler:
                             song_info['file_path'],
                             title=song_info['title'],
                             thumbnail=song_info.get('thumbnail'),
-                            artist=artists
+                            artist=artists,
+                            skip_save=True
                         )
                         print(f"{GREEN}Added Spotify track to cache: {track_id} - {song_info.get('title', 'Unknown')}{RESET}")
                         
@@ -568,8 +575,11 @@ class SpotifyHandler:
                             
                         self.queue.append(song_info)
                         
-                        if not self.is_playing and self.voice_client and self.voice_client.is_connected() and not self.voice_client.is_playing():
+                        if not self.is_playing and not self.voice_client.is_playing():
                             await process_queue(self)
+                            
+                        # Add a small delay between tracks to prevent blocking
+                        await asyncio.sleep(0.1)
                     processed += 1
                 except Exception as e:
                     print(f"{RED}Error processing track {track_id}: {str(e)}{RESET}")
