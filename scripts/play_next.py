@@ -35,6 +35,11 @@ async def play_next(ctx):
     """
     from bot import MusicBot
     
+    # Check if context is valid
+    if not ctx or not hasattr(ctx, 'guild') or not ctx.guild:
+        print("Error in play_next: Invalid context provided")
+        return
+        
     # Get server-specific music bot instance
     server_music_bot = MusicBot.get_instance(str(ctx.guild.id))
     
@@ -58,6 +63,8 @@ async def play_next(ctx):
                 previous_song = server_music_bot.current_song
                 # Get the next song from the queue
                 server_music_bot.current_song = server_music_bot.queue.pop(0)
+                # Store the context in the current_song for later use
+                server_music_bot.current_song['ctx'] = ctx
                 # Update last activity time to prevent inactivity timeout
                 server_music_bot.last_activity = time.time()
                 server_name = ctx.guild.name if ctx and hasattr(ctx, 'guild') and ctx.guild else "Unknown Server"

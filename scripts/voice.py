@@ -175,6 +175,9 @@ async def handle_voice_state_update(bot_instance, member, before, after):
                     except Exception as e:
                         print(f"Error updating now playing message: {str(e)}")
                 
+                # Set explicitly_stopped flag to prevent further playback
+                bot_instance.explicitly_stopped = True
+                
                 # Reset bot state variables
                 bot_instance.current_song = None
                 bot_instance.is_playing = False

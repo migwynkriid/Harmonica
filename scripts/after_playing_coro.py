@@ -48,9 +48,21 @@ class AfterPlayingHandler:
             print("Waiting for next song to finish downloading...")
             await asyncio.sleep(1)
             
+        # Check if the bot has been explicitly stopped
+        if hasattr(self, 'explicitly_stopped') and self.explicitly_stopped:
+            # If the bot was explicitly stopped, don't play anything
+            self.queue.clear()
+            return
+            
         # Play the next song if available
         if len(self.queue) > 0 or not self.download_queue.empty():
-            await play_next(ctx)
+            # Make sure we have a valid context before proceeding
+            if ctx and hasattr(ctx, 'guild') and ctx.guild:
+                await play_next(ctx)
+            else:
+                print("Error: Invalid context for play_next in after_playing_coro")
+                # Clear the queue to prevent further attempts with invalid context
+                self.queue.clear()
         else:
             # Update the now playing message to show that the song has finished
             if self.now_playing_message and self.current_song and isinstance(self.current_song, dict):
@@ -68,12 +80,17 @@ class AfterPlayingHandler:
                         # For non-looped songs or skipped songs, show an appropriate message
                         title = "Skipped song" if hasattr(self, 'was_skipped') and self.was_skipped else "Finished playing"
                         
+                        # Use the context stored in the current_song if the provided ctx is invalid
+                        message_ctx = ctx
+                        if not (ctx and hasattr(ctx, 'guild') and ctx.guild):
+                            message_ctx = self.current_song.get('ctx')
+                            
                         finished_embed = create_embed(
                             title,
                             f"[{self.current_song['title']}]({self.current_song['url']})",
                             color=0x808080,
                             thumbnail_url=self.current_song.get('thumbnail'),
-                            ctx=ctx
+                            ctx=message_ctx
                         )
                         # Remove buttons when the song is finished
                         await self.now_playing_message.edit(embed=finished_embed, view=None)
