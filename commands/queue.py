@@ -204,7 +204,7 @@ class QueueCog(commands.Cog):
         # Create the final embed
         embed = create_embed(
             f"Queue",
-            queue_text if queue_text else "Queue is empty",
+            queue_text + (f"\n\nTotal in queue: {total_songs}" if total_songs > 0 else ""),
             color=0x3498db,
             ctx=ctx
         )
