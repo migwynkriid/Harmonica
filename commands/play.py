@@ -77,20 +77,22 @@ class PlayCog(commands.Cog):
         # Connect to voice channel if needed
         if not ctx.guild.voice_client:
             try:
-                # Connect to the author's voice channel
-                await ctx.author.voice.channel.connect()
+                # Connect to the author's voice channel with self_deaf=True
+                await ctx.author.voice.channel.connect(self_deaf=True)
             except discord.ClientException as e:
                 if "already connected" in str(e):
                     # If already connected but in a different state, clean up and reconnect
                     if server_music_bot.voice_client:
                         await server_music_bot.voice_client.disconnect()
                     server_music_bot.voice_client = None
-                    await ctx.author.voice.channel.connect()
+                    await ctx.author.voice.channel.connect(self_deaf=True)
                 else:
                     raise e
         elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
             # Move to the author's voice channel if bot is in a different channel
             await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
+            # Ensure self_deaf is set to True after moving
+            await ctx.guild.voice_client.edit(self_deaf=True)
 
         # Update the bot's voice client reference and reset playing state
         server_music_bot.voice_client = ctx.guild.voice_client

@@ -47,23 +47,27 @@ class JoinCog(commands.Cog):
         # Connect to voice channel if needed
         if not ctx.guild.voice_client:
             try:
-                # Bot is not in any voice channel, connect to user's channel
-                await ctx.author.voice.channel.connect()
+                # Bot is not in any voice channel, connect to user's channel with self_deaf=True
+                await ctx.author.voice.channel.connect(self_deaf=True)
             except discord.ClientException as e:
                 if "already connected" in str(e):
                     # If already connected but in a different state, clean up and reconnect
                     if server_music_bot.voice_client:
                         await server_music_bot.voice_client.disconnect()
                     server_music_bot.voice_client = None
-                    await ctx.author.voice.channel.connect()
+                    await ctx.author.voice.channel.connect(self_deaf=True)
                 else:
                     raise e
         elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
             # Bot is in a different voice channel, move to user's channel
             await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
+            # Ensure self_deaf is set to True after moving
+            await ctx.guild.voice_client.edit(self_deaf=True)
 
         # Update the server music bot's voice client reference
         server_music_bot.voice_client = ctx.guild.voice_client
+        
+        await ctx.send(embed=create_embed("Joined", "Successfully joined your voice channel", color=0x3498db, ctx=ctx))
 
 async def setup(bot):
     """
