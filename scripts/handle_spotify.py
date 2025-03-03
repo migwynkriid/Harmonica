@@ -568,7 +568,7 @@ class SpotifyHandler:
                             
                         self.queue.append(song_info)
                         
-                        if not self.is_playing and not self.voice_client.is_playing():
+                        if not self.is_playing and self.voice_client and self.voice_client.is_connected() and not self.voice_client.is_playing():
                             await process_queue(self)
                     processed += 1
                 except Exception as e:
