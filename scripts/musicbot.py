@@ -253,6 +253,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             ctx: The command context
             query: The search query or URL to play
         """
+        # Reset the explicitly_stopped flag when a new play command is issued
+        if hasattr(self, 'explicitly_stopped'):
+            self.explicitly_stopped = False
         # Join voice channel if not already in one
         if not ctx.voice_client and not await self.join_voice_channel(ctx):
             raise Exception("Could not join voice channel")

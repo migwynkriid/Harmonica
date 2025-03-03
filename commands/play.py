@@ -62,6 +62,9 @@ class PlayCog(commands.Cog):
             await ctx.send(embed=embed)
             return
 
+        # Reset explicitly_stopped flag when play command is used
+        server_music_bot.explicitly_stopped = False
+        
         # Only now send the processing message
         processing_embed = create_embed(
             "Processing",

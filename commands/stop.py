@@ -94,6 +94,8 @@ class StopCog(commands.Cog):
             # Reset the music bot state
             server_music_bot.current_song = None
             server_music_bot.is_playing = False
+            # Add a flag to indicate the bot has been explicitly stopped
+            server_music_bot.explicitly_stopped = True
             
             # Clear any remaining downloads from queue to prevent them from being processed
             while not server_music_bot.download_queue.empty():

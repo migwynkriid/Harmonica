@@ -46,6 +46,12 @@ async def play_next(ctx):
         server_music_bot.playback_lock = playback_lock
     
     async with playback_lock:
+        # Check if the bot has been explicitly stopped
+        if hasattr(server_music_bot, 'explicitly_stopped') and server_music_bot.explicitly_stopped:
+            # If the bot was explicitly stopped, don't play anything
+            server_music_bot.queue.clear()
+            return
+            
         if len(server_music_bot.queue) > 0:
             try:
                 # Store the previous song for reference

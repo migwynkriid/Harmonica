@@ -37,6 +37,12 @@ async def process_queue(music_bot, ctx=None):
     # If either condition is true, return immediately
     if music_bot.waiting_for_song or not music_bot.queue:
         return
+        
+    # Check if the bot has been explicitly stopped
+    if hasattr(music_bot, 'explicitly_stopped') and music_bot.explicitly_stopped:
+        # If the bot was explicitly stopped, don't play anything
+        music_bot.queue.clear()
+        return
 
     # Set the flag to prevent multiple simultaneous playbacks
     music_bot.waiting_for_song = True
