@@ -68,14 +68,23 @@ class StopCog(commands.Cog):
                     )
                     await server_music_bot.now_playing_message.edit(embed=finished_embed, view=None)
                 except Exception as e:
-                    print(f"Error updating now playing message: {str(e)}")
+                    # Silently handle errors updating now playing message
+                    pass
             
             # Cancel any active downloads first to prevent new songs from being added
-            await server_music_bot.cancel_downloads()
+            try:
+                await server_music_bot.cancel_downloads(disconnect_voice=False)  # Don't disconnect yet
+            except Exception as e:
+                # Silently handle errors canceling downloads
+                pass
             
             # Stop any current playback
-            if server_music_bot.voice_client and server_music_bot.voice_client.is_playing():
-                server_music_bot.voice_client.stop()
+            try:
+                if server_music_bot.voice_client and server_music_bot.voice_client.is_playing():
+                    server_music_bot.voice_client.stop()
+            except Exception as e:
+                # Silently handle errors stopping playback
+                pass
             
             # Clean up all queued messages with small delay between each to avoid rate limiting
             for message in list(server_music_bot.queued_messages.values()):
@@ -86,12 +95,19 @@ class StopCog(commands.Cog):
                     pass  # Message might already be deleted
             server_music_bot.queued_messages.clear()
             
-            # Clear the queue and disconnect from voice channel
+            # Clear the queue
             clear_queue(ctx.guild.id)
-            if server_music_bot.voice_client and server_music_bot.voice_client.is_connected():
-                await server_music_bot.voice_client.disconnect()
+            
+            # Disconnect from voice channel
+            try:
+                if server_music_bot.voice_client and server_music_bot.voice_client.is_connected():
+                    await server_music_bot.voice_client.disconnect(force=True)
+            except Exception as e:
+                # Silently handle errors disconnecting
+                pass
                 
             # Reset the music bot state
+            server_music_bot.voice_client = None  # Explicitly set to None to prevent further errors
             server_music_bot.current_song = None
             server_music_bot.is_playing = False
             # Add a flag to indicate the bot has been explicitly stopped
