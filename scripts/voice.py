@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 from scripts.messages import update_or_send_message, create_embed
+from scripts.constants import GREEN, BLUE, RESET
 
 def get_voice_config():
     """
@@ -130,10 +131,11 @@ async def handle_voice_state_update(bot_instance, member, before, after):
 
         if members_in_channel == 0:
             if bot_instance and bot_instance.voice_client and bot_instance.voice_client.is_connected():
+                server_name = bot_voice_channel.guild.name if bot_voice_channel and hasattr(bot_voice_channel, 'guild') else "Unknown Server"
+                print(f"{GREEN}Leaving empty voice channel: {RESET}{BLUE}{bot_voice_channel.name}{RESET}{GREEN} in server: {RESET}{BLUE}{server_name}{RESET}")
+
                 # First, disconnect from voice channel immediately
                 await bot_instance.voice_client.disconnect()
-                print(f"No users in voice channel {bot_voice_channel.name}, disconnecting bot")
-
                 # Then stop playback and clear the queue
                 if bot_instance.voice_client.is_playing() or bot_instance.queue:
                     bot_instance.voice_client.stop()
@@ -144,8 +146,8 @@ async def handle_voice_state_update(bot_instance, member, before, after):
 
                 # Clear the queue for this specific server
                 from scripts.clear_queue import clear_queue
-                if guild_id:
-                    clear_queue(guild_id)
+                if hasattr(bot_instance, 'guild_id'):
+                    clear_queue(bot_instance.guild_id)
                 else:
                     clear_queue()
 
