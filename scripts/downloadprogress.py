@@ -32,7 +32,9 @@ class DownloadProgress:
         self.title = ""
         self.ctx = None  # Store ctx for footer info
         self.download_complete = False  # Track if download is complete
-        self.message_queue = asyncio.Queue()
+        self.server_id = None  # Store server ID for multi-server support
+        self.message_queues = {}  # Dict to store per-server message queues
+        self.update_tasks = {}  # Dict to store per-server update tasks
         self.update_task = None
         
     def create_progress_bar(self, percentage, width=20):
@@ -52,12 +54,24 @@ class DownloadProgress:
     
     def start_updater(self, loop=None):
         """
-        Start the message updater task.
+        Start the message updater task for the current server.
         
         Args:
             loop: The event loop to use for the task
         """
-        if self.update_task is None or self.update_task.done():
+        if not self.server_id and self.status_msg and hasattr(self.status_msg, 'guild'):
+            self.server_id = str(self.status_msg.guild.id)
+
+        if not self.server_id:
+            print("Warning: No server ID available for download progress tracker")
+            return
+
+        # Initialize queue for this server if not exists
+        if self.server_id not in self.message_queues:
+            self.message_queues[self.server_id] = asyncio.Queue()
+
+        # Only start a new task if none exists for this server or if it's done
+        if self.server_id not in self.update_tasks or self.update_tasks[self.server_id].done():
             if loop is None:
                 try:
                     loop = asyncio.get_event_loop()
@@ -65,22 +79,24 @@ class DownloadProgress:
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
             
-            self.update_task = loop.create_task(self._message_updater())
-    
-    async def _message_updater(self):
+            self.update_tasks[self.server_id] = loop.create_task(self._message_updater(self.server_id))
+
+    async def _message_updater(self, server_id):
         """
-        Background task that processes message updates from the queue.
+        Background task that processes message updates from the server's queue.
+        
+        Args:
+            server_id: The ID of the server whose queue to process
         """
         try:
             while True:
                 try:
                     # Get the next message update from the queue with a timeout
-                    # This allows the task to be cancelled properly
                     try:
-                        embed = await asyncio.wait_for(self.message_queue.get(), timeout=1.0)
+                        embed = await asyncio.wait_for(self.message_queues[server_id].get(), timeout=1.0)
                     except asyncio.TimeoutError:
                         # Check if we should exit
-                        if self.download_complete and self.message_queue.empty():
+                        if self.download_complete and self.message_queues[server_id].empty():
                             break
                         continue
                     
@@ -89,49 +105,57 @@ class DownloadProgress:
                         try:
                             await self.status_msg.edit(embed=embed, view=self.view)
                         except Exception as e:
-                            print(f"Error updating message: {str(e)}")
+                            print(f"Error updating message for server {server_id}: {str(e)}")
                     
                     # Mark the task as done
-                    self.message_queue.task_done()
+                    self.message_queues[server_id].task_done()
                     
                     # Small delay to prevent rate limiting
                     await asyncio.sleep(0.5)
                 except asyncio.CancelledError:
-                    # Handle task cancellation
                     break
                 except Exception as e:
-                    print(f"Error in message updater: {str(e)}")
+                    print(f"Error in message updater for server {server_id}: {str(e)}")
                     await asyncio.sleep(1)
         except asyncio.CancelledError:
-            # Handle task cancellation
             pass
-    
+        finally:
+            # Clean up server-specific resources when the task ends
+            if server_id in self.update_tasks:
+                del self.update_tasks[server_id]
+            if server_id in self.message_queues:
+                del self.message_queues[server_id]
+
     async def cleanup(self):
         """
-        Clean up resources and cancel the update task.
-        
-        This method should be called when the download is complete
-        or when the bot is shutting down.
+        Clean up resources and cancel update tasks for all servers.
         """
         self.download_complete = True
         
-        # Wait for the queue to be empty
-        if not self.message_queue.empty():
-            try:
-                await asyncio.wait_for(self.message_queue.join(), timeout=5.0)
-            except asyncio.TimeoutError:
-                pass
+        # Wait for all queues to be empty - use a copy of the keys to avoid modification during iteration
+        server_ids = list(self.message_queues.keys())
+        for server_id in server_ids:
+            if server_id in self.message_queues and not self.message_queues[server_id].empty():
+                try:
+                    await asyncio.wait_for(self.message_queues[server_id].join(), timeout=5.0)
+                except asyncio.TimeoutError:
+                    pass
         
-        # Cancel the update task if it's running
-        if self.update_task and not self.update_task.done():
-            self.update_task.cancel()
-            try:
-                await asyncio.wait_for(self.update_task, timeout=2.0)
-            except (asyncio.TimeoutError, asyncio.CancelledError):
-                pass
+        # Cancel all update tasks - use a copy of the keys to avoid modification during iteration
+        server_ids = list(self.update_tasks.keys())
+        for server_id in server_ids:
+            if server_id in self.update_tasks and not self.update_tasks[server_id].done():
+                task = self.update_tasks[server_id]
+                task.cancel()
+                try:
+                    await asyncio.wait_for(task, timeout=2.0)
+                except (asyncio.TimeoutError, asyncio.CancelledError):
+                    pass
         
-        self.update_task = None
-    
+        # Clear the dictionaries
+        self.update_tasks.clear()
+        self.message_queues.clear()
+
     def progress_hook(self, d):
         """
         Hook function called by yt-dlp during the download process.
@@ -144,7 +168,6 @@ class DownloadProgress:
             d: Dictionary containing download information from yt-dlp
         """
         if d['status'] == 'downloading':
-            # Throttle updates to avoid too many message edits
             current_time = time.time()
             if current_time - self.last_update < 2:
                 return
@@ -152,11 +175,18 @@ class DownloadProgress:
             self.last_update = current_time
             
             try:
-                # Check if download is finished
                 if d.get('status') == 'finished':
                     self.download_complete = True
                     return
                 
+                # Get server ID if not already set
+                if not self.server_id and self.status_msg and hasattr(self.status_msg, 'guild'):
+                    self.server_id = str(self.status_msg.guild.id)
+
+                if not self.server_id:
+                    print("Warning: No server ID available for progress update")
+                    return
+
                 # Extract download information
                 downloaded = d.get('downloaded_bytes', 0)
                 total = d.get('total_bytes', 0) or d.get('total_bytes_estimate', 0)
@@ -219,11 +249,10 @@ class DownloadProgress:
                         # Start the message updater if it's not already running
                         self.start_updater(loop)
                         
-                        # Add the embed to the queue
-                        if not self.message_queue.full():
-                            # Use put_nowait to avoid blocking
-                            self.message_queue.put_nowait(embed)
+                        # Add the embed to the server's queue
+                        if not self.message_queues[self.server_id].full():
+                            self.message_queues[self.server_id].put_nowait(embed)
                     except Exception as e:
-                        print(f"Error queueing message update: {str(e)}")
+                        print(f"Error queueing message update for server {self.server_id}: {str(e)}")
             except Exception as e:
                 print(f"Error in progress hook: {str(e)}")
