@@ -545,14 +545,97 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
         if not skip_url_check and is_url(query):
             if is_youtube_channel(query):
-                if status_msg:
-                    await status_msg.edit(embed=create_embed(
-                        "Error",
-                        "Channel links are not supported.",
-                        color=0xe74c3c,
-                        ctx=ctx
-                    ))
-                return None
+                print(f"Direct YouTube channel URL detected: {query}")
+                
+                # Extract channel ID
+                channel_id = None
+                
+                # Handle different channel URL formats
+                if '/channel/UC' in query:
+                    # Format: youtube.com/channel/UC...
+                    channel_id = query.split('/channel/UC')[1].split('/')[0].split('?')[0]
+                elif '/@' in query or '/c/' in query or '/user/' in query:
+                    # Format: youtube.com/@username, youtube.com/c/username, or youtube.com/user/username
+                    # Extract the channel ID directly using yt-dlp's channel_id field
+                    print(f"Extracting channel ID for URL: {query}")
+                    
+                    # First try with a simple approach for handle-based URLs
+                    if '/@' in query:
+                        username = query.split('/@')[1].split('/')[0].split('?')[0]
+                        # Try a direct conversion to a playlist URL for the most common case
+                        playlist_url = f"https://www.youtube.com/@{username}/videos"
+                        print(f"Using direct videos URL: {playlist_url}")
+                        
+                        # Handle as a playlist
+                        await self._handle_playlist(playlist_url, ctx, status_msg)
+                        return None
+                    
+                    # For other formats, try to extract the channel ID
+                    with yt_dlp.YoutubeDL({
+                        'quiet': True,
+                        'extract_flat': True,
+                        'skip_download': True,
+                        'socket_timeout': 5  # 5 second timeout
+                    }) as ydl:
+                        try:
+                            # Use asyncio.wait_for to add a timeout
+                            channel_info = await asyncio.wait_for(
+                                asyncio.get_event_loop().run_in_executor(None, lambda: ydl.extract_info(query, download=False)),
+                                timeout=10  # 10 second timeout
+                            )
+                            if channel_info and channel_info.get('channel_id'):
+                                # The channel_id already includes the 'UC' prefix
+                                channel_id = channel_info.get('channel_id')[2:] if channel_info.get('channel_id').startswith('UC') else channel_info.get('channel_id')
+                                print(f"Found channel ID: {channel_id} for URL: {query}")
+                        except asyncio.TimeoutError:
+                            print(f"Timeout while extracting channel ID for URL: {query}")
+                            # Try a fallback for handle-based URLs
+                            if '/@' in query:
+                                username = query.split('/@')[1].split('/')[0].split('?')[0]
+                                playlist_url = f"https://www.youtube.com/@{username}/videos"
+                                print(f"Using fallback videos URL: {playlist_url}")
+                                
+                                if status_msg:
+                                    await status_msg.edit(embed=create_embed(
+                                        "Channel Detected",
+                                        f"Found channel @{username}. Processing videos...",
+                                        color=0x3498db,
+                                        ctx=ctx
+                                    ))
+                                
+                                # Handle as a playlist
+                                await self._handle_playlist(playlist_url, ctx, status_msg)
+                                return None
+                        except Exception as e:
+                            print(f"Error extracting channel ID: {e}")
+                
+                if channel_id:
+                    # Convert to playlist URL
+                    playlist_url = f"https://www.youtube.com/playlist?list=UU{channel_id}"
+                    print(f"Converting channel to playlist URL: {playlist_url}")
+                    
+                    if status_msg:
+                        channel_name = query.split('/')[-1] if '/' in query else query
+                        await status_msg.edit(embed=create_embed(
+                            "Channel Detected",
+                            f"Found channel {channel_name}. Processing as a playlist...",
+                            color=0x3498db,
+                            ctx=ctx
+                        ))
+                    
+                    # Handle as a playlist
+                    await self._handle_playlist(playlist_url, ctx, status_msg)
+                    return None
+                else:
+                    # If we couldn't extract the channel ID, show an error
+                    if status_msg:
+                        await status_msg.edit(embed=create_embed(
+                            "Error",
+                            "Could not process this channel. Please try a specific video URL instead.",
+                            color=0xe74c3c,
+                            ctx=ctx
+                        ))
+                    return None
 
         try:
             # Check cache first for YouTube videos
