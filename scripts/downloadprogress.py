@@ -59,12 +59,17 @@ class DownloadProgress:
         Args:
             loop: The event loop to use for the task
         """
-        if not self.server_id and self.status_msg and hasattr(self.status_msg, 'guild'):
+        # Try to get server ID from status_msg
+        if not self.server_id and self.status_msg and hasattr(self.status_msg, 'guild') and self.status_msg.guild:
             self.server_id = str(self.status_msg.guild.id)
+        
+        # Try to get server ID from ctx
+        if not self.server_id and self.ctx and hasattr(self.ctx, 'guild') and self.ctx.guild:
+            self.server_id = str(self.ctx.guild.id)
 
+        # If still no server ID, use a default one
         if not self.server_id:
-            print("Warning: No server ID available for download progress tracker")
-            return
+            self.server_id = "default"  # Use a default server ID instead of showing a warning
 
         # Initialize queue for this server if not exists
         if self.server_id not in self.message_queues:
@@ -180,12 +185,16 @@ class DownloadProgress:
                     return
                 
                 # Get server ID if not already set
-                if not self.server_id and self.status_msg and hasattr(self.status_msg, 'guild'):
+                if not self.server_id and self.status_msg and hasattr(self.status_msg, 'guild') and self.status_msg.guild:
                     self.server_id = str(self.status_msg.guild.id)
+                
+                # Try to get server ID from ctx
+                if not self.server_id and self.ctx and hasattr(self.ctx, 'guild') and self.ctx.guild:
+                    self.server_id = str(self.ctx.guild.id)
 
+                # If still no server ID, use a default one
                 if not self.server_id:
-                    print("Warning: No server ID available for progress update")
-                    return
+                    self.server_id = "default"  # Use a default server ID instead of showing a warning
 
                 # Extract download information
                 downloaded = d.get('downloaded_bytes', 0)
