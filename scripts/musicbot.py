@@ -833,8 +833,50 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         ydl_opts['playlistend'] = config_vars.get('MIX_PLAYLIST_LIMIT', 50)
                 else:
                     # If it's not a URL, treat it as a search term
+                    original_query = query
                     query = f"ytsearch1:{query}"  # Only get the first result
                     ydl_opts['noplaylist'] = True  # Never process playlists for search queries
+                    
+                    # First, do a quick check to see if the search returns a channel
+                    with yt_dlp.YoutubeDL({
+                        'quiet': True,
+                        'extract_flat': True,
+                        'force_generic_extractor': False,
+                        'ignoreerrors': True
+                    }) as ydl:
+                        try:
+                            search_results = ydl.extract_info(query, download=False)
+                            
+                            # Check if the result is a channel
+                            if search_results and search_results.get('_type') == 'playlist' and search_results.get('entries'):
+                                first_entry = search_results['entries'][0] if search_results['entries'] else None
+                                if first_entry and first_entry.get('url') and '/channel/' in first_entry.get('url', ''):
+                                    channel_url = first_entry.get('url')
+                                    print(f"Search returned a channel URL: {channel_url}")
+                                    
+                                    # Extract channel ID
+                                    channel_id = None
+                                    if '/channel/UC' in channel_url:
+                                        channel_id = channel_url.split('/channel/UC')[1].split('/')[0]
+                                        if channel_id:
+                                            # Convert to playlist URL
+                                            playlist_url = f"https://www.youtube.com/playlist?list=UU{channel_id}"
+                                            print(f"Converting channel to playlist URL: {playlist_url}")
+                                            
+                                            if status_msg:
+                                                await status_msg.edit(embed=create_embed(
+                                                    "Channel Detected",
+                                                    f"Found channel for {original_query}. Processing as a playlist...",
+                                                    color=0x3498db,
+                                                    ctx=ctx
+                                                ))
+                                            
+                                            # Handle as a playlist
+                                            await self._handle_playlist(playlist_url, ctx, status_msg)
+                                            return None
+                        except Exception as e:
+                            print(f"Error during channel check: {e}")
+                            # Continue with normal download if check fails
 
                 # Skip pre-check for direct YouTube watch URLs (no playlist/mix)
                 is_direct_watch = ('youtube.com/watch' in query or 'youtu.be/' in query) and not is_youtube_mix
@@ -849,6 +891,37 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         self.current_download_task = asyncio.create_task(extract_info(ydl, query, download=False))
                         try:
                             info_dict = await self.current_download_task
+                            
+                            # Check if the result is a channel
+                            if info_dict and info_dict.get('_type') == 'playlist' and info_dict.get('entries'):
+                                # Check if the first result is a channel
+                                if info_dict['entries'] and info_dict['entries'][0]:
+                                    first_entry = info_dict['entries'][0]
+                                    if first_entry.get('url') and '/channel/' in first_entry.get('url', ''):
+                                        channel_url = first_entry.get('url')
+                                        print(f"Search returned a channel URL: {channel_url}")
+                                        
+                                        # Extract channel ID
+                                        channel_id = None
+                                        if '/channel/UC' in channel_url:
+                                            channel_id = channel_url.split('/channel/UC')[1].split('/')[0]
+                                            if channel_id:
+                                                # Convert to playlist URL
+                                                playlist_url = f"https://www.youtube.com/playlist?list=UU{channel_id}"
+                                                print(f"Converting channel to playlist URL: {playlist_url}")
+                                                
+                                                if status_msg:
+                                                    await status_msg.edit(embed=create_embed(
+                                                        "Channel Detected",
+                                                        f"Found channel for {query}. Processing as a playlist...",
+                                                        color=0x3498db,
+                                                        ctx=ctx
+                                                    ))
+                                                
+                                                # Handle as a playlist
+                                                await self._handle_playlist(playlist_url, ctx, status_msg)
+                                                return None
+                            
                             # Enhanced livestream detection
                             is_live = (
                                 info_dict.get('is_live', False) or 
@@ -1005,6 +1078,40 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     
                     # Clean up the progress tracker after successful download
                     await progress.cleanup()
+                    
+                    # Check if the result is a YouTube channel
+                    if info and info.get('_type') == 'playlist' and info.get('entries'):
+                        # Check if this is a channel result (many entries with same uploader)
+                        if len(info.get('entries', [])) > 10:
+                            print(f"Detected potential channel result with {len(info.get('entries', []))} entries")
+                            
+                            # Check if all entries have the same uploader
+                            uploaders = set()
+                            for entry in info.get('entries', [])[:10]:
+                                if entry and entry.get('uploader'):
+                                    uploaders.add(entry.get('uploader'))
+                            
+                            if len(uploaders) == 1:
+                                uploader = next(iter(uploaders))
+                                print(f"Detected channel for uploader: {uploader}")
+                                
+                                # Convert channel URL to playlist URL as recommended in the logs
+                                if info.get('id') and info.get('id').startswith('UC'):
+                                    channel_id = info.get('id')
+                                    playlist_url = f"https://www.youtube.com/playlist?list=UU{channel_id[2:]}"
+                                    print(f"Converting channel to playlist URL: {playlist_url}")
+                                    
+                                    if status_msg:
+                                        await status_msg.edit(embed=create_embed(
+                                            "Channel Detected",
+                                            f"Found channel for {uploader}. Processing as a playlist...",
+                                            color=0x3498db,
+                                            ctx=ctx
+                                        ))
+                                    
+                                    # Handle as a playlist
+                                    await self._handle_playlist(playlist_url, ctx, status_msg)
+                                    return None
                     
                     if info.get('_type') == 'playlist' and not is_playlist_url(query):
                         # Handle search results that return a playlist
