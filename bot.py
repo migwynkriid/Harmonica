@@ -53,10 +53,35 @@ from scripts.spotify import get_spotify_album_details, get_spotify_track_details
 from scripts.priority import set_high_priority
 from scripts.paths import get_downloads_dir, get_root_dir, get_absolute_path
 from scripts.server_prefixes import get_prefix, init_server_prefixes, init_server_prefixes_sync
+from scripts.setup import run_setup
 import signal
+
+# Check if .env file exists, if not run setup
+env_path = Path('.env')
+if not env_path.exists():
+    print(f"{YELLOW}No .env file found. Starting first-time setup...{RESET}")
+    if not run_setup():
+        print(f"{RED}Setup failed. Exiting...{RESET}")
+        sys.exit(1)
+    print(f"{GREEN}Setup completed. Starting bot...{RESET}")
 
 # Load environment variables
 load_dotenv()
+
+# Check if Discord token is available
+discord_token = os.getenv('DISCORD_TOKEN')
+if not discord_token:
+    print(f"{RED}Discord token not found in .env file. Please run setup again.{RESET}")
+    if not run_setup():
+        print(f"{RED}Setup failed. Exiting...{RESET}")
+        sys.exit(1)
+    # Reload environment variables after setup
+    load_dotenv()
+    discord_token = os.getenv('DISCORD_TOKEN')
+    if not discord_token:
+        print(f"{RED}Discord token still not found. Exiting...{RESET}")
+        sys.exit(1)
+    print(f"{GREEN}Discord token successfully configured.{RESET}")
 
 # Load configuration from config.json
 config_vars = load_config()
