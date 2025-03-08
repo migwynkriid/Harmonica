@@ -3,6 +3,7 @@ import logging
 import aiohttp
 import random
 import yt_dlp
+import os
 from pathlib import Path
 from discord.ext import commands
 from scripts.config import YTDL_OPTIONS, BASE_YTDL_OPTIONS
@@ -63,7 +64,7 @@ class RandomCommand(commands.Cog):
         try:
             search_opts = {
                 **BASE_YTDL_OPTIONS,
-                'cookiefile': self.cookie_file if self.cookie_file.exists() else None,
+                'cookies': str(self.cookie_file) if self.cookie_file.exists() else None,
                 'quiet': True,
                 'no_warnings': True,
                 'extract_flat': True,

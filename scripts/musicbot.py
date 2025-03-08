@@ -839,6 +839,10 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 # Initialize default options
                 ydl_opts = {**BASE_YTDL_OPTIONS}
                 
+                # Add cookies if available
+                if self.cookie_file.exists():
+                    ydl_opts['cookies'] = str(self.cookie_file)
+                
                 # If this is a playlist entry, skip all initial checks and just download
                 if skip_url_check and ('youtube.com/watch' in query or 'youtu.be/' in query):
                     ydl_opts.update({
@@ -1131,7 +1135,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 ydl_opts = {
                     **BASE_YTDL_OPTIONS,
                     'outtmpl': os.path.join(self.downloads_dir, '%(id)s.%(ext)s'),
-                    'cookiefile': self.cookie_file if self.cookie_file.exists() else None,
+                    'cookies': self.cookie_file if self.cookie_file.exists() else None,
                     'progress_hooks': [
                         self._download_hook,
                         progress.progress_hook
