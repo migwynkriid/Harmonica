@@ -5,6 +5,7 @@ from scripts.permissions import check_dj_role
 from scripts.clear_queue import clear_queue
 from scripts.voice_checks import check_voice_state
 from scripts.caching import playlist_cache
+from scripts.activity import update_activity
 import asyncio
 
 class StopCog(commands.Cog):
@@ -37,6 +38,7 @@ class StopCog(commands.Cog):
         3. Clears the queue
         4. Removes all queued messages
         5. Disconnects from the voice channel
+        6. Clears the bot's activity status
         
         Args:
             ctx: The command context
@@ -120,6 +122,9 @@ class StopCog(commands.Cog):
                     server_music_bot.download_queue.task_done()
                 except asyncio.QueueEmpty:
                     break
+            
+            # Update the bot's activity status to clear the "Playing song" status
+            await update_activity(self.bot, current_song=None, is_playing=False)
             
             await ctx.send(embed=create_embed("Stopped", "Playback stopped and cleared the queue", color=0xe74c3c, ctx=ctx))
 
