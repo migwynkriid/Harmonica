@@ -97,6 +97,7 @@ class HelpCog(commands.Cog):
             admin_embed.add_field(name=f"{prefix}logclear", value="Clear the log file (Owner Only).", inline=True)
             admin_embed.add_field(name=f"{prefix}version", value="Check the version of yt-dlp and commit info (Owner Only).", inline=True)
             admin_embed.add_field(name=f"{prefix}update", value="Updates the yt-dlp executable and does a git pull (Owner Only).", inline=True)
+            admin_embed.add_field(name=f"{prefix}cookie", value="Update cookies.txt (Owner Only).", inline=True)
             admin_embed.add_field(name=f"{prefix}restart", value="Restart the bot (Owner Only).", inline=True)
             
             admin_embed.set_footer(text=footer_text, icon_url=footer_icon)
