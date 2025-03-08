@@ -6,7 +6,7 @@ import yt_dlp
 import os
 from pathlib import Path
 from discord.ext import commands
-from scripts.config import YTDL_OPTIONS, BASE_YTDL_OPTIONS
+from scripts.config import YTDL_OPTIONS, BASE_YTDL_OPTIONS, COOKIES_PATH
 from scripts.messages import create_embed
 from scripts.process_queue import process_queue
 
@@ -29,7 +29,7 @@ class RandomCommand(commands.Cog):
         """
         self.bot = bot
         self.random_word_api = "https://random-word-api.herokuapp.com/word"
-        self.cookie_file = Path(__file__).parent.parent / 'cookies.txt'  # Path to cookies file
+        # No need to define cookie_file here as we'll use COOKIES_PATH from config.py
 
     async def fetch_random_word(self):
         """
@@ -64,7 +64,6 @@ class RandomCommand(commands.Cog):
         try:
             search_opts = {
                 **BASE_YTDL_OPTIONS,
-                'cookies': str(self.cookie_file) if self.cookie_file.exists() else None,
                 'quiet': True,
                 'no_warnings': True,
                 'extract_flat': True,

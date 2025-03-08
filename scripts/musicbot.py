@@ -27,7 +27,7 @@ from scripts.activity import update_activity
 from scripts.after_playing_coro import AfterPlayingHandler
 from scripts.cleardownloads import clear_downloads_folder
 from scripts.clear_queue import clear_queue
-from scripts.config import load_config, YTDL_OPTIONS, FFMPEG_OPTIONS, BASE_YTDL_OPTIONS
+from scripts.config import load_config, YTDL_OPTIONS, FFMPEG_OPTIONS, BASE_YTDL_OPTIONS, COOKIES_PATH
 from scripts.downloadprogress import DownloadProgress
 from scripts.duration import get_audio_duration
 from scripts.format_size import format_size
@@ -116,7 +116,6 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.status_messages = {}  # Status messages for various operations
         self.now_playing_message = None  # Message showing currently playing song
         self.downloads_dir = Path(__file__).parent.parent / 'downloads'  # Directory for downloaded files
-        self.cookie_file = Path(__file__).parent.parent / 'cookies.txt'  # Cookie file for authentication
         self.playback_start_time = None  # Track when the current song started playing
         self.in_progress_downloads = {}  # Track downloads in progress for this server
         if not self.downloads_dir.exists():
@@ -840,8 +839,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 ydl_opts = {**BASE_YTDL_OPTIONS}
                 
                 # Add cookies if available
-                if self.cookie_file.exists():
-                    ydl_opts['cookies'] = str(self.cookie_file)
+                if os.path.exists(COOKIES_PATH):
+                    ydl_opts['cookiefile'] = COOKIES_PATH
                 
                 # If this is a playlist entry, skip all initial checks and just download
                 if skip_url_check and ('youtube.com/watch' in query or 'youtu.be/' in query):
@@ -1135,7 +1134,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 ydl_opts = {
                     **BASE_YTDL_OPTIONS,
                     'outtmpl': os.path.join(self.downloads_dir, '%(id)s.%(ext)s'),
-                    'cookiefile': self.cookie_file if self.cookie_file.exists() else None,
+                    'cookiefile': COOKIES_PATH if os.path.exists(COOKIES_PATH) else None,
                     'progress_hooks': [
                         self._download_hook,
                         progress.progress_hook
@@ -1374,7 +1373,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         print(f"{GREEN}Spotify credentials found:{RESET} {BLUE if (client_id and client_secret) else RED}{'Yes' if (client_id and client_secret) else 'No'}{RESET}")
         
         # Check for YouTube cookies file (needed for age-restricted content)
-        if self.cookie_file.exists():
+        if os.path.exists(COOKIES_PATH):
             print(f"{GREEN}YouTube cookies found:{RESET} {BLUE}Yes{RESET}")
         else:
             print(f"{GREEN}YouTube cookies found:{RESET} {RED}No{RESET}")

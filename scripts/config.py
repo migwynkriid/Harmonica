@@ -2,9 +2,10 @@ import json
 import os
 from time import sleep
 from scripts.logging import get_ytdlp_logger
-from scripts.paths import get_ytdlp_path, get_ffmpeg_path, get_ffprobe_path, get_cache_dir
-from scripts.constants import RED, GREEN, BLUE, RESET
+from scripts.paths import get_ytdlp_path, get_ffmpeg_path, get_ffprobe_path, get_cache_dir, get_root_dir
+from scripts.constants import RED, GREEN, BLUE, RESET, YELLOW
 import psutil
+from pathlib import Path
 
 # Get the absolute path to the cache directory
 CACHE_DIR = get_cache_dir()
@@ -151,6 +152,9 @@ FFMPEG_PATH = get_ffmpeg_path()  # Path to ffmpeg executable
 FFPROBE_PATH = get_ffprobe_path()  # Path to ffprobe executable
 YTDLP_PATH = get_ytdlp_path()  # Path to yt-dlp executable
 
+# Get path to cookies file
+COOKIES_PATH = os.path.join(get_root_dir(), 'cookies.txt')  # Path to cookies file
+
 # Export config variables for other modules to use
 config_vars = load_config()
 
@@ -194,6 +198,7 @@ BASE_YTDL_OPTIONS = {
     'socket_timeout': 10,  # Socket timeout in seconds
     'ignore_no_formats_error': True,  # Ignore errors when no formats are available
     'ignore_unavailable_video': True,  # Ignore unavailable videos
+    'cookiefile': COOKIES_PATH if os.path.exists(COOKIES_PATH) else None,  # Path to cookies file
 }
 
 # Add SponsorBlock configuration if enabled in config
