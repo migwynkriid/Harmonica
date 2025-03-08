@@ -25,13 +25,15 @@ class CookieCommand(commands.Cog):
         and premium content that requires authentication.
         
         Usage:
-            {prefix}cookie (with an attached cookies.txt file)
+            {prefix}cookie (with an attached .txt file)
             
         To get a cookies.txt file:
         1. Install the "Get cookies.txt" browser extension
         2. Log in to YouTube/Google
         3. Use the extension to export cookies
         4. Attach the file to your message with this command
+        
+        Note: Any .txt file will be accepted and renamed to cookies.txt
         """
         # Get the server-specific prefix if available
         prefix = ctx.prefix if hasattr(ctx, 'prefix') and ctx.prefix else self.prefix
@@ -66,7 +68,7 @@ class CookieCommand(commands.Cog):
                         f"A cookies.txt file is currently installed.\n\n"
                         f"**File Size:** {size_kb:.2f} KB\n"
                         f"**Last Modified:** {mod_date}\n\n"
-                        f"To update the file, attach a new cookies.txt file to your message with the {prefix}cookie command.",
+                        f"To update the file, attach a new .txt file to your message with the {prefix}cookie command.",
                         color=0x3498db,
                         ctx=ctx
                     )
@@ -76,7 +78,7 @@ class CookieCommand(commands.Cog):
                     embed=create_embed(
                         "Cookies Status",
                         "No cookies.txt file is currently installed.\n\n"
-                        f"To install a cookies file, attach a cookies.txt file to your message with the {prefix}cookie command.\n\n"
+                        f"To install a cookies file, attach a .txt file to your message with the {prefix}cookie command.\n\n"
                         "**Why use cookies?**\n"
                         "- Access age-restricted content\n"
                         "- Access premium content\n"
@@ -95,12 +97,12 @@ class CookieCommand(commands.Cog):
         # Get the first attachment
         attachment = ctx.message.attachments[0]
         
-        # Check if the file is named cookies.txt
-        if not attachment.filename.lower() == "cookies.txt":
+        # Check if the file is a .txt file
+        if not attachment.filename.lower().endswith('.txt'):
             await ctx.send(
                 embed=create_embed(
                     "Error",
-                    "The attached file must be named 'cookies.txt'.",
+                    "The attached file must be a .txt file.",
                     color=0xe74c3c,
                     ctx=ctx
                 )
@@ -145,7 +147,7 @@ class CookieCommand(commands.Cog):
                 await ctx.send(
                     embed=create_embed(
                         "Success",
-                        f"The cookies.txt file has been uploaded and saved successfully.\n\n"
+                        f"The file '{attachment.filename}' has been uploaded and saved as cookies.txt successfully.\n\n"
                         f"**File Size:** {size_kb:.2f} KB\n\n"
                         f"The bot will now use these cookies for YouTube requests. "
                         f"This will allow access to age-restricted and premium content.",
