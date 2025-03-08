@@ -1135,7 +1135,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 ydl_opts = {
                     **BASE_YTDL_OPTIONS,
                     'outtmpl': os.path.join(self.downloads_dir, '%(id)s.%(ext)s'),
-                    'cookies': self.cookie_file if self.cookie_file.exists() else None,
+                    'cookiefile': self.cookie_file if self.cookie_file.exists() else None,
                     'progress_hooks': [
                         self._download_hook,
                         progress.progress_hook
