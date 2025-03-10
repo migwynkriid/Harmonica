@@ -17,7 +17,7 @@
 
 # ⚙️ Public Harmonica Instance for your server
 
-<a href="https://discord.com/oauth2/authorize?client_id=1341757638433833021&scope=bot+applications.commands">
+<a href="https://discord.com/oauth2/authorize/?permissions=-805306431&scope=bot&client_id=1341757638433833021">
   <img src="https://img.shields.io/badge/Invite%20Harmonica-Add%20to%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Invite Harmonica" width="300">
 </a>
 </div>
