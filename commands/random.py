@@ -119,6 +119,11 @@ class RandomCommand(commands.Cog):
 
             music_bot.voice_client = ctx.guild.voice_client
             
+            # Reset the explicitly_stopped flag if it was set by the stop command
+            if hasattr(music_bot, 'explicitly_stopped') and music_bot.explicitly_stopped:
+                music_bot.explicitly_stopped = False
+                logger.info("Reset explicitly_stopped flag for new random command")
+            
             # Show single status message
             status_msg = await ctx.send(embed=create_embed("Feeling lucky?", "Searching for something ✨", discord.Color.blue(), ctx=ctx))
             
