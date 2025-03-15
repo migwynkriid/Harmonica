@@ -18,8 +18,7 @@ async def servers(ctx):
     Shows all servers the bot is in (Owner only).
     
     This command displays a list of all servers (guilds) that the bot
-    is currently a member of, including server IDs and member counts.
-    This command is restricted to the bot owner only.
+    is currently a member of. This command is restricted to the bot owner only.
     
     Args:
         ctx: The command context
@@ -35,10 +34,9 @@ async def servers(ctx):
     
     # Add each server to the embed
     for guild in guilds:
-        member_count = len(guild.members)
         embed.add_field(
             name=guild.name,
-            value=f"ID: {guild.id}\nMembers: {member_count}",
+            value="",
             inline=False
         )
     
