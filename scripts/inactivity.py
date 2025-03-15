@@ -42,14 +42,27 @@ async def check_inactivity(bot_instance):
                     continue
                     
                 if server_bot.voice_client and server_bot.voice_client.is_connected():
-                    # Reset activity timer if music is playing or there are songs in queue
-                    if server_bot.voice_client.is_playing() or server_bot.queue:
+                    # Check if there are active downloads
+                    has_active_downloads = (
+                        server_bot.currently_downloading or 
+                        server_bot.in_progress_downloads or
+                        server_bot.current_download_task is not None or
+                        server_bot.current_ydl is not None
+                    )
+                    
+                    # Reset activity timer if music is playing, there are songs in queue, or there are active downloads
+                    if (server_bot.voice_client.is_playing() or 
+                        server_bot.queue or 
+                        has_active_downloads or
+                        server_bot.waiting_for_song):
                         server_bot.last_activity = time.time()
-                    # Only disconnect if inactive AND no music is playing/queued
+                    # Only disconnect if inactive AND no music is playing/queued AND no active downloads
                     elif (time.time() - server_bot.last_activity > server_bot.inactivity_timeout and 
                           server_bot.inactivity_leave and 
                           not server_bot.voice_client.is_playing() and 
-                          not server_bot.queue):
+                          not server_bot.queue and
+                          not has_active_downloads and
+                          not server_bot.waiting_for_song):
                         # Get the server name from the voice client's guild
                         server_name = server_bot.voice_client.guild.name if server_bot.voice_client.guild else "Unknown Server"
                         print(f"{GREEN}Left voice chat in {RESET}{BLUE}{server_name}{RESET}{GREEN} due to inactivity{RESET}")
