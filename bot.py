@@ -54,7 +54,13 @@ from scripts.priority import set_high_priority
 from scripts.paths import get_downloads_dir, get_root_dir, get_absolute_path
 from scripts.server_prefixes import get_prefix, init_server_prefixes, init_server_prefixes_sync
 from scripts.setup import run_setup
+from scripts.connection_handler import patch_discord_client
 import signal
+import socket
+import aiohttp
+
+# Apply the connection handler patch to improve DNS resolution handling
+patch_discord_client()
 
 # Check if .env file exists, if not run setup
 env_path = Path('.env')
@@ -219,7 +225,11 @@ async def on_ready():
     # Load scripts and commands
     load_scripts()
     await load_commands(bot)
-    update_checker.start(bot) 
+    
+    # Only start the update_checker if it's not already running
+    if not update_checker.is_running():
+        update_checker.start(bot)
+    
     if not music_bot:
         music_bot = MusicBot  # Store the class, not an instance
         # Initialize the bot for setup purposes (shared resources)
@@ -247,6 +257,42 @@ def signal_handler(sig, frame):
 # Register signal handlers
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
+
+@bot.event
+async def on_error(event, *args, **kwargs):
+    """
+    Global error handler for all events.
+    
+    This function handles errors that occur during event processing,
+    with special handling for connection-related errors.
+    
+    Args:
+        event: The event that raised the error
+        *args: Arguments passed to the event
+        **kwargs: Keyword arguments passed to the event
+    """
+    import traceback
+    from scripts.connection_handler import ConnectionHandler
+    
+    error_type, error, error_traceback = sys.exc_info()
+    
+    # Check if it's a connection-related error
+    if error_type in (socket.gaierror, aiohttp.ClientConnectorError, 
+                     aiohttp.ClientConnectorDNSError, discord.errors.ConnectionClosed):
+        print(f"{RED}Connection error in {event}: {error}{RESET}")
+        # Use our connection handler to handle the error
+        handled = await ConnectionHandler.handle_connection_error(error, bot)
+        if handled:
+            print(f"{GREEN}Connection error handled, reconnection should succeed{RESET}")
+            return
+    
+    # For other errors, print the traceback
+    error_message = ''.join(traceback.format_exception(error_type, error, error_traceback))
+    print(f"{RED}Error in {event}: {error_message}{RESET}")
+    
+    # Log to file
+    with open('error.log', 'a') as f:
+        f.write(f"[{datetime.now()}] Error in {event}:\n{error_message}\n\n")
 
 # Start the bot with the Discord token from environment variables
 bot.run(os.getenv('DISCORD_TOKEN'))
