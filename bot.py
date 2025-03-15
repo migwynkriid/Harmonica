@@ -172,10 +172,29 @@ async def on_voice_state_update(member, before, after):
         await handle_voice_state_update(server_music_bot, member, before, after)
 
 music_bot = None
+first_ready = True  # Track if this is the first time the bot is ready
+
 @bot.event
 async def on_ready():
     """Called when the bot is ready and connected to Discord"""
-    global music_bot 
+    global music_bot, first_ready
+    
+    # Check if this is a reconnection
+    is_reconnection = not first_ready
+    
+    if is_reconnection:        
+        # Update activity status
+        await update_activity(bot)
+        
+        # Only start the update_checker if it's not already running
+        if not update_checker.is_running():
+            update_checker.start(bot)
+            
+        return
+    
+    # Mark that we've completed the first ready event
+    first_ready = False
+    
     clear_downloads_folder()
     set_high_priority()
     prefix = config_vars.get('PREFIX', '!')  # Get prefix from config
