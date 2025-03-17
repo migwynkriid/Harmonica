@@ -239,7 +239,26 @@ async def on_ready():
     update_msg = f"{GREEN}Auto update: {BLUE if auto_update else RED}{'Enabled' if auto_update else disabled_msg}{RESET}"
     print(update_msg)
     print(f"{GREEN}SponsorBlock:{RESET} {BLUE if config.get('SPONSORBLOCK', False) else RED}{'Enabled' if config.get('SPONSORBLOCK', False) else 'Disabled'}{RESET}")
-    print(f"{GREEN}Clear downloads:{RESET} {BLUE if config.get('AUTO_CLEAR_DOWNLOADS', False) else RED}{'Enabled' if config.get('AUTO_CLEAR_DOWNLOADS', False) else 'Disabled'}{RESET} - {YELLOW if config.get('AUTO_CLEAR_DOWNLOADS', False) else GREEN}{'Caching will be limited' if config.get('AUTO_CLEAR_DOWNLOADS', False) else 'Caching is enabled'}{RESET}")
+    
+    # Show clear downloads status with cached files count
+    auto_clear = config.get('AUTO_CLEAR_DOWNLOADS', False)
+    cached_files_count = 0
+    
+    # Get the number of cached files from filecache.json if it exists
+    filecache_path = os.path.join(ROOT_DIR, '.cache', 'filecache.json')
+    if os.path.exists(filecache_path) and not auto_clear:
+        try:
+            with open(filecache_path, 'r') as f:
+                filecache = json.load(f)
+                cached_files_count = len(filecache)
+        except Exception as e:
+            print(f"{RED}Error reading filecache: {str(e)}{RESET}")
+    
+    print(f"{GREEN}Clear downloads:{RESET} {BLUE if auto_clear else RED}{'Enabled' if auto_clear else 'Disabled'}{RESET} - ", end="")
+    if auto_clear:
+        print(f"{YELLOW}Caching will be limited{RESET}")
+    else:
+        print(f"{GREEN}Caching is enabled with {BLUE}{cached_files_count}{GREEN} files currently cached{RESET}")
 
     # Load scripts and commands
     load_scripts()
