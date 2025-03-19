@@ -13,7 +13,7 @@ from scripts.messages import create_embed
 from scripts.duration import get_audio_duration
 from scripts.config import config_vars
 from scripts.caching import playlist_cache
-from scripts.constants import RED, GREEN, RESET
+from scripts.constants import RED, GREEN, RESET, BLUE
 from scripts.logging import setup_logging, get_ytdlp_logger, CachedVideoFound
 
 class SpotifyHandler:
@@ -85,7 +85,7 @@ class SpotifyHandler:
             # Check cache first
             cached_info = playlist_cache.get_cached_spotify_track(track_id)
             if cached_info:
-                print(f"{GREEN}Found cached Spotify track: {track_id} - {cached_info.get('title', 'Unknown')}{RESET}")
+                print(f"{GREEN}Found cached Spotify track: {RESET}{BLUE}{track_id} - {cached_info.get('title', 'Unknown')}{RESET}")
                 
                 # Delete the "Processing" message if it exists
                 if status_msg:
@@ -184,7 +184,7 @@ class SpotifyHandler:
                     thumbnail=song_info.get('thumbnail'),
                     artist=artists
                 )
-                print(f"{GREEN}Added Spotify track to cache: {track_id} - {song_info.get('title', 'Unknown')}{RESET}")
+                print(f"{GREEN}Added Spotify track to cache: {RESET}{BLUE}{track_id} - {song_info.get('title', 'Unknown')}{RESET}")
 
                 # Add to queue and process as before
                 song_info['is_from_playlist'] = False
@@ -282,7 +282,7 @@ class SpotifyHandler:
                 # Check cache first for the first track
                 cached_info = playlist_cache.get_cached_spotify_track(track_id)
                 if cached_info:
-                    print(f"{GREEN}Found cached Spotify track: {track_id} - {cached_info.get('title', 'Unknown')}{RESET}")
+                    print(f"{GREEN}Found cached Spotify track: {RESET}{BLUE}{track_id} - {cached_info.get('title', 'Unknown')}{RESET}")
                     
                     # Delete the "Processing" message if it exists
                     if status_msg:
@@ -317,7 +317,7 @@ class SpotifyHandler:
                             thumbnail=first_song.get('thumbnail'),
                             artist=artists
                         )
-                        print(f"{GREEN}Added Spotify track to cache: {track_id} - {first_song.get('title', 'Unknown')}{RESET}")
+                        print(f"{GREEN}Added Spotify track to cache: {RESET}{BLUE}{track_id} - {first_song.get('title', 'Unknown')}{RESET}")
                         
                         first_song['is_from_playlist'] = True
                         first_song['requester'] = ctx.author
@@ -410,7 +410,7 @@ class SpotifyHandler:
                 # Check cache first for the first track
                 cached_info = playlist_cache.get_cached_spotify_track(track_id)
                 if cached_info:
-                    print(f"{GREEN}Found cached Spotify track: {track_id} - {cached_info.get('title', 'Unknown')}{RESET}")
+                    print(f"{GREEN}Found cached Spotify track: {RESET}{BLUE}{track_id} - {cached_info.get('title', 'Unknown')}{RESET}")
                     
                     # Delete the "Processing" message if it exists
                     if status_msg:
@@ -445,7 +445,7 @@ class SpotifyHandler:
                             thumbnail=first_song.get('thumbnail'),
                             artist=artists
                         )
-                        print(f"{GREEN}Added Spotify track to cache: {track_id} - {first_song.get('title', 'Unknown')}{RESET}")
+                        print(f"{GREEN}Added Spotify track to cache: {RESET}{BLUE}{track_id} - {first_song.get('title', 'Unknown')}{RESET}")
                         
                         first_song['is_from_playlist'] = True
                         first_song['requester'] = ctx.author
@@ -511,7 +511,7 @@ class SpotifyHandler:
                     if not playlist_cache._should_continue_check:
                         return
                         
-                    print(f"{GREEN}Found cached Spotify track: {track_id} - {cached_info.get('title', 'Unknown')}{RESET}")
+                    print(f"{GREEN}Found cached Spotify track: {RESET}{BLUE}{track_id} - {cached_info.get('title', 'Unknown')}{RESET}")
                     
                     song_info = {
                         'title': cached_info.get('title', 'Unknown'),
@@ -563,7 +563,7 @@ class SpotifyHandler:
                             artist=artists,
                             skip_save=True
                         )
-                        print(f"{GREEN}Added Spotify track to cache: {track_id} - {song_info.get('title', 'Unknown')}{RESET}")
+                        print(f"{GREEN}Added Spotify track to cache: {RESET}{BLUE}{track_id} - {song_info.get('title', 'Unknown')}{RESET}")
                         
                         song_info['duration'] = await get_audio_duration(song_info['file_path'])
                         song_info['is_from_playlist'] = True

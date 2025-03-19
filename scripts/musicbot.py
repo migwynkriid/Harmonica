@@ -659,7 +659,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         
                     cached_info = playlist_cache.get_cached_info(video_id)
                     if cached_info and os.path.exists(cached_info['file_path']):
-                        print(f"{GREEN}Found cached YouTube file: {video_id} - {cached_info.get('title', 'Unknown')}{RESET}")
+                        print(f"{GREEN}Found cached YouTube file: {RESET}{BLUE}{video_id} - {cached_info.get('title', 'Unknown')}{RESET}")
                         if status_msg:
                             try:
                                 await status_msg.delete()
@@ -865,7 +865,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                     thumbnail_url=info.get('thumbnail'),
                                     title=info.get('title', 'Unknown')
                                 )
-                                print(f"{GREEN}Added Youtube file to cache: {video_id} - {info.get('title', 'Unknown')}{RESET}")
+                                print(f"{GREEN}Added Youtube file to cache: {RESET}{BLUE}{video_id} - {info.get('title', 'Unknown')}{RESET}")
                         
                         # Get and cache the duration
                         duration = await get_audio_duration(file_path)
@@ -1278,7 +1278,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 thumbnail_url=info.get('thumbnail'),
                                 title=info.get('title', 'Unknown')  # Save the title
                             )
-                            print(f"{GREEN}Added Youtube file to cache: {video_id} - {info.get('title', 'Unknown')}{RESET}")
+                            print(f"{GREEN}Added Youtube file to cache: {RESET}{BLUE}{video_id} - {info.get('title', 'Unknown')}{RESET}")
 
                     # Add requester information to the song info
                     if ctx:

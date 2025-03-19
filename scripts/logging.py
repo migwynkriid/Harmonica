@@ -177,7 +177,7 @@ class YTDLPLogger(logging.Logger):
                     cached_info = playlist_cache.get_cached_info(video_id)
                     if cached_info and os.path.exists(cached_info['file_path']):
                         # Signal to stop the download by raising a special exception
-                        print(f"{GREEN}Found cached YouTube file: {video_id} - {cached_info.get('title', 'Unknown')}{RESET}")
+                        print(f"{GREEN}Found cached YouTube file: {RESET}{BLUE}{video_id} - {cached_info.get('title', 'Unknown')}{RESET}")
                         raise CachedVideoFound(cached_info)
         
         super().debug(msg)
