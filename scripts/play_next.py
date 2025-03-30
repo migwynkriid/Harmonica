@@ -99,19 +99,23 @@ async def play_next(ctx):
                 # Check if voice client is connected, reconnect if needed
                 if not server_music_bot.voice_client or not server_music_bot.voice_client.is_connected():
                     print("Voice client not connected, attempting to reconnect...")
-                    connected = await server_music_bot.join_voice_channel(ctx)
+                    connected = False
+                    try:
+                        connected = await server_music_bot.join_voice_channel(ctx)
+                    except Exception as e:
+                        print(f"Error joining voice channel: {str(e)}")
+                        
                     if not connected:
                         print("Failed to reconnect to voice channel")
                         server_music_bot.voice_client = None
                         
-                        # Attempt automatic restart if reconnection fails
-                        try:
-                            await ctx.send("⚠️ Internal error detected!. Automatically restarting bot...")
-                            restart_cog = server_music_bot.bot.get_cog('Restart')
-                            if restart_cog:
-                                await restart_cog.restart_cmd(ctx)
-                        except Exception as e:
-                            print(f"Error during automatic restart in play_next: {str(e)}")
+                        # Store the current song back in the queue
+                        if server_music_bot.current_song:
+                            server_music_bot.queue.appendleft(server_music_bot.current_song)
+                            server_music_bot.current_song = None
+                            
+                        # Don't try to restart automatically, just log the error and return
+                        print("Voice connection failed. Please try again later or use !join to reconnect manually.")
                         return
                 else:
                     # Handle previous now playing message
@@ -199,23 +203,48 @@ async def play_next(ctx):
                             print("Already playing audio, stopping current playback")
                             server_music_bot.voice_client.stop()
                             
+                        # Double-check that voice client is still connected
+                        if not server_music_bot.voice_client or not server_music_bot.voice_client.is_connected():
+                            print("Voice client disconnected just before playback, aborting")
+                            # Put the song back in the queue for later
+                            if server_music_bot.current_song:
+                                server_music_bot.queue.appendleft(server_music_bot.current_song)
+                            return
+                            
+                        audio_source = discord.FFmpegPCMAudio(
+                            server_music_bot.current_song['file_path'],
+                            **FFMPEG_OPTIONS
+                        )
+                        # Call read() on the audio source before playing to prevent speed-up issue
+                        audio_source.read()
+                        # Set the playback start time right before starting playback
+                        server_music_bot.playback_start_time = time.time()
+                        server_music_bot.playback_state = "playing"
+                        
+                        # Create a wrapper for the after_playing_coro that handles exceptions
+                        def safe_after_callback(error):
+                            try:
+                                # Get the event loop
+                                loop = server_music_bot.bot_loop or asyncio.get_event_loop()
+                                # Run the coroutine in the event loop
+                                asyncio.run_coroutine_threadsafe(
+                                    server_music_bot.after_playing_coro(error, ctx), 
+                                    loop
+                                )
+                            except Exception as e:
+                                print(f"Error in after_playing callback: {str(e)}")
+                        
+                        # Only attempt to play if voice client is still valid
                         if server_music_bot.voice_client and server_music_bot.voice_client.is_connected():
-                            audio_source = discord.FFmpegPCMAudio(
-                                server_music_bot.current_song['file_path'],
-                                **FFMPEG_OPTIONS
-                            )
-                            # Call read() on the audio source before playing to prevent speed-up issue
-                            audio_source.read()
-                            # Set the playback start time right before starting playback
-                            server_music_bot.playback_start_time = time.time()
-                            server_music_bot.playback_state = "playing"
                             server_music_bot.voice_client.play(
                                 audio_source,
-                                after=lambda e: asyncio.run_coroutine_threadsafe(
-                                    server_music_bot.after_playing_coro(e, ctx), 
-                                    server_music_bot.bot_loop or asyncio.get_event_loop()
-                                )
+                                after=safe_after_callback
                             )
+                        else:
+                            print("Voice client became invalid during playback setup")
+                            # Put the song back in the queue for later
+                            if server_music_bot.current_song:
+                                server_music_bot.queue.appendleft(server_music_bot.current_song)
                     except Exception as e:
                         print(f"Error starting playback: {str(e)}")
                         if len(server_music_bot.queue) > 0:

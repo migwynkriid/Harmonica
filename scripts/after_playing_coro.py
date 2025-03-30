@@ -57,12 +57,23 @@ class AfterPlayingHandler:
         # Play the next song if available
         if len(self.queue) > 0 or not self.download_queue.empty():
             # Make sure we have a valid context before proceeding
-            if ctx and hasattr(ctx, 'guild') and ctx.guild:
-                await play_next(ctx)
+            valid_ctx = ctx
+            
+            # Check if the provided context is valid
+            if not (ctx and hasattr(ctx, 'guild') and ctx.guild):
+                # Try to get context from current song
+                if self.current_song and isinstance(self.current_song, dict) and 'ctx' in self.current_song:
+                    valid_ctx = self.current_song['ctx']
+                # Try to get context from the first song in the queue
+                elif len(self.queue) > 0 and isinstance(self.queue[0], dict) and 'ctx' in self.queue[0]:
+                    valid_ctx = self.queue[0]['ctx']
+            
+            # Only proceed if we have a valid context
+            if valid_ctx and hasattr(valid_ctx, 'guild') and valid_ctx.guild:
+                await play_next(valid_ctx)
             else:
                 print("Error: Invalid context for play_next in after_playing_coro")
-                # Clear the queue to prevent further attempts with invalid context
-                self.queue.clear()
+                # Don't clear the queue, just log the error and wait for a valid context
         else:
             # Update the now playing message to show that the song has finished
             if self.now_playing_message and self.current_song and isinstance(self.current_song, dict):

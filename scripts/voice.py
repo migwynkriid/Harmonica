@@ -5,6 +5,8 @@ import json
 import logging
 from scripts.messages import update_or_send_message, create_embed
 from scripts.constants import GREEN, BLUE, RESET
+import sys
+import warnings
 
 def get_voice_config():
     """
@@ -24,6 +26,20 @@ def get_voice_config():
         logging.error(f"Error reading config.json: {str(e)}")
         return {"AUTO_LEAVE_EMPTY": True}  # Default values
 
+# Set up task exception handling
+def _handle_task_exception(loop, context):
+    """Custom exception handler for asyncio tasks."""
+    exception = context.get('exception')
+    if exception is None:
+        msg = context.get('message')
+        if 'Task was destroyed but it is pending' in msg:
+            # Just log with info level rather than as an error
+            logging.info(f"Task destruction: {msg}")
+            return
+        
+    # For other exceptions, use the default handler
+    loop.default_exception_handler(context)
+
 async def join_voice_channel(bot_instance, ctx):
     """
     Join the user's voice channel
@@ -39,6 +55,12 @@ async def join_voice_channel(bot_instance, ctx):
     Returns:
         bool: True if successfully joined, False otherwise
     """
+    # Set up safe task exception handling
+    loop = asyncio.get_event_loop()
+    if sys.version_info >= (3, 8):
+        loop.set_exception_handler(_handle_task_exception)
+    
+    # Check if user is in a voice channel
     if not ctx.author.voice:
         await update_or_send_message(ctx, embed=create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c))
         return False
@@ -54,21 +76,41 @@ async def join_voice_channel(bot_instance, ctx):
                 await update_or_send_message(ctx, embed=create_embed("Error", "Cannot join an empty voice channel!", color=0xe74c3c))
                 return False
 
+        # Clean up existing voice connection
         if bot_instance.voice_client:
             try:
                 if bot_instance.voice_client.is_connected():
-                    await bot_instance.voice_client.disconnect(force=True)
-            except:
-                pass
+                    # Use proper disconnect method with a timeout
+                    disconnect_task = asyncio.create_task(bot_instance.voice_client.disconnect(force=True))
+                    try:
+                        await asyncio.wait_for(disconnect_task, timeout=5.0)
+                    except asyncio.TimeoutError:
+                        logging.warning("Voice disconnect timed out, proceeding anyway")
+                    except Exception as e:
+                        logging.warning(f"Error during voice disconnect: {e}")
+            except Exception as e:
+                logging.warning(f"Error cleaning up voice client: {e}")
+            
+            # Ensure voice client is reset
             bot_instance.voice_client = None
+            # Small delay to ensure disconnection is processed
+            await asyncio.sleep(0.5)
 
         # Connect to the voice channel with self_deaf=True to avoid listening to audio
-        bot_instance.voice_client = await channel.connect(self_deaf=True)
-        bot_instance.last_activity = time.time()
-        return bot_instance.voice_client.is_connected()
+        connect_task = asyncio.create_task(channel.connect(self_deaf=True))
+        try:
+            bot_instance.voice_client = await asyncio.wait_for(connect_task, timeout=10.0)
+            bot_instance.last_activity = time.time()
+            return bot_instance.voice_client.is_connected()
+        except asyncio.TimeoutError:
+            logging.error("Voice connection timed out")
+            return False
+        except Exception as e:
+            logging.error(f"Voice connection failed: {e}")
+            return False
 
     except Exception as e:
-        print(f"Error joining voice channel: {str(e)}")
+        logging.error(f"Error joining voice channel: {str(e)}")
         await update_or_send_message(ctx, embed=create_embed("Error", "Failed to join voice channel!", color=0xe74c3c))
         bot_instance.voice_client = None
         return False
@@ -83,14 +125,26 @@ async def leave_voice_channel(bot_instance):
     Args:
         bot_instance: The bot instance containing voice client and state
     """
+    # Set up safe task exception handling
+    loop = asyncio.get_event_loop()
+    if sys.version_info >= (3, 8):
+        loop.set_exception_handler(_handle_task_exception)
+        
     try:
         if bot_instance.voice_client:
             if bot_instance.voice_client.is_playing():
                 bot_instance.voice_client.stop()
             if bot_instance.voice_client.is_connected():
-                await bot_instance.voice_client.disconnect(force=True)
+                # Use a task with timeout for safer disconnection
+                disconnect_task = asyncio.create_task(bot_instance.voice_client.disconnect(force=True))
+                try:
+                    await asyncio.wait_for(disconnect_task, timeout=5.0)
+                except asyncio.TimeoutError:
+                    logging.warning("Voice disconnect timed out during leave_voice_channel")
+                except Exception as e:
+                    logging.warning(f"Error during voice disconnect in leave_voice_channel: {e}")
     except Exception as e:
-        print(f"Error leaving voice channel: {str(e)}")
+        logging.error(f"Error leaving voice channel: {str(e)}")
     finally:
         # Reset bot state variables
         bot_instance.voice_client = None
