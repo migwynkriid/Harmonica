@@ -36,6 +36,8 @@ class MessageFilter(logging.Filter):
             'Finished downloading',       # Ignore yt-dlp finish info
             'Deleting original file',     # Ignore yt-dlp cleanup info
             'Running FFmpeg',             # Ignore FFmpeg processing info
+            'Shard ID None has successfully RESUMED session', # Ignore shard ID None messages
+            'discord.gateway: Shard ID None has successfully RESUMED session', # Ignore shard ID None messages
             'Post-process file',          # Ignore post-processing info
             'Voice connection complete',   # Voice connection messages
             'Voice handshake complete',    # Voice connection messages
