@@ -680,6 +680,31 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
 
             # Check cache by title for search queries (non-URLs)
             if not is_url(query):
+                # Check if query is a YouTube video ID (11 characters, alphanumeric + - and _)
+                if len(query) == 11 and all(c.isalnum() or c in '-_' for c in query):
+                    # This looks like a YouTube video ID, search cache directly by ID
+                    cached_info = playlist_cache.get_cached_info(query)
+                    if cached_info and os.path.exists(cached_info['file_path']):
+                        print(f"{GREEN}Found cached file by video ID: {RESET}{BLUE}{query} - {cached_info.get('title', 'Unknown')}{RESET}")
+                        if status_msg:
+                            try:
+                                await status_msg.delete()
+                            except discord.NotFound:
+                                print(f"Note: Status message already deleted")
+                            except Exception as e:
+                                print(f"Note: Could not delete processing message: {e}")
+                        return {
+                            'title': cached_info.get('title', 'Unknown'),
+                            'url': f"https://www.youtube.com/watch?v={query}",
+                            'file_path': cached_info['file_path'],
+                            'thumbnail': cached_info.get('thumbnail'),
+                            'is_stream': False,
+                            'is_from_playlist': False,
+                            'ctx': status_msg.channel if status_msg else None,
+                            'is_from_cache': True
+                        }
+                
+                # If not a video ID, try searching by title
                 cached_by_title = playlist_cache.find_cached_by_title(query)
                 if cached_by_title and os.path.exists(cached_by_title['file_path']):
                     print(f"{GREEN}Found cached file by title: {RESET}{BLUE}{cached_by_title.get('id', 'Unknown')} - {cached_by_title.get('title', 'Unknown')}{RESET}")
