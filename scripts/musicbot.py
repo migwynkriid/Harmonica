@@ -678,6 +678,29 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             'is_from_cache': True
                         }
 
+            # Check cache by title for search queries (non-URLs)
+            if not is_url(query):
+                cached_by_title = playlist_cache.find_cached_by_title(query)
+                if cached_by_title and os.path.exists(cached_by_title['file_path']):
+                    print(f"{GREEN}Found cached file by title: {RESET}{BLUE}{cached_by_title.get('id', 'Unknown')} - {cached_by_title.get('title', 'Unknown')}{RESET}")
+                    if status_msg:
+                        try:
+                            await status_msg.delete()
+                        except discord.NotFound:
+                            print(f"Note: Status message already deleted")
+                        except Exception as e:
+                            print(f"Note: Could not delete processing message: {e}")
+                    return {
+                        'title': cached_by_title.get('title', 'Unknown'),
+                        'url': f"https://www.youtube.com/watch?v={cached_by_title.get('id', '')}" if cached_by_title.get('id') else query,
+                        'file_path': cached_by_title['file_path'],
+                        'thumbnail': cached_by_title.get('thumbnail'),
+                        'is_stream': False,
+                        'is_from_playlist': False,
+                        'ctx': status_msg.channel if status_msg else None,
+                        'is_from_cache': True
+                    }
+
             # If not in cache or not a YouTube video, proceed with normal download
             self._last_progress = -1
             if not skip_url_check:

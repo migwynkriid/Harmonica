@@ -450,5 +450,68 @@ class PlaylistCache:
         """
         return video_id in self.blacklist
 
+    def find_cached_by_title(self, search_query: str) -> Optional[Dict]:
+        """
+        Find a cached file by searching for a title match.
+        
+        This method searches through both YouTube and Spotify caches to find
+        entries where the title matches the search query (case-insensitive).
+        It returns the first match found.
+        
+        Args:
+            search_query: The search query to match against cached titles
+            
+        Returns:
+            Optional[Dict]: Dictionary with cached file info if found, None otherwise
+        """
+        if not search_query or not search_query.strip():
+            return None
+            
+        search_query_lower = search_query.lower().strip()
+        
+        # Search YouTube cache first
+        for video_id, entry in self.cache.items():
+            if not isinstance(entry, dict) or 'title' not in entry:
+                continue
+                
+            cached_title = entry.get('title', '').lower()
+            if cached_title and search_query_lower == cached_title:
+                # Verify file still exists
+                relative_path = entry['file_path']
+                absolute_path = get_absolute_path(relative_path)
+                if os.path.exists(absolute_path):
+                    # Return cached info with absolute path and video ID
+                    result = entry.copy()
+                    result['file_path'] = absolute_path
+                    result['id'] = video_id
+                    result['last_accessed'] = time.time()
+                    # Update cache with new access time
+                    self.cache[video_id]['last_accessed'] = time.time()
+                    self._save_cache()
+                    return result
+        
+        # Search Spotify cache if YouTube cache didn't find anything
+        for track_id, entry in self.spotify_cache.items():
+            if not isinstance(entry, dict) or 'title' not in entry:
+                continue
+                
+            cached_title = entry.get('title', '').lower()
+            if cached_title and search_query_lower == cached_title:
+                # Verify file still exists
+                relative_path = entry['file_path']
+                absolute_path = get_absolute_path(relative_path)
+                if os.path.exists(absolute_path):
+                    # Return cached info with absolute path and track ID
+                    result = entry.copy()
+                    result['file_path'] = absolute_path
+                    result['id'] = track_id
+                    result['last_accessed'] = time.time()
+                    # Update cache with new access time
+                    self.spotify_cache[track_id]['last_accessed'] = time.time()
+                    self._save_cache()
+                    return result
+        
+        return None
+
 # Global instance
 playlist_cache = PlaylistCache()
