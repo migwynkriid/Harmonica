@@ -1,8 +1,7 @@
 discord.py[voice]  # Discord API wrapper with voice support
 #PyNaCl>=1.5.0
 PyNaCl  # Required for voice functionality
-#python-dotenv>=1.0.0
-python-dotenv  # For loading environment variables from .env file
+python-dotenv=1.1.0 # For loading environment variables from .env file
 #requests>=2.31.0
 requests  # HTTP library for API requests
 #pytz>=2024.2
