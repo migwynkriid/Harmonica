@@ -2,7 +2,7 @@ discord.py[voice] @ git+https://github.com/rapptz/discord.py  # Discord API wrap
 PyNaCl==1.5.0 # Required for voice functionality
 python-dotenv==1.1.0 # For loading environment variables from .env file
 requests==2.31.0  # HTTP library for API requests
-pytz==2024.2
+pytz
 spotipy==2.25.1
 lyricsgenius==3.7.0  # API client for Genius lyrics service
 azapi==3.0.8  # Alternative lyrics API
