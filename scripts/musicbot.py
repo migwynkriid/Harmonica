@@ -317,6 +317,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 try:
                     async with self.download_lock:
                         self.currently_downloading = True
+                        self.last_activity = time.time()  # Update activity when download starts
                         print(f"Starting download: {query}")
                         self.in_progress_downloads[query] = None  # Mark as downloading but no info yet
                         
@@ -538,6 +539,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         Raises:
             Various exceptions that are caught and handled within the function
         """
+        # Update last activity to prevent stale download detection
+        self.last_activity = time.time()
+        
         # Skip if cache checking is stopped
         if not playlist_cache._should_continue_check:
             return None
