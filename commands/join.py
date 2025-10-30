@@ -62,7 +62,7 @@ class JoinCog(commands.Cog):
             # Bot is in a different voice channel, move to user's channel
             await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
             # Ensure self_deaf is set to True after moving
-            await ctx.guild.voice_client.edit(self_deaf=True)
+            await ctx.guild.change_voice_state(channel=ctx.author.voice.channel, self_deaf=True)
 
         # Update the server music bot's voice client reference
         server_music_bot.voice_client = ctx.guild.voice_client

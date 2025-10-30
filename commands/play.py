@@ -92,7 +92,7 @@ class PlayCog(commands.Cog):
             # Move to the author's voice channel if bot is in a different channel
             await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
             # Ensure self_deaf is set to True after moving
-            await ctx.guild.voice_client.edit(self_deaf=True)
+            await ctx.guild.change_voice_state(channel=ctx.author.voice.channel, self_deaf=True)
 
         # Update the bot's voice client reference and reset playing state
         server_music_bot.voice_client = ctx.guild.voice_client
