@@ -108,6 +108,9 @@ async def check_inactivity(bot_instance):
                             # Cancel any active downloads before disconnecting
                             await server_bot.cancel_downloads()
                             await server_bot.voice_client.disconnect()
+                            # Ensure we don't immediately re-enter this branch
+                            server_bot.voice_client = None
+                            server_bot.last_activity = time.time()
                             # Clear queue for this specific server
                             clear_queue(guild_id)
                         
