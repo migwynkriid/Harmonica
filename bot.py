@@ -260,6 +260,47 @@ async def on_ready():
     else:
         print(f"{GREEN}Caching is enabled with {BLUE}{cached_files_count}{GREEN} files currently cached{RESET}")
 
+    # Run tests asynchronously and print a concise summary
+    async def _run_tests_and_report():
+        try:
+            loop = asyncio.get_event_loop()
+            def _worker():
+                return subprocess.run(
+                    [sys.executable, '-m', 'pytest', '-q', '-rA', '--disable-warnings'],
+                    cwd=str(ROOT_DIR), capture_output=True, text=True
+                )
+            result = await loop.run_in_executor(None, _worker)
+            output = (result.stdout or '') + '\n' + (result.stderr or '')
+
+            import re as _re
+            passed = 0
+            failed = 0
+            mp = _re.search(r"(\d+)\s+passed", output)
+            mf = _re.search(r"(\d+)\s+failed", output)
+            if mp:
+                passed = int(mp.group(1))
+            if mf:
+                failed = int(mf.group(1))
+
+            status_color = GREEN if failed == 0 else RED
+            fail_color = GREEN if failed == 0 else RED
+            print(f"{status_color}Running test health check:{RESET} {BLUE}{passed} passed{RESET}, {fail_color}{failed} failed{RESET}")
+
+            if failed:
+                failed_lines = [ln.strip() for ln in output.splitlines() if ln.startswith('FAILED ')]
+                if failed_lines:
+                    print(f"{RED}Failures:{RESET}")
+                    for ln in failed_lines[:20]:
+                        print(f"{RED}- {ln}{RESET}")
+                else:
+                    # Fallback: show tail of output for context
+                    tail = '\n'.join(output.splitlines()[-50:])
+                    print(f"{RED}Failure details (tail):{RESET}\n{tail}")
+        except Exception as e:
+            print(f"{RED}Failed to run tests:{RESET} {BLUE}{str(e)}{RESET}")
+
+    asyncio.create_task(_run_tests_and_report())
+
     # Load scripts and commands
     load_scripts()
     await load_commands(bot)
