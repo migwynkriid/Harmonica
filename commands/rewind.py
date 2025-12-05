@@ -23,7 +23,7 @@ class RewindCog(commands.Cog):
         """
         self.bot = bot
 
-    @commands.command(name='rewind', aliases=['rw', 'back'])
+    @commands.command(name='rewind', aliases=['rw'])
     @check_dj_role()
     async def rewind(self, ctx, seconds: int = 10):
         """

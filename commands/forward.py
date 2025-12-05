@@ -23,7 +23,7 @@ class ForwardCog(commands.Cog):
         """
         self.bot = bot
 
-    @commands.command(name='forward', aliases=['ff', 'fastforward'])
+    @commands.command(name='forward', aliases=['ff', 'fastforward', 'fw'])
     @check_dj_role()
     async def forward(self, ctx, seconds: int = 10):
         """
