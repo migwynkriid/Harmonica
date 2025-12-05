@@ -1,17 +1,10 @@
 import discord
 from discord.ext import commands
-import sys
-import os
 import time
 from scripts.messages import create_embed
 from scripts.duration import get_audio_duration
 from scripts.ui_components import create_now_playing_view, NowPlayingView
 from scripts.permissions import check_dj_role
-
-# Add the parent directory to sys.path to allow importing from bot
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
 
 class NowPlayingCog(commands.Cog):
     """

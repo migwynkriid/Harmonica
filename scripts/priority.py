@@ -3,6 +3,13 @@ import sys
 import psutil
 import logging
 
+# Define HIGH_PRIORITY_CLASS constant for Windows
+# On Windows, this is defined in psutil, but we define it here for compatibility
+if sys.platform == 'win32' and hasattr(psutil, 'HIGH_PRIORITY_CLASS'):
+    HIGH_PRIORITY_CLASS = psutil.HIGH_PRIORITY_CLASS
+else:
+    HIGH_PRIORITY_CLASS = 128  # Windows HIGH_PRIORITY_CLASS value
+
 def set_high_priority():
     """
     Set high priority for the current process on Windows only.
@@ -26,7 +33,7 @@ def set_high_priority():
     try:
         process = psutil.Process(os.getpid())
         current_priority = process.nice()
-        process.nice(psutil.HIGH_PRIORITY_CLASS)
+        process.nice(HIGH_PRIORITY_CLASS)
         new_priority = process.nice()
         logging.info(f"Windows priority changed: {current_priority} (default) -> {new_priority} (high)")
         logging.info("Successfully set to HIGH_PRIORITY_CLASS (highest without admin)")
