@@ -17,7 +17,6 @@ import spotipy
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from pathlib import Path
-from discord.ext import tasks
 from collections import deque
 from datetime import datetime
 from pytz import timezone
@@ -109,7 +108,6 @@ FFMPEG_PATH = get_ffmpeg_path()  # Path to ffmpeg executable
 # Set up directories
 ROOT_DIR = Path(get_root_dir())  # Root directory of the bot
 DOWNLOADS_DIR = ROOT_DIR / get_downloads_dir()  # Directory for downloaded audio files
-OWNER_ID = OWNER_ID  # Redefine for clarity
 
 # Create downloads directory if it doesn't exist
 if not DOWNLOADS_DIR.exists():
@@ -146,7 +144,15 @@ async def on_command(ctx):
 
 @bot.event
 async def on_command_error(ctx, error):
+    """Handle command errors"""
+    # Silently ignore CommandNotFound errors
+    if isinstance(error, commands.CommandNotFound):
+        return
+    
+    # Log the error
     print(f"Error in command {ctx.command}: {str(error)}")
+    
+    # Send error message to user
     await ctx.send(
         embed=create_embed(
             "Error",
@@ -155,12 +161,6 @@ async def on_command_error(ctx, error):
             ctx=ctx
         )
     )
-
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.CommandNotFound):
-        return
-    print(f"Error: {str(error)}")
 
 @bot.event
 async def on_voice_state_update(member, before, after):
