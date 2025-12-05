@@ -95,4 +95,4 @@ async def test_process_queue_presence_update_failure(monkeypatch, stub_ctx):
     mb = MB()
     await pq.process_queue(mb, stub_ctx)
     # Should not crash and should set playing state
-    assert mb.is_playing is True
+    assert mb.is_playing

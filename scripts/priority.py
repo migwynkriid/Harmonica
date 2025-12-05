@@ -3,12 +3,15 @@ import sys
 import psutil
 import logging
 
+# Windows HIGH_PRIORITY_CLASS value
+WINDOWS_HIGH_PRIORITY_VALUE = 128
+
 # Define HIGH_PRIORITY_CLASS constant for Windows
 # On Windows, this is defined in psutil, but we define it here for compatibility
 if sys.platform == 'win32' and hasattr(psutil, 'HIGH_PRIORITY_CLASS'):
     HIGH_PRIORITY_CLASS = psutil.HIGH_PRIORITY_CLASS
 else:
-    HIGH_PRIORITY_CLASS = 128  # Windows HIGH_PRIORITY_CLASS value
+    HIGH_PRIORITY_CLASS = WINDOWS_HIGH_PRIORITY_VALUE
 
 def set_high_priority():
     """

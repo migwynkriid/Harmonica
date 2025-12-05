@@ -58,11 +58,11 @@ async def execute_seek_command(ctx, music_bot, seconds, direction):
         current_song = music_bot.current_song
         emoji = "⏩" if direction == "forward" else "⏪"
         title = "Fast Forward" if direction == "forward" else "Rewind"
-        action = "forward" if direction == "forward" else "backward"
+        direction_verb = "forward" if direction == "forward" else "backward"
         
         embed = create_embed(
             f"{emoji} {title}",
-            f"Skipped {action} {seconds} seconds to {message}\n[{current_song['title']}]({current_song['url']})",
+            f"Skipped {direction_verb} {seconds} seconds to {message}\n[{current_song['title']}]({current_song['url']})",
             color=0x3498db,
             ctx=ctx
         )
@@ -80,10 +80,10 @@ async def execute_seek_command(ctx, music_bot, seconds, direction):
         ))
         return False
     except Exception as e:
-        action = "seeking forward" if direction == "forward" else "rewinding"
+        action_desc = "seeking forward" if direction == "forward" else "rewinding"
         await ctx.send(embed=create_embed(
             "Error", 
-            f"An error occurred while {action}: {str(e)}", 
+            f"An error occurred while {action_desc}: {str(e)}", 
             color=0xe74c3c, 
             ctx=ctx
         ))
