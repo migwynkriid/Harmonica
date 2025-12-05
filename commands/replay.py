@@ -23,7 +23,6 @@ class ReplayCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='replay')
     @check_dj_role()

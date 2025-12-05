@@ -21,7 +21,6 @@ class ResumeCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='resume')
     @check_dj_role()

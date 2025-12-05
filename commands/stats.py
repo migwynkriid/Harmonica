@@ -25,7 +25,6 @@ class StatsCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
         self.bandwidth_file = 'bandwidth.json'
         self.current_bytes = psutil.net_io_counters()
         

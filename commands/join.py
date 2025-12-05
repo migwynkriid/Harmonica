@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
+from scripts.voice import connect_to_voice
 
 class JoinCog(commands.Cog):
     """
@@ -19,7 +20,6 @@ class JoinCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='join', aliases=['summon'])
     @check_dj_role()
@@ -44,30 +44,11 @@ class JoinCog(commands.Cog):
             await ctx.send(embed=create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c, ctx=ctx))
             return
 
-        # Connect to voice channel if needed
-        if not ctx.guild.voice_client:
-            try:
-                # Bot is not in any voice channel, connect to user's channel with self_deaf=True
-                await ctx.author.voice.channel.connect(self_deaf=True)
-            except discord.ClientException as e:
-                if "already connected" in str(e):
-                    # If already connected but in a different state, clean up and reconnect
-                    if server_music_bot.voice_client:
-                        await server_music_bot.voice_client.disconnect()
-                    server_music_bot.voice_client = None
-                    await ctx.author.voice.channel.connect(self_deaf=True)
-                else:
-                    raise e
-        elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
-            # Bot is in a different voice channel, move to user's channel
-            await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
-            # Ensure self_deaf is set to True after moving
-            await ctx.guild.change_voice_state(channel=ctx.author.voice.channel, self_deaf=True)
-
-        # Update the server music bot's voice client reference
-        server_music_bot.voice_client = ctx.guild.voice_client
-        
-        await ctx.send(embed=create_embed("Joined", "Successfully joined your voice channel", color=0x3498db, ctx=ctx))
+        # Use the common connection utility
+        if await connect_to_voice(ctx, server_music_bot):
+            await ctx.send(embed=create_embed("Joined", "Successfully joined your voice channel", color=0x3498db, ctx=ctx))
+        else:
+            await ctx.send(embed=create_embed("Error", "Failed to join voice channel", color=0xe74c3c, ctx=ctx))
 
 async def setup(bot):
     """

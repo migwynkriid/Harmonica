@@ -21,7 +21,6 @@ class PauseCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='pause')
     @check_dj_role()

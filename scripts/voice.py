@@ -40,6 +40,49 @@ def _handle_task_exception(loop, context):
     # For other exceptions, use the default handler
     loop.default_exception_handler(context)
 
+async def connect_to_voice(ctx, music_bot):
+    """
+    Connect or move the bot to the user's voice channel.
+    
+    This is a reusable utility function that handles the common logic of connecting
+    the bot to a voice channel. It will connect if not already connected, or move
+    if in a different channel. It also ensures self_deaf is enabled.
+    
+    Args:
+        ctx: The command context
+        music_bot: The music bot instance
+        
+    Returns:
+        bool: True if successfully connected/moved, False otherwise
+    """
+    try:
+        # Connect to voice channel if needed
+        if not ctx.guild.voice_client:
+            try:
+                # Bot is not in any voice channel, connect to user's channel with self_deaf=True
+                await ctx.author.voice.channel.connect(self_deaf=True)
+            except discord.ClientException as e:
+                if "already connected" in str(e):
+                    # If already connected but in a different state, clean up and reconnect
+                    if music_bot.voice_client:
+                        await music_bot.voice_client.disconnect()
+                    music_bot.voice_client = None
+                    await ctx.author.voice.channel.connect(self_deaf=True)
+                else:
+                    raise e
+        elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
+            # Bot is in a different voice channel, move to user's channel
+            await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
+            # Ensure self_deaf is set to True after moving
+            await ctx.guild.change_voice_state(channel=ctx.author.voice.channel, self_deaf=True)
+
+        # Update the music bot's voice client reference
+        music_bot.voice_client = ctx.guild.voice_client
+        return True
+    except Exception as e:
+        logging.error(f"Error connecting to voice channel: {str(e)}")
+        return False
+
 async def join_voice_channel(bot_instance, ctx):
     """
     Join the user's voice channel

@@ -1,9 +1,9 @@
 import discord
 from discord.ext import commands
-import time
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 from scripts.process_queue import process_queue
+from scripts.voice import connect_to_voice
 
 class PlayCog(commands.Cog):
     """
@@ -21,7 +21,6 @@ class PlayCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
         from scripts.config import load_config
         self.config = load_config()
 
@@ -74,28 +73,13 @@ class PlayCog(commands.Cog):
         )
         status_msg = await ctx.send(embed=processing_embed)
         
-        # Connect to voice channel if needed
-        if not ctx.guild.voice_client:
-            try:
-                # Connect to the author's voice channel with self_deaf=True
-                await ctx.author.voice.channel.connect(self_deaf=True)
-            except discord.ClientException as e:
-                if "already connected" in str(e):
-                    # If already connected but in a different state, clean up and reconnect
-                    if server_music_bot.voice_client:
-                        await server_music_bot.voice_client.disconnect()
-                    server_music_bot.voice_client = None
-                    await ctx.author.voice.channel.connect(self_deaf=True)
-                else:
-                    raise e
-        elif ctx.guild.voice_client.channel != ctx.author.voice.channel:
-            # Move to the author's voice channel if bot is in a different channel
-            await ctx.guild.voice_client.move_to(ctx.author.voice.channel)
-            # Ensure self_deaf is set to True after moving
-            await ctx.guild.change_voice_state(channel=ctx.author.voice.channel, self_deaf=True)
+        # Use the common connection utility
+        if not await connect_to_voice(ctx, server_music_bot):
+            error_embed = create_embed("Error", "Failed to connect to voice channel", color=0xe74c3c, ctx=ctx)
+            await status_msg.edit(embed=error_embed)
+            return
 
-        # Update the bot's voice client reference and reset playing state
-        server_music_bot.voice_client = ctx.guild.voice_client
+        # Update playing state
         server_music_bot.is_playing = False  # Reset playing state when reconnecting
 
         # Handle Spotify links differently

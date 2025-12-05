@@ -21,7 +21,6 @@ class LeaveCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='leave', aliases=['disconnect'])
     @check_dj_role()

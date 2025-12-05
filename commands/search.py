@@ -24,7 +24,6 @@ class SearchCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
         self.config = load_config()
 
     async def search_youtube(self, query):
