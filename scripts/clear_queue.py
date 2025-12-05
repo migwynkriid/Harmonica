@@ -1,5 +1,31 @@
 import asyncio
 
+def clear_download_queue(music_bot):
+    """
+    Clear download queue and properly mark tasks as done.
+    
+    This is a shared utility function to avoid duplicating queue clearing logic
+    across multiple files.
+    
+    Args:
+        music_bot: The MusicBot instance
+        
+    Returns:
+        int: Number of items removed from download queue
+    """
+    items_removed = 0
+    while not music_bot.download_queue.empty():
+        try:
+            music_bot.download_queue.get_nowait()
+            items_removed += 1
+        except asyncio.QueueEmpty:
+            break
+    
+    for _ in range(items_removed):
+        music_bot.download_queue.task_done()
+    
+    return items_removed
+
 def clear_queue(guild_id=None):
     """
     Clear both download and playback queues.
@@ -18,34 +44,13 @@ def clear_queue(guild_id=None):
         if guild_id:
             # Clear queue for a specific server
             server_music_bot = MusicBot.get_instance(str(guild_id))
-            
             server_music_bot.queue.clear()
-            
-            items_removed = 0
-            while not server_music_bot.download_queue.empty():
-                try:
-                    server_music_bot.download_queue.get_nowait()
-                    items_removed += 1
-                except asyncio.QueueEmpty:
-                    break
-            
-            for _ in range(items_removed):
-                server_music_bot.download_queue.task_done()
+            clear_download_queue(server_music_bot)
         else:
             # Clear queues for all servers
             for guild_id, server_music_bot in MusicBot._instances.items():
                 server_music_bot.queue.clear()
-                
-                items_removed = 0
-                while not server_music_bot.download_queue.empty():
-                    try:
-                        server_music_bot.download_queue.get_nowait()
-                        items_removed += 1
-                    except asyncio.QueueEmpty:
-                        break
-                
-                for _ in range(items_removed):
-                    server_music_bot.download_queue.task_done()
+                clear_download_queue(server_music_bot)
             
     except Exception as e:
         print(f"Error clearing queue: {e}")
