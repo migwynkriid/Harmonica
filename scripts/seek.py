@@ -55,19 +55,22 @@ async def seek_audio(ctx, music_bot, seconds, direction="forward"):
     
     # Get song duration if available
     duration = current_song.get('duration')
+    duration_seconds = None
     if duration:
-        # Convert duration string to seconds if needed
-        if isinstance(duration, str):
-            # Parse duration format like "3:45" or "1:23:45"
-            parts = duration.split(':')
-            if len(parts) == 2:  # MM:SS
-                duration_seconds = int(parts[0]) * 60 + int(parts[1])
-            elif len(parts) == 3:  # HH:MM:SS
-                duration_seconds = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+        try:
+            # Convert duration string to seconds if needed
+            if isinstance(duration, str):
+                # Parse duration format like "3:45" or "1:23:45"
+                parts = duration.split(':')
+                if len(parts) == 2:  # MM:SS
+                    duration_seconds = int(parts[0]) * 60 + int(parts[1])
+                elif len(parts) == 3:  # HH:MM:SS
+                    duration_seconds = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
             else:
-                duration_seconds = None
-        else:
-            duration_seconds = int(duration)
+                duration_seconds = int(duration)
+        except (ValueError, TypeError):
+            # If duration parsing fails, we'll skip duration check
+            duration_seconds = None
             
         # Check if new position exceeds duration
         if duration_seconds and new_position >= duration_seconds:
