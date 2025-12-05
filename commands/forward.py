@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from scripts.permissions import check_dj_role
-from commands.seek_base import execute_seek_command
+from commands._seek_base import execute_seek_command
 
 
 class ForwardCog(commands.Cog):

@@ -254,8 +254,8 @@ async def handle_voice_state_update(bot_instance, member, before, after):
                     try:
                         await msg.delete()
                         await asyncio.sleep(0.5)  # Add 0.5-second delay between deletions to avoid rate limits
-                    except:
-                        pass
+                    except Exception:
+                        pass  # Message might already be deleted or be inaccessible
                 bot_instance.queued_messages.clear()
                 
                 # Update the now playing message to show it was stopped

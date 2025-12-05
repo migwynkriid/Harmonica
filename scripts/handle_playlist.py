@@ -45,8 +45,8 @@ class PlaylistHandler:
                         if status_msg:
                             try:
                                 await status_msg.delete()
-                            except:
-                                pass
+                            except Exception:
+                                pass  # Message might already be deleted
                         return
                         
                     try:
