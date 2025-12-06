@@ -2,7 +2,6 @@ from discord.ext import commands
 import discord
 import os
 import subprocess
-import json
 from scripts.config import load_config
 
 # Load config

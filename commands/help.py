@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from scripts.config import load_config
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 
 class HelpCog(commands.Cog):
     """
