@@ -17,7 +17,6 @@ class MaxCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='max')
     async def max(self, ctx):

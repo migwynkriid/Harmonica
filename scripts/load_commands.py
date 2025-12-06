@@ -1,5 +1,6 @@
 import os
 import discord
+from discord.ext.commands import ExtensionAlreadyLoaded
 
 # ANSI color codes
 GREEN = '\033[92m'
@@ -59,7 +60,7 @@ async def load_commands(bot):
                 
                 await bot.load_extension(extension_name)
                 success_count += 1
-            except discord.errors.ExtensionAlreadyLoaded:
+            except ExtensionAlreadyLoaded:
                 # Skip already loaded extensions without counting as an error
                 skipped_count += 1
             except Exception as e:

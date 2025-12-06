@@ -55,7 +55,7 @@ class AfterPlayingHandler:
             return
             
         # Play the next song if available
-        if len(self.queue) > 0 or not self.download_queue.empty():
+        if self.queue or not self.download_queue.empty():
             # Make sure we have a valid context before proceeding
             valid_ctx = ctx
             
@@ -65,7 +65,7 @@ class AfterPlayingHandler:
                 if self.current_song and isinstance(self.current_song, dict) and 'ctx' in self.current_song:
                     valid_ctx = self.current_song['ctx']
                 # Try to get context from the first song in the queue
-                elif len(self.queue) > 0 and isinstance(self.queue[0], dict) and 'ctx' in self.queue[0]:
+                elif self.queue and isinstance(self.queue[0], dict) and 'ctx' in self.queue[0]:
                     valid_ctx = self.queue[0]['ctx']
             
             # Only proceed if we have a valid context

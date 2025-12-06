@@ -149,10 +149,7 @@ class Loop(commands.Cog):
             await ctx.send(embed=create_embed("Error", result, color=0xe74c3c, ctx=ctx))
             return
 
-        from bot import MusicBot
-        music_bot = MusicBot.get_instance(str(ctx.guild.id))
-        
-        # Check if the song is now looped
+        # Check if the song is now looped (music_bot already fetched above)
         current_song_url = music_bot.current_song['url']
         is_song_looped = current_song_url in self.looped_songs
 

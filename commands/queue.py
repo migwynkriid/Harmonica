@@ -40,7 +40,6 @@ class QueueCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
         self.page_size = 10  # Number of songs to display per page
         self.queue_messages = {}  # Store queue messages by channel ID
         self.queue_contexts = {}  # Store original contexts by message ID

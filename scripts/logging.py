@@ -72,6 +72,14 @@ class MessageFilter(logging.Filter):
             'Error downloading song: ERROR:', # Filter song download errors
             '^C',                          # Filter keyboard interrupt
             'raise_no_formats',            # Filter format errors
+            # Explicit yt-dlp YouTube warnings to silence
+            'No supported JavaScript runtime could be found',
+            'YouTube extraction without a JS runtime has been deprecated',
+            'Some web_safari client https formats have been skipped',
+            'YouTube is forcing SABR streaming for this client',
+            'Some web client https formats have been skipped',
+            'YouTube is forcing SABR streaming',
+            'youtube:player_client=default',
         ]
 
     def filter(self, record):

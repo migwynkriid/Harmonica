@@ -54,7 +54,7 @@ def get_ffmpeg_path():
         command = ['where' if platform.system() == 'Windows' else 'which', 'ffmpeg']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         return result.stdout.strip().split('\n')[0]  # Take first result on Windows
-    except:
+    except Exception:
         return "ffmpeg"  # Fallback to PATH
 
 def get_ffprobe_path():
@@ -74,7 +74,7 @@ def get_ffprobe_path():
         command = ['where' if platform.system() == 'Windows' else 'which', 'ffprobe']
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         return result.stdout.strip().split('\n')[0]  # Take first result on Windows
-    except:
+    except Exception:
         return "ffprobe"  # Fallback to PATH
 
 def get_root_dir():

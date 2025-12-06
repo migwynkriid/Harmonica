@@ -57,7 +57,7 @@ async def play_next(ctx):
             server_music_bot.queue.clear()
             return
             
-        if len(server_music_bot.queue) > 0:
+        if server_music_bot.queue:
             try:
                 # Store the previous song for reference
                 previous_song = server_music_bot.current_song
@@ -82,7 +82,7 @@ async def play_next(ctx):
                     # Check if file exists and download is complete
                     if not os.path.exists(server_music_bot.current_song['file_path']):
                         print(f"Error: File not found: {server_music_bot.current_song['file_path']}")
-                        if len(server_music_bot.queue) > 0:
+                        if server_music_bot.queue:
                             await process_queue(server_music_bot, ctx)  # Recursively try the next song
                         return
                         
@@ -247,11 +247,11 @@ async def play_next(ctx):
                                 server_music_bot.queue.appendleft(server_music_bot.current_song)
                     except Exception as e:
                         print(f"Error starting playback: {str(e)}")
-                        if len(server_music_bot.queue) > 0:
+                        if server_music_bot.queue:
                             await process_queue(server_music_bot, ctx)
             except Exception as e:
                 print(f"Error in play_next: {str(e)}")
-                if len(server_music_bot.queue) > 0:
+                if server_music_bot.queue:
                     await process_queue(server_music_bot, ctx)
         else:
             server_music_bot.current_song = None

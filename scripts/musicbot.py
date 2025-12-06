@@ -1265,7 +1265,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         if not info.get('entries'):
                             raise Exception("No results found for your search.\nPlease try again with another search term")
                         # Make sure we have a valid entry
-                        if len(info['entries']) > 0 and info['entries'][0]:
+                        if info['entries'] and info['entries'][0]:
                             info = info['entries'][0]
                             file_path = os.path.join(self.downloads_dir, f"{info['id']}.{info.get('ext', 'opus')}")
                         else:

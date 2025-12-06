@@ -20,7 +20,6 @@ class RandomRadioCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
         self.api_base = "https://de1.api.radio-browser.info/json/stations"
 
     async def get_random_station(self, retry_count=0):

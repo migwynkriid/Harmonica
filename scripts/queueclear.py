@@ -1,5 +1,6 @@
 import discord
 from scripts.messages import create_embed
+from scripts.clear_queue import clear_download_queue
 
 async def clear_queue_command(ctx, music_bot, position: int = None):
     """
@@ -25,7 +26,7 @@ async def clear_queue_command(ctx, music_bot, position: int = None):
         if position < 1 or position > queue_length:
             embed = create_embed(
                 "Error",
-                f"Nothing on queue order {position}. Please specify a number between 1 and {queue_length}",
+                f"Nothing on queue order {position}.",
                 discord.Color.red(),
                 ctx=ctx
             )
@@ -44,17 +45,8 @@ async def clear_queue_command(ctx, music_bot, position: int = None):
         # Clear entire queue except current song
         queue_length = len(music_bot.queue)
         
-        # Clear download queue without canceling current downloads
-        items_removed = 0
-        while not music_bot.download_queue.empty():
-            try:
-                music_bot.download_queue.get_nowait()
-                items_removed += 1
-            except asyncio.QueueEmpty:
-                break
-        
-        for _ in range(items_removed):
-            music_bot.download_queue.task_done()
+        # Use shared utility to clear download queue
+        clear_download_queue(music_bot)
         
         # Clear the queue
         music_bot.queue.clear()

@@ -14,5 +14,5 @@ def test_set_high_priority_windows(monkeypatch):
             self._nice = val
             return self._nice
     monkeypatch.setattr(pr.psutil, 'Process', lambda pid: Proc())
-    monkeypatch.setattr(pr.psutil, 'HIGH_PRIORITY_CLASS', 128)
+    # No need to set HIGH_PRIORITY_CLASS on psutil, it's now defined in the module
     assert pr.set_high_priority() is True

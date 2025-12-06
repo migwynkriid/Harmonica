@@ -1,17 +1,11 @@
 from discord.ext import commands
 import discord
 import os
-import sys
 import subprocess
-import json
-import sys
-
-# Add scripts directory to path for importing ytdlp
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'scripts'))
+from scripts.config import load_config
 
 # Load config
-with open('config.json', 'r') as f:
-    config = json.load(f)
+config = load_config()
 OWNER_ID = int(config['OWNER_ID'])
 
 async def setup(bot):
