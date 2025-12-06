@@ -26,7 +26,7 @@ async def clear_queue_command(ctx, music_bot, position: int = None):
         if position < 1 or position > queue_length:
             embed = create_embed(
                 "Error",
-                f"Nothing on queue order {position}. Please specify a number between 1 and {queue_length}",
+                f"Nothing on queue order {position}.",
                 discord.Color.red(),
                 ctx=ctx
             )
