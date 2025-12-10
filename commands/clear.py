@@ -21,7 +21,6 @@ class ClearCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='clear', aliases=['clearqueue'])
     @check_dj_role()

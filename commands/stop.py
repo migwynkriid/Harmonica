@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
-from scripts.clear_queue import clear_queue
+from scripts.clear_queue import clear_queue, clear_download_queue
 from scripts.voice_checks import check_voice_state
 from scripts.caching import playlist_cache
 from scripts.activity import update_activity
@@ -24,7 +24,6 @@ class StopCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='stop')
     @check_dj_role()
@@ -93,7 +92,7 @@ class StopCog(commands.Cog):
                 try:
                     await message.delete()
                     await asyncio.sleep(0.1)  # Add 0.1-second delay between deletions
-                except:
+                except Exception:
                     pass  # Message might already be deleted
             server_music_bot.queued_messages.clear()
             
@@ -115,13 +114,8 @@ class StopCog(commands.Cog):
             # Add a flag to indicate the bot has been explicitly stopped
             server_music_bot.explicitly_stopped = True
             
-            # Clear any remaining downloads from queue to prevent them from being processed
-            while not server_music_bot.download_queue.empty():
-                try:
-                    server_music_bot.download_queue.get_nowait()
-                    server_music_bot.download_queue.task_done()
-                except asyncio.QueueEmpty:
-                    break
+            # Use shared utility to clear download queue
+            clear_download_queue(server_music_bot)
             
             # Update the bot's activity status to clear the "Playing song" status
             await update_activity(self.bot, current_song=None, is_playing=False)

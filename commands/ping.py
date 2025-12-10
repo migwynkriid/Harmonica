@@ -1,8 +1,6 @@
 import discord
 from discord.ext import commands
 import time
-import platform
-import asyncio
 from scripts.messages import create_embed
 
 class PingCog(commands.Cog):
@@ -21,7 +19,6 @@ class PingCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='ping', help='Show bot latency and connection info')
     async def ping(self, ctx):

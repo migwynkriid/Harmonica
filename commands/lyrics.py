@@ -2,14 +2,8 @@ from discord.ext import commands
 import discord
 import lyricsgenius
 import os
-import sys
 from azapi import AZlyrics
 from scripts.messages import create_embed
-
-# Add the parent directory to sys.path to allow importing from bot
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
 
 def create_token_file(filepath, token_prefix):
     """

@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-import time
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 from scripts.voice_checks import check_voice_state
@@ -21,7 +20,6 @@ class ResumeCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='resume')
     @check_dj_role()

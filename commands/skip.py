@@ -21,7 +21,6 @@ class SkipCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self._last_member = None
 
     async def _skip_song(self, amount: int = 1, ctx=None):
         """
