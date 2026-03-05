@@ -1,6 +1,7 @@
 from discord.ext import commands
 import discord
 import os
+import sys
 import subprocess
 from scripts.config import load_config
 
