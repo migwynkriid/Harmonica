@@ -1,10 +1,49 @@
 import logging
 import sys
 import re
+import time
 from datetime import datetime
 from scripts.caching import playlist_cache
 import os
-from scripts.constants import GREEN, BLUE, RED, RESET
+from scripts.constants import GREEN, BLUE, RED, RESET, YELLOW
+
+class ConnectionMessageThrottler:
+    """
+    Throttles connection-related messages to avoid console spam.
+    
+    This class ensures connection messages are only displayed every N seconds,
+    showing a simple, clean message instead of verbose technical details.
+    """
+    def __init__(self, interval_seconds=10):
+        self.interval = interval_seconds
+        self.last_message_time = {}
+        self.message_counts = {}
+        
+    def should_show_message(self, message_type):
+        """
+        Check if a message of this type should be displayed.
+        
+        Args:
+            message_type: The type of message (e.g., 'reconnecting', 'dns_error')
+            
+        Returns:
+            bool: True if the message should be shown, False otherwise
+        """
+        current_time = time.time()
+        last_time = self.last_message_time.get(message_type, 0)
+        
+        if current_time - last_time >= self.interval:
+            self.last_message_time[message_type] = current_time
+            self.message_counts[message_type] = self.message_counts.get(message_type, 0) + 1
+            return True
+        return False
+    
+    def get_count(self, message_type):
+        """Get the number of times a message type has been shown."""
+        return self.message_counts.get(message_type, 0)
+
+# Global throttler instance
+connection_throttler = ConnectionMessageThrottler(interval_seconds=10)
 
 class MessageFilter(logging.Filter):
     """
@@ -80,6 +119,22 @@ class MessageFilter(logging.Filter):
             'Some web client https formats have been skipped',
             'YouTube is forcing SABR streaming',
             'youtube:player_client=default',
+            # Connection-related messages (will be handled by throttler)
+            'DNS resolution',
+            'Connection error',
+            'Attempting a reconnect',
+            'reconnection',
+            'Waiting',
+            'seconds before',
+            'Multiple reconnection attempts',
+            'Alternative DNS',
+            'flush DNS cache',
+            'DNS cache flush',
+            'Checking DNS',
+            'Trying alternative',
+            'still failing',
+            'should succeed',
+            'will likely fail',
         ]
 
     def filter(self, record):
@@ -344,3 +399,18 @@ def get_ytdlp_logger():
     logging.setLoggerClass(logging.Logger)  # Reset to default Logger class
     
     return logger
+
+def print_connection_message(message_type, message, color=YELLOW):
+    """
+    Print a connection-related message, throttled to avoid console spam.
+    
+    This function should be used for all connection-related messages to ensure
+    they are displayed in a clean, throttled manner (default: every 10 seconds).
+    
+    Args:
+        message_type: A unique identifier for this type of message (e.g., 'reconnecting')
+        message: The message to display
+        color: The ANSI color code to use (default: YELLOW)
+    """
+    if connection_throttler.should_show_message(message_type):
+        print(f"{color}{message}{RESET}")

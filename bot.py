@@ -334,11 +334,10 @@ async def on_error(event, *args, **kwargs):
     # Check if it's a connection-related error
     if error_type in (socket.gaierror, aiohttp.ClientConnectorError, 
                      aiohttp.ClientConnectorDNSError, discord.errors.ConnectionClosed):
-        print(f"{RED}Connection error in {event}: {error}{RESET}")
         # Use our connection handler to handle the error
+        # (It will display a clean, throttled message to the console)
         handled = await ConnectionHandler.handle_connection_error(error, bot)
         if handled:
-            print(f"{GREEN}Connection error handled, reconnection should succeed{RESET}")
             return
     
     # For other errors, print the traceback

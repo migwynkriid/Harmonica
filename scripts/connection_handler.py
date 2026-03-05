@@ -5,6 +5,8 @@ import time
 import random
 import sys
 from aiohttp import ClientConnectorError, ClientConnectorDNSError
+from scripts.logging import print_connection_message
+from scripts.constants import YELLOW, RED, GREEN, RESET
 
 logger = logging.getLogger(__name__)
 
@@ -54,32 +56,15 @@ class ConnectionHandler:
                     lambda: socket.getaddrinfo(hostname, 443)
                 )
                 logger.info(f"DNS resolution successful for {hostname}")
+                print_connection_message('reconnected', f"Connection restored", GREEN)
                 return True
             except socket.gaierror as e:
-                # DNS resolution failed
-                logger.warning(f"DNS resolution failed (attempt {attempt+1}/{max_retries}): {e}")
+                # DNS resolution failed - show simple message
+                if attempt == 0:
+                    print_connection_message('dns_error', f"Lost connection... Retrying...", YELLOW)
                 
-                # If we've tried multiple times, try using an alternative DNS server
-                if attempt >= 1:
-                    # Try with an alternative DNS server
-                    alt_dns = random.choice(ConnectionHandler.ALTERNATIVE_DNS)
-                    logger.info(f"Trying alternative DNS server: {alt_dns}")
-                    
-                    # Create a custom resolver using the alternative DNS
-                    try:
-                        # This is a bit of a hack, but it can help in some cases
-                        # We're manually setting the DNS server for this specific lookup
-                        resolver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                        resolver.connect((alt_dns, 53))
-                        
-                        # Try to resolve using this DNS server
-                        query = b'\x00\x01\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x07discord\x03com\x00\x00\x01\x00\x01'
-                        resolver.send(query)
-                        resolver.close()
-                        
-                        logger.info(f"Attempted alternative DNS resolution via {alt_dns}")
-                    except Exception as dns_err:
-                        logger.warning(f"Alternative DNS resolution failed: {dns_err}")
+                # Log detailed info for debugging (but this is filtered from console)
+                logger.warning(f"DNS resolution failed (attempt {attempt+1}/{max_retries}): {e}")
                 
                 if attempt < max_retries - 1:
                     # Wait before retrying with exponential backoff
@@ -88,6 +73,7 @@ class ConnectionHandler:
                     await asyncio.sleep(wait_time)
                 else:
                     logger.error(f"DNS resolution failed after {max_retries} attempts")
+                    print_connection_message('dns_failed', f"Connection failed after multiple attempts", RED)
                     return False
     
     @staticmethod
@@ -117,11 +103,16 @@ class ConnectionHandler:
         if ConnectionHandler.reconnection_attempts > 5:
             wait_time = min(30, 5 * ConnectionHandler.reconnection_attempts)
             logger.warning(f"Multiple reconnection attempts detected. Waiting {wait_time} seconds before trying again...")
+            print_connection_message('reconnecting', f"Lost connection... Retrying...", YELLOW)
             await asyncio.sleep(wait_time)
         
         if isinstance(error, ClientConnectorDNSError) or (
             isinstance(error, socket.gaierror) and error.errno == 11004
         ):
+            # Show simple message to user
+            print_connection_message('connection_lost', f"Lost connection... Retrying...", YELLOW)
+            
+            # Log detailed info for debugging (filtered from console)
             logger.error(f"DNS resolution error detected: {error}")
             logger.info("Checking DNS resolution...")
             
@@ -134,7 +125,7 @@ class ConnectionHandler:
             else:
                 logger.error("DNS resolution is still failing, reconnection may fail")
                 
-                # Try to flush DNS cache on Windows
+                # Try to flush DNS cache on Windows (logged but not shown to user)
                 try:
                     if sys.platform == 'win32':
                         logger.info("Attempting to flush DNS cache on Windows...")
@@ -150,6 +141,7 @@ class ConnectionHandler:
         
         # Handle other types of connection errors
         elif isinstance(error, ClientConnectorError):
+            print_connection_message('connection_error', f"Lost connection... Retrying...", YELLOW)
             logger.error(f"Connection error: {error}")
             # Wait a bit before reconnecting
             await asyncio.sleep(5)
@@ -179,7 +171,12 @@ def patch_discord_client():
         try:
             return await original_connect(self, reconnect=reconnect)
         except (ClientConnectorDNSError, socket.gaierror) as e:
+            # Show simple message to user
+            print_connection_message('connection_error', f"Lost connection... Retrying...", YELLOW)
+            
+            # Log detailed info for debugging (filtered from console)
             logger.error(f"DNS resolution error during connect: {e}")
+            
             # Check DNS resolution and wait if needed
             dns_working = await ConnectionHandler.check_dns_resolution()
             if dns_working:
@@ -188,7 +185,7 @@ def patch_discord_client():
             else:
                 logger.error("DNS resolution is still failing, connection will likely fail")
                 
-                # Try to flush DNS cache on Windows
+                # Try to flush DNS cache on Windows (logged but not shown to user)
                 try:
                     if sys.platform == 'win32':
                         logger.info("Attempting to flush DNS cache on Windows...")
