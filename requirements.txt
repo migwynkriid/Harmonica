@@ -1,5 +1,5 @@
 discord.py[voice] @ git+https://github.com/rapptz/discord.py  # Discord API wrapper with voice support from master branch
-PyNaCl==1.5.0 # Required for voice functionality
+PyNaCl>=1.6.0,<1.7 # Required for voice functionality
 python-dotenv==1.1.0 # For loading environment variables from .env file
 requests==2.31.0  # HTTP library for API requests
 pytz
