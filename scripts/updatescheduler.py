@@ -250,10 +250,18 @@ async def check_updates(bot):
             if not is_in_voice:
                 try:
                     # Get the remote commit before pulling
-                    remote_commit = subprocess.run(
-                        ["git", "rev-parse", "--short", "origin/HEAD"], 
-                        check=True, capture_output=True, text=True
-                    ).stdout.strip()
+                    try:
+                        remote_commit = subprocess.run(
+                            ["git", "rev-parse", "--short", "origin/HEAD"], 
+                            check=True, capture_output=True, text=True
+                        ).stdout.strip()
+                    except subprocess.CalledProcessError:
+                        # origin/HEAD not set, fix it automatically
+                        subprocess.run(["git", "remote", "set-head", "origin", "-a"], check=True, capture_output=True)
+                        remote_commit = subprocess.run(
+                            ["git", "rev-parse", "--short", "origin/HEAD"], 
+                            check=True, capture_output=True, text=True
+                        ).stdout.strip()
                     
                     # Pull updates
                     subprocess.run(["git", "pull"], check=True, capture_output=True, text=True)
