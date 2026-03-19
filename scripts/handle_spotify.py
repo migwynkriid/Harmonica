@@ -168,23 +168,19 @@ class SpotifyHandler:
                     if not video_url:
                         raise ValueError("Could not get video URL")
                         
-                    # Now use download_song with the actual YouTube URL
-                    song_info = await self.download_song(video_url, status_msg=status_msg, ctx=ctx)
+                    # Now use download_song with the actual YouTube URL and spotify_info for combined caching
+                    song_info = await self.download_song(
+                        video_url, 
+                        status_msg=status_msg, 
+                        ctx=ctx,
+                        spotify_info={'track_id': track_id, 'artists': artists}
+                    )
             except Exception as e:
                 print(f"{RED}Error getting YouTube URL: {str(e)}{RESET}")
                 return None
             
-            # If song is successfully downloaded, cache it and add to queue
+            # If song is successfully downloaded, add to queue (caching is handled by download_song)
             if song_info:
-                # Cache the downloaded song with Spotify ID
-                playlist_cache.add_spotify_track(
-                    track_id,
-                    song_info['file_path'],
-                    title=song_info['title'],
-                    thumbnail=song_info.get('thumbnail'),
-                    artist=artists
-                )
-                print(f"{GREEN}Added Spotify track to cache: {RESET}{BLUE}{track_id} - {song_info.get('title', 'Unknown')}{RESET}")
 
                 # Add to queue and process as before
                 song_info['is_from_playlist'] = False
@@ -307,18 +303,13 @@ class SpotifyHandler:
                 else:
                     # Download if not in cache
                     search_query = f"{first_track['name']} {artists}"
-                    first_song = await self.download_song(search_query, status_msg=None, ctx=ctx)
+                    first_song = await self.download_song(
+                        search_query, 
+                        status_msg=None, 
+                        ctx=ctx,
+                        spotify_info={'track_id': track_id, 'artists': artists}
+                    )
                     if first_song:
-                        # Cache the first track
-                        playlist_cache.add_spotify_track(
-                            track_id,
-                            first_song['file_path'],
-                            title=first_song['title'],
-                            thumbnail=first_song.get('thumbnail'),
-                            artist=artists
-                        )
-                        print(f"{GREEN}Added Spotify track to cache: {RESET}{BLUE}{track_id} - {first_song.get('title', 'Unknown')}{RESET}")
-                        
                         first_song['is_from_playlist'] = True
                         first_song['requester'] = ctx.author
                         first_song['duration'] = await get_audio_duration(first_song['file_path'])
@@ -435,18 +426,13 @@ class SpotifyHandler:
                 else:
                     # Download if not in cache
                     search_query = f"{first_track['name']} {artists}"
-                    first_song = await self.download_song(search_query, status_msg=None, ctx=ctx)
+                    first_song = await self.download_song(
+                        search_query, 
+                        status_msg=None, 
+                        ctx=ctx,
+                        spotify_info={'track_id': track_id, 'artists': artists}
+                    )
                     if first_song:
-                        # Cache the first track
-                        playlist_cache.add_spotify_track(
-                            track_id,
-                            first_song['file_path'],
-                            title=first_song['title'],
-                            thumbnail=first_song.get('thumbnail'),
-                            artist=artists
-                        )
-                        print(f"{GREEN}Added Spotify track to cache: {RESET}{BLUE}{track_id} - {first_song.get('title', 'Unknown')}{RESET}")
-                        
                         first_song['is_from_playlist'] = True
                         first_song['requester'] = ctx.author
                         first_song['duration'] = await get_audio_duration(first_song['file_path'])
@@ -549,21 +535,15 @@ class SpotifyHandler:
                     artists = ", ".join([artist['name'] for artist in track['artists']])
                     search_query = f"{track['name']} {artists}"
                     
-                    song_info = await self.download_song(search_query, status_msg=None, ctx=ctx)
+                    song_info = await self.download_song(
+                        search_query, 
+                        status_msg=None, 
+                        ctx=ctx,
+                        spotify_info={'track_id': track_id, 'artists': artists, 'skip_save': True}
+                    )
                     if song_info:
                         if not playlist_cache._should_continue_check:
                             return
-                            
-                        # Cache the downloaded song
-                        playlist_cache.add_spotify_track(
-                            track_id,
-                            song_info['file_path'],
-                            title=song_info['title'],
-                            thumbnail=song_info.get('thumbnail'),
-                            artist=artists,
-                            skip_save=True
-                        )
-                        print(f"{GREEN}Added Spotify track to cache: {RESET}{BLUE}{track_id} - {song_info.get('title', 'Unknown')}{RESET}")
                         
                         song_info['duration'] = await get_audio_duration(song_info['file_path'])
                         song_info['is_from_playlist'] = True

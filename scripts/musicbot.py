@@ -508,7 +508,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         bar = '█' * filled + '░' * (length - filled)
         return f"[{bar}] {percentage}%"
 
-    async def download_song(self, query, status_msg=None, ctx=None, skip_url_check=False):
+    async def download_song(self, query, status_msg=None, ctx=None, skip_url_check=False, spotify_info=None):
         """
         Download a song from YouTube, Spotify, or handle radio stream
         
@@ -532,6 +532,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             status_msg (discord.Message, optional): Discord message to update with progress
             ctx (discord.Context, optional): Command context for sending messages
             skip_url_check (bool, optional): Whether to skip URL validation
+            spotify_info (dict, optional): Spotify track info with 'track_id' and 'artists' for combined caching
             
         Returns:
             dict: Information about the downloaded song, or None if download failed
@@ -934,6 +935,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         # Add to cache
                         if os.path.exists(file_path) and info.get('id'):
                             video_id = info['id']
+                            yt_cached = False
+                            spotify_cached = False
+                            
                             if not playlist_cache.is_video_cached(video_id):
                                 playlist_cache.add_to_cache(
                                     video_id, 
@@ -941,7 +945,28 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                     thumbnail_url=info.get('thumbnail'),
                                     title=info.get('title', 'Unknown')
                                 )
+                                yt_cached = True
+                            
+                            # If spotify_info is provided, also cache the Spotify track
+                            if spotify_info and spotify_info.get('track_id'):
+                                if not playlist_cache.is_spotify_track_cached(spotify_info['track_id']):
+                                    playlist_cache.add_spotify_track(
+                                        spotify_info['track_id'],
+                                        file_path,
+                                        title=info.get('title', 'Unknown'),
+                                        thumbnail=info.get('thumbnail'),
+                                        artist=spotify_info.get('artists', ''),
+                                        skip_save=spotify_info.get('skip_save', False)
+                                    )
+                                    spotify_cached = True
+                            
+                            # Print combined or individual cache message
+                            if yt_cached and spotify_cached:
+                                print(f"{GREEN}Added to cache:{RESET} {BLUE}{video_id} & {spotify_info['track_id']} - {info.get('title', 'Unknown')}{RESET}")
+                            elif yt_cached:
                                 print(f"{GREEN}Added Youtube file to cache: {RESET}{BLUE}{video_id} - {info.get('title', 'Unknown')}{RESET}")
+                            elif spotify_cached:
+                                print(f"{GREEN}Added Spotify track to cache: {RESET}{BLUE}{spotify_info['track_id']} - {info.get('title', 'Unknown')}{RESET}")
                         
                         # Get and cache the duration
                         duration = await get_audio_duration(file_path)
@@ -1347,6 +1372,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     # Add to cache for both YouTube direct links and Spotify->YouTube conversions
                     if os.path.exists(file_path) and info.get('id'):
                         video_id = info['id']
+                        yt_cached = False
+                        spotify_cached = False
+                        
                         if not playlist_cache.is_video_cached(video_id):
                             playlist_cache.add_to_cache(
                                 video_id, 
@@ -1354,7 +1382,28 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 thumbnail_url=info.get('thumbnail'),
                                 title=info.get('title', 'Unknown')  # Save the title
                             )
+                            yt_cached = True
+                        
+                        # If spotify_info is provided, also cache the Spotify track
+                        if spotify_info and spotify_info.get('track_id'):
+                            if not playlist_cache.is_spotify_track_cached(spotify_info['track_id']):
+                                playlist_cache.add_spotify_track(
+                                    spotify_info['track_id'],
+                                    file_path,
+                                    title=info.get('title', 'Unknown'),
+                                    thumbnail=info.get('thumbnail'),
+                                    artist=spotify_info.get('artists', ''),
+                                    skip_save=spotify_info.get('skip_save', False)
+                                )
+                                spotify_cached = True
+                        
+                        # Print combined or individual cache message
+                        if yt_cached and spotify_cached:
+                            print(f"{GREEN}Added to cache:{RESET} {BLUE}{video_id} & {spotify_info['track_id']} - {info.get('title', 'Unknown')}{RESET}")
+                        elif yt_cached:
                             print(f"{GREEN}Added Youtube file to cache: {RESET}{BLUE}{video_id} - {info.get('title', 'Unknown')}{RESET}")
+                        elif spotify_cached:
+                            print(f"{GREEN}Added Spotify track to cache: {RESET}{BLUE}{spotify_info['track_id']} - {info.get('title', 'Unknown')}{RESET}")
 
                     # Add requester information to the song info
                     if ctx:
