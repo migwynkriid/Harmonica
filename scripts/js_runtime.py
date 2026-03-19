@@ -240,5 +240,5 @@ def ensure_ejs_installed(verbose=False):
         if verbose:
             print("⚠ yt-dlp-ejs package not found. YouTube challenge solving may fail.")
             print("  To fix this, run: pip install -U 'yt-dlp'")
-        print("  Alternatively, the bot will attempt to download scripts from GitHub automatically.")
+            print("  Alternatively, the bot will attempt to download scripts from GitHub automatically.")
         return False
