@@ -110,7 +110,7 @@ class QueueCog(commands.Cog):
             page (int): The page number to display
             
         Returns:
-            tuple: (discord.Embed, int) - The queue embed and total number of songs
+            tuple: (discord.Embed, int) - The queue embed and queue count for pagination
         """
         from bot import MusicBot
         
@@ -124,9 +124,11 @@ class QueueCog(commands.Cog):
         queue_text = ""
         shown_songs = set()  # Track shown songs to avoid duplicates
         total_songs = 0
+        queue_count = 0  # Separate counter for pagination (excludes current song)
 
         # Display current song if there is one
         if server_music_bot.current_song:
+            total_songs = 1  # Count the currently playing song
             queue_text += "**Now playing:**\n"
             loop_cog = self.bot.get_cog('Loop')
             is_looping = loop_cog and server_music_bot.current_song['url'] in loop_cog.looped_songs
@@ -165,7 +167,7 @@ class QueueCog(commands.Cog):
             
             if has_non_looping_songs:
                 queue_text += "**Up Next:**\n"
-                position = 1
+                queue_index = 0  # Separate counter for pagination
                 start_idx = (page - 1) * self.page_size  # Calculate pagination indices
                 end_idx = start_idx + self.page_size
                 
@@ -177,7 +179,8 @@ class QueueCog(commands.Cog):
                     song_title = song['title']
                     if song_title not in shown_songs:  # Avoid showing duplicate songs
                         total_songs += 1
-                        if start_idx <= total_songs - 1 < end_idx:  # Only show songs for current page
+                        queue_count += 1  # Count for pagination
+                        if start_idx <= queue_index < end_idx:  # Only show songs for current page
                             # Get duration for queued song
                             if not song.get('is_stream'):
                                 file_path = song['file_path']
@@ -192,6 +195,7 @@ class QueueCog(commands.Cog):
                                 
                             # Format each queued song with position, title, URL, and duration
                             queue_text += f"`{total_songs}.` [{song_title}]({song['url']}){duration_str}\n"
+                        queue_index += 1  # Increment pagination counter
                         shown_songs.add(song_title)  # Mark song as shown
                     
         # Display downloading songs if there are any
@@ -207,7 +211,7 @@ class QueueCog(commands.Cog):
             color=0x3498db,
             ctx=ctx
         )
-        return embed, total_songs
+        return embed, queue_count  # Return queue_count for pagination (excludes current song)
 
     async def update_queue_page(self, interaction, new_page, original_ctx):
         """
@@ -221,8 +225,8 @@ class QueueCog(commands.Cog):
             new_page (int): The new page number to display
             original_ctx: The original command context
         """
-        embed, total_songs = await self.get_queue_embed(original_ctx, new_page)
-        total_pages = (total_songs + self.page_size - 1) // self.page_size
+        embed, queue_count = await self.get_queue_embed(original_ctx, new_page)
+        total_pages = (queue_count + self.page_size - 1) // self.page_size
         view = self.create_queue_buttons(new_page, total_pages)
         await interaction.response.edit_message(embed=embed, view=view)
 
@@ -239,8 +243,8 @@ class QueueCog(commands.Cog):
             ctx: The command context
         """
         page = 1  # Start with the first page
-        embed, total_songs = await self.get_queue_embed(ctx, page)
-        total_pages = (total_songs + self.page_size - 1) // self.page_size
+        embed, queue_count = await self.get_queue_embed(ctx, page)
+        total_pages = (queue_count + self.page_size - 1) // self.page_size
         view = self.create_queue_buttons(page, total_pages)
         
         # Send the initial message with buttons
