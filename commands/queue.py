@@ -125,6 +125,7 @@ class QueueCog(commands.Cog):
         shown_songs = set()  # Track shown songs to avoid duplicates
         total_songs = 0
         queue_count = 0  # Separate counter for pagination (excludes current song)
+        total_duration = 0  # Track total duration of all songs
 
         # Display current song if there is one
         if server_music_bot.current_song:
@@ -143,6 +144,8 @@ class QueueCog(commands.Cog):
                     if duration > 0:
                         server_music_bot.duration_cache[file_path] = duration
                 duration_str = f" `[{format_duration(duration)}]`" if duration > 0 else ""
+                if duration and duration > 0:
+                    total_duration += duration
             else:
                 duration_str = " `[LIVE]`"  # Live streams don't have duration
                 
@@ -180,19 +183,24 @@ class QueueCog(commands.Cog):
                     if song_title not in shown_songs:  # Avoid showing duplicate songs
                         total_songs += 1
                         queue_count += 1  # Count for pagination
+                        
+                        # Get duration for queued song (always calculate for total)
+                        song_duration = 0
+                        if not song.get('is_stream'):
+                            file_path = song['file_path']
+                            duration = server_music_bot.duration_cache.get(file_path)
+                            if duration is None:
+                                duration = await get_audio_duration(file_path)
+                                if duration > 0:
+                                    server_music_bot.duration_cache[file_path] = duration
+                            if duration and duration > 0:
+                                song_duration = duration
+                                total_duration += duration
+                            duration_str = f" `[{format_duration(duration)}]`" if duration > 0 else ""
+                        else:
+                            duration_str = " `[LIVE]`"
+                        
                         if start_idx <= queue_index < end_idx:  # Only show songs for current page
-                            # Get duration for queued song
-                            if not song.get('is_stream'):
-                                file_path = song['file_path']
-                                duration = server_music_bot.duration_cache.get(file_path)
-                                if duration is None:
-                                    duration = await get_audio_duration(file_path)
-                                    if duration > 0:
-                                        server_music_bot.duration_cache[file_path] = duration
-                                duration_str = f" `[{format_duration(duration)}]`" if duration > 0 else ""
-                            else:
-                                duration_str = " `[LIVE]`"
-                                
                             # Format each queued song with position, title, URL, and duration
                             queue_text += f"`{total_songs}.` [{song_title}]({song['url']}){duration_str}\n"
                         queue_index += 1  # Increment pagination counter
@@ -205,9 +213,15 @@ class QueueCog(commands.Cog):
             queue_text += f"{downloading_count} song(s) in download queue\n"
 
         # Create the final embed
+        footer_text = ""
+        if total_songs > 0:
+            footer_text = f"\n\nTotal in queue: {total_songs}"
+            if total_duration > 0:
+                footer_text += f"\nTotal duration: {format_duration(total_duration)}"
+        
         embed = create_embed(
             f"Queue",
-            queue_text + (f"\n\nTotal in queue: {total_songs}" if total_songs > 0 else ""),
+            queue_text + footer_text,
             color=0x3498db,
             ctx=ctx
         )
