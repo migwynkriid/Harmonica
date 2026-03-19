@@ -156,11 +156,9 @@ YTDLP_PATH = get_ytdlp_path()  # Path to yt-dlp executable
 # Get path to cookies file
 COOKIES_PATH = os.path.join(get_root_dir(), 'cookies.txt')  # Path to cookies file
 
-# Check for JavaScript runtime (needed for YouTube challenge solving)
-print(f"\n{BLUE}Checking JavaScript runtime for yt-dlp...{RESET}")
-ensure_ejs_installed()
-JS_RUNTIME_CONFIG = get_js_runtime_config()
-print()
+# Check for JavaScript runtime (needed for YouTube challenge solving) - silent check
+ensure_ejs_installed(verbose=False)
+JS_RUNTIME_CONFIG = get_js_runtime_config(verbose=False)
 
 # Export config variables for other modules to use
 config_vars = load_config()

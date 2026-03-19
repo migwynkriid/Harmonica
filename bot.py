@@ -24,6 +24,7 @@ from scripts.voice import handle_voice_state_update
 from scripts.messages import create_embed
 from scripts.ytdlp import get_ytdlp_path
 from scripts.ffmpeg import get_ffmpeg_path
+from scripts.js_runtime import get_js_runtime_config
 from scripts.cleardownloads import clear_downloads_folder
 from scripts.load_commands import load_commands
 from scripts.load_scripts import load_scripts
@@ -183,6 +184,7 @@ async def on_ready():
     commit_count = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD']).decode('utf-8').strip()
     print(f"{GREEN}\nCurrent commit count: {BLUE}{commit_count}{RESET}")
     print(f"{GREEN}YT-DLP version: {BLUE}{yt_dlp.version.__version__}{RESET}")
+    get_js_runtime_config(verbose=True)
     print(f"----------------------------------------")
     
     # Now show the credentials

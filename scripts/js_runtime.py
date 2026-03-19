@@ -8,6 +8,7 @@ to solve YouTube's JavaScript challenges.
 import sys
 import subprocess
 import shutil
+from scripts.constants import GREEN, BLUE, RESET, YELLOW, RED
 
 def check_runtime(command):
     """
@@ -58,12 +59,15 @@ def get_available_js_runtime():
     
     return (None, None)
 
-def get_js_runtime_config():
+def get_js_runtime_config(verbose=False):
     """
     Get yt-dlp configuration for JavaScript runtime.
     
     Detects available JavaScript runtimes and returns the appropriate
     configuration for yt-dlp to use.
+    
+    Args:
+        verbose (bool): If True, print detection results
     
     Returns:
         dict: Dict in format {runtime_name: {'path': runtime_path}} or empty dict if none found
@@ -71,11 +75,13 @@ def get_js_runtime_config():
     runtime_name, runtime_path = get_available_js_runtime()
     
     if runtime_name and runtime_path:
-        print(f"✓ JavaScript runtime detected: {runtime_name} at {runtime_path}")
+        if verbose:
+            print(f"{GREEN}JavaScript runtime detected: {runtime_name} at {BLUE}{runtime_path}{RESET}")
         return {runtime_name: {'path': runtime_path}}
     else:
-        print("⚠ No JavaScript runtime found. YouTube downloads may fail.")
-        print("  Install Node.js from https://nodejs.org/ or Deno from https://deno.com/")
+        if verbose:
+            print(f"{YELLOW}⚠ No JavaScript runtime found. YouTube downloads may fail.{RESET}")
+            print(f"{YELLOW}  Install Node.js from https://nodejs.org/ or Deno from https://deno.com/{RESET}")
         return {}
 
 def check_ejs_package():
@@ -92,21 +98,26 @@ def check_ejs_package():
     except (ImportError, ValueError):
         return False
 
-def ensure_ejs_installed():
+def ensure_ejs_installed(verbose=False):
     """
     Ensure EJS challenge solver scripts are available.
     
     Checks if the yt-dlp-ejs package is installed. If not, prints a warning
     and suggests installation methods.
     
+    Args:
+        verbose (bool): If True, print installation status
+    
     Returns:
         bool: True if EJS is available, False otherwise
     """
     if check_ejs_package():
-        print("✓ yt-dlp-ejs package is installed")
+        if verbose:
+            print("✓ yt-dlp-ejs package is installed")
         return True
     else:
-        print("⚠ yt-dlp-ejs package not found. YouTube challenge solving may fail.")
-        print("  To fix this, run: pip install -U 'yt-dlp[default]'")
+        if verbose:
+            print("⚠ yt-dlp-ejs package not found. YouTube challenge solving may fail.")
+            print("  To fix this, run: pip install -U 'yt-dlp'")
         print("  Alternatively, the bot will attempt to download scripts from GitHub automatically.")
         return False
