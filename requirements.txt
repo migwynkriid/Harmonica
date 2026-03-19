@@ -6,6 +6,7 @@ pytz
 spotipy==2.25.1
 lyricsgenius==3.7.0  # API client for Genius lyrics service
 azapi==3.0.8  # Alternative lyrics API
+typing_extensions>=4.5.0  # Backport of typing features for Python < 3.11 (required by azapi)
 psutil==7.0.0  # Process and system utilities for monitoring
 audioop-lts; platform_system=="darwin"  # Audio operations library for macOS
 yt-dlp  # YouTube downloader, core functionality
