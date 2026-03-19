@@ -8,6 +8,7 @@ import json
 import signal
 import socket
 import aiohttp
+import scripts.typing_compat
 from pathlib import Path
 from datetime import datetime
 from discord.ext import commands, tasks
