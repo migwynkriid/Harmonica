@@ -3,6 +3,7 @@ import os
 from time import sleep
 from scripts.logging import get_ytdlp_logger
 from scripts.paths import get_ytdlp_path, get_ffmpeg_path, get_ffprobe_path, get_cache_dir, get_root_dir
+from scripts.js_runtime import get_js_runtime_config, ensure_ejs_installed
 from scripts.constants import RED, GREEN, BLUE, RESET, YELLOW
 import psutil
 from pathlib import Path
@@ -155,6 +156,12 @@ YTDLP_PATH = get_ytdlp_path()  # Path to yt-dlp executable
 # Get path to cookies file
 COOKIES_PATH = os.path.join(get_root_dir(), 'cookies.txt')  # Path to cookies file
 
+# Check for JavaScript runtime (needed for YouTube challenge solving)
+print(f"\n{BLUE}Checking JavaScript runtime for yt-dlp...{RESET}")
+ensure_ejs_installed()
+JS_RUNTIME_CONFIG = get_js_runtime_config()
+print()
+
 # Export config variables for other modules to use
 config_vars = load_config()
 
@@ -199,7 +206,12 @@ BASE_YTDL_OPTIONS = {
     'ignore_no_formats_error': True,  # Ignore errors when no formats are available
     'ignore_unavailable_video': True,  # Ignore unavailable videos
     'cookiefile': COOKIES_PATH if os.path.exists(COOKIES_PATH) else None,  # Path to cookies file
+    'remote_components': ['ejs:github'],  # Auto-download EJS challenge solver scripts from GitHub if not found locally
 }
+
+# Add JavaScript runtime configuration if available
+if JS_RUNTIME_CONFIG:
+    BASE_YTDL_OPTIONS['js_runtimes'] = JS_RUNTIME_CONFIG
 
 # Add SponsorBlock configuration if enabled in config
 if config_vars.get('SPONSORBLOCK', False):
