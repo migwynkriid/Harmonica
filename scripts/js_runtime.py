@@ -5,10 +5,77 @@ This module provides utility functions for detecting and configuring
 JavaScript runtimes (Node.js, Deno, Bun, QuickJS) that yt-dlp needs
 to solve YouTube's JavaScript challenges.
 """
+import os
 import sys
 import subprocess
 import shutil
 from scripts.constants import GREEN, BLUE, RESET, YELLOW, RED
+
+def install_nodejs_windows():
+    """
+    Install Node.js on Windows using winget.
+    
+    Attempts to install Node.js LTS using the Windows Package Manager (winget).
+    
+    Returns:
+        bool: True if installation was successful, False otherwise
+    """
+    try:
+        print(f"{YELLOW}Node.js not found. Installing Node.js LTS using winget...{RESET}")
+        subprocess.run(['winget', 'install', 'OpenJS.NodeJS.LTS', '--silent'], check=True)
+        print(f"{GREEN}Node.js installed successfully. Please restart the bot for changes to take effect.{RESET}")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"{RED}Error installing Node.js: {e}{RESET}")
+        print(f"{YELLOW}Please install Node.js manually from https://nodejs.org/{RESET}")
+        return False
+
+def install_nodejs_macos():
+    """
+    Install Node.js on macOS using Homebrew.
+    
+    Attempts to install Node.js using Homebrew.
+    
+    Returns:
+        bool: True if installation was successful, False otherwise
+    """
+    try:
+        print(f"{YELLOW}Node.js not found. Attempting to install Node.js using Homebrew...{RESET}")
+        subprocess.run(['brew', 'install', 'node'], check=True)
+        print(f"{GREEN}Node.js installed successfully. Please restart the bot for changes to take effect.{RESET}")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"{RED}Error installing Node.js: {e}{RESET}")
+        print(f"{YELLOW}Please install Node.js manually from https://nodejs.org/{RESET}")
+        return False
+
+def install_nodejs_linux():
+    """
+    Install Node.js on Linux using NodeSource setup script.
+    
+    Attempts to install Node.js v20.x LTS using NodeSource repository for Debian/Ubuntu.
+    This ensures a modern version is installed rather than older versions from default repos.
+    
+    Returns:
+        bool: True if installation was successful, False otherwise
+    """
+    try:
+        print(f"{YELLOW}Node.js not found. Installing Node.js v20.x LTS using NodeSource...{RESET}")
+        # Download and run NodeSource setup script for Node.js 20.x
+        setup_script = subprocess.run(
+            ['curl', '-fsSL', 'https://deb.nodesource.com/setup_20.x'],
+            capture_output=True,
+            check=True,
+            text=True
+        )
+        subprocess.run(['sudo', 'bash', '-c', setup_script.stdout], check=True)
+        subprocess.run(['sudo', 'apt-get', 'install', '-y', 'nodejs'], check=True)
+        print(f"{GREEN}Node.js installed successfully. Please restart the bot for changes to take effect.{RESET}")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"{RED}Error installing Node.js: {e}{RESET}")
+        print(f"{YELLOW}Please install Node.js manually from https://nodejs.org/ or use nvm{RESET}")
+        return False
 
 def check_runtime(command):
     """
@@ -77,7 +144,8 @@ def get_js_runtime_config(verbose=False):
     Get yt-dlp configuration for JavaScript runtime.
     
     Detects available JavaScript runtimes and returns the appropriate
-    configuration for yt-dlp to use.
+    configuration for yt-dlp to use. If no runtime is found, attempts to
+    install Node.js automatically.
     
     Args:
         verbose (bool): If True, print detection results
@@ -94,13 +162,48 @@ def get_js_runtime_config(verbose=False):
             else:
                 print(f"{YELLOW}JavaScript runtime detected: {runtime_name} {version_string} at {BLUE}{runtime_path}{RESET}")
                 print(f"{RED}⚠ WARNING: This version is UNSUPPORTED. Node.js v20.0.0+ is required.{RESET}")
-                print(f"{YELLOW}  YouTube downloads will fail. Upgrade Node.js: https://nodejs.org/{RESET}")
+                print(f"{YELLOW}  YouTube downloads will fail. Attempting to install Node.js v20+...{RESET}")
+                # Try to install a newer version
+                install_result = ensure_nodejs_installed()
+                if install_result:
+                    print(f"{GREEN}Node.js installation initiated. Please restart the bot.{RESET}")
         return {runtime_name: {'path': runtime_path}}
     else:
         if verbose:
-            print(f"{YELLOW}⚠ No JavaScript runtime found. YouTube downloads may fail.{RESET}")
-            print(f"{YELLOW}  Install Node.js v20+ from https://nodejs.org/ or Deno v2+ from https://deno.com/{RESET}")
+            print(f"{YELLOW}⚠ No JavaScript runtime found.{RESET}")
+            print(f"{YELLOW}  Attempting to install Node.js v20+ LTS...{RESET}")
+        # Try to install Node.js
+        install_result = ensure_nodejs_installed()
+        if install_result:
+            if verbose:
+                print(f"{GREEN}Node.js installation initiated. Please restart the bot.{RESET}")
+        else:
+            if verbose:
+                print(f"{YELLOW}  Install Node.js v20+ from https://nodejs.org/ or Deno v2+ from https://deno.com/{RESET}")
         return {}
+
+def ensure_nodejs_installed():
+    """
+    Ensure Node.js is installed on the system.
+    
+    Checks if Node.js is available and attempts to install it if not found.
+    Uses platform-specific package managers (winget, brew, apt).
+    
+    Returns:
+        bool: True if installation was successful or initiated, False otherwise
+    """
+    # Check if Node.js is already available
+    node_path, version = check_runtime('node')
+    if node_path:
+        return True
+    
+    # Attempt to install based on OS
+    if sys.platform.startswith('win'):
+        return install_nodejs_windows()
+    elif sys.platform.startswith('darwin'):
+        return install_nodejs_macos()
+    else:
+        return install_nodejs_linux()
 
 def check_ejs_package():
     """
