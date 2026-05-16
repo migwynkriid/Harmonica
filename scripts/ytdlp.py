@@ -1,5 +1,6 @@
 import os
 import sys
+import asyncio
 import urllib.request
 import platform
 from scripts.messages import update_or_send_message, create_embed

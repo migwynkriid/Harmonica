@@ -11,7 +11,7 @@ class Loop(commands.Cog):
 
     async def _toggle_loop(self, count: int = 999):
         """Core loop functionality that can be used by both command and button"""
-        from bot import music_bot
+        music_bot = self.bot.music_bot
         
         # Input validation
         if count < 1:

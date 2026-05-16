@@ -9,8 +9,9 @@ async def setup(bot):
     return None
 
 @commands.command(name='version')
+@commands.is_owner()
 async def ytdlp(ctx):
-    """Check the version of the locally installed yt-dlp"""
+    """Check the version of the locally installed yt-dlp - Owner only"""
     try:
         status_msg = await ctx.send(embed=discord.Embed(title="Bot Version", description="Checking versions...", color=0x3498db))
         try:

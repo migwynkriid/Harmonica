@@ -1,8 +1,10 @@
 import discord
 from discord.ui import Button, View
+from discord.ext import commands
 import asyncio
 import os
 import time
+from typing import Optional
 from scripts.messages import create_embed, should_send_now_playing
 from scripts.config import load_config, FFMPEG_OPTIONS
 from scripts.ui_components import create_now_playing_view
@@ -12,9 +14,10 @@ from scripts.constants import RED, GREEN, BLUE, RESET
 config = load_config()
 DEFAULT_VOLUME = config.get('DEFAULT_VOLUME', 100)
 
-async def play_next(ctx):
+
+async def play_next(ctx: commands.Context) -> None:
     """Play the next song in the queue"""
-    from bot import music_bot
+    music_bot = ctx.bot.music_bot
     
     # Add playback lock to prevent race conditions
     if hasattr(music_bot, 'playback_lock'):

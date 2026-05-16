@@ -1,14 +1,16 @@
 import re
+import asyncio
+import aiohttp
 from urllib.parse import urlparse
-import requests
 
-def is_radio_stream(url):
-    """Check if the URL is a radio stream"""
+async def is_radio_stream(url):
+    """Check if the URL is a radio stream (async version)"""
     try:
-        response = requests.head(url, allow_redirects=True, timeout=5)
-        content_type = response.headers.get('Content-Type', '')
-        return content_type.startswith('audio') or 'mpegurl' in content_type
-    except requests.RequestException:
+        async with aiohttp.ClientSession() as session:
+            async with session.head(url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=5)) as response:
+                content_type = response.headers.get('Content-Type', '')
+                return content_type.startswith('audio') or 'mpegurl' in content_type
+    except (aiohttp.ClientError, asyncio.TimeoutError):
         return False
 
 def is_playlist_url(url):

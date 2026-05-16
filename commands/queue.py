@@ -18,7 +18,6 @@ def format_duration(duration):
 class QueueCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
         self.page_size = 10
         self.queue_messages = {}
         self.queue_contexts = {}  # Store original contexts
@@ -64,7 +63,7 @@ class QueueCog(commands.Cog):
 
     async def get_queue_embed(self, ctx, page=1):
         """Get the queue embed for a specific page"""
-        from bot import music_bot
+        music_bot = self.bot.music_bot
         
         if not music_bot.current_song and not music_bot.queue and music_bot.download_queue.empty():
             return create_embed("Queue is empty", "Nothing is in the queue", color=0xe74c3c, ctx=ctx), 0

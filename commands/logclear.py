@@ -1,11 +1,10 @@
 from discord.ext import commands
 import discord
-import json
+from scripts.config import load_config
 
-# Load config
-with open('config.json', 'r') as f:
-    config = json.load(f)
-OWNER_ID = int(config['OWNER_ID'])
+# Load config once at module level
+_config = load_config()
+OWNER_ID = int(_config['OWNER_ID'])
 
 async def setup(bot):
     bot.add_command(logclear)
@@ -15,10 +14,6 @@ async def setup(bot):
 @commands.is_owner()
 async def logclear(ctx):
     """Clear the log file - Owner only command"""
-    if ctx.author.id != OWNER_ID:
-        await ctx.send(embed=discord.Embed(title="Error", description="This command is only available to the bot owner.", color=0xe74c3c))
-        return
-
     try:
         # Clear the log file
         with open('log.txt', 'w', encoding='utf-8') as f:

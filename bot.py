@@ -1,57 +1,30 @@
 import os
+import subprocess
+import sys
 import discord
 import yt_dlp
-import asyncio
-import re
-import subprocess
-import unicodedata
-import sys
-import locale
-import time
-import shutil
-import json
-import pytz
-import logging
-import urllib.request
-import spotipy
-from discord.ext import commands, tasks
-from dotenv import load_dotenv
 from pathlib import Path
-from discord.ext import tasks
-from collections import deque
-from datetime import datetime
-from pytz import timezone
+from discord.ext import commands
+from dotenv import load_dotenv
+
+# Local imports - only import what's actually used
 from scripts.commandlogger import CommandLogger
-from scripts.downloadprogress import DownloadProgress
 from scripts.constants import RED, GREEN, BLUE, RESET, YELLOW
-from scripts.musicbot import MusicBot, PlaylistHandler, AfterPlayingHandler, SpotifyHandler
-from scripts.play_next import play_next
+from scripts.musicbot import MusicBot
 from scripts.ui_components import NowPlayingView
-from scripts.process_queue import process_queue
-from scripts.clear_queue import clear_queue
-from scripts.format_size import format_size
-from scripts.duration import get_audio_duration
-from scripts.url_identifier import is_url, is_playlist_url, is_radio_stream
-from scripts.handle_playlist import PlaylistHandler
-from scripts.after_playing_coro import AfterPlayingHandler
-from scripts.handle_spotify import SpotifyHandler
-from scripts.config import load_config, YTDL_OPTIONS, FFMPEG_OPTIONS
-from scripts.logging import setup_logging, get_ytdlp_logger
-from scripts.updatescheduler import check_updates, update_checker
-from scripts.voice import join_voice_channel, leave_voice_channel, handle_voice_state_update
-from scripts.inactivity import start_inactivity_checker, check_inactivity
-from scripts.messages import update_or_send_message, create_embed
-from spotipy.oauth2 import SpotifyClientCredentials
-from scripts.ytdlp import get_ytdlp_path, ytdlp_version
-from scripts.ffmpeg import check_ffmpeg_in_path, install_ffmpeg_windows, install_ffmpeg_macos, install_ffmpeg_linux, get_ffmpeg_path
+from scripts.config import load_config
+from scripts.logging import setup_logging
+from scripts.updatescheduler import update_checker
+from scripts.voice import handle_voice_state_update
+from scripts.messages import create_embed
 from scripts.cleardownloads import clear_downloads_folder
-from scripts.restart import restart_bot
 from scripts.load_commands import load_commands
 from scripts.load_scripts import load_scripts
 from scripts.activity import update_activity
-from scripts.spotify import get_spotify_album_details, get_spotify_track_details, get_spotify_playlist_details
 from scripts.priority import set_high_priority
-from scripts.paths import get_downloads_dir, get_root_dir, get_absolute_path
+from scripts.paths import get_downloads_dir, get_root_dir
+from scripts.ytdlp import get_ytdlp_path
+from scripts.ffmpeg import get_ffmpeg_path
 
 # Load environment variables
 load_dotenv()
@@ -103,7 +76,15 @@ async def on_command(ctx):
 
 @bot.event
 async def on_command_error(ctx, error):
+    """Handle command errors globally"""
+    # Ignore CommandNotFound errors silently
+    if isinstance(error, commands.CommandNotFound):
+        return
+    
+    # Log the error for debugging
     print(f"Error in command {ctx.command}: {str(error)}")
+    
+    # Send user-friendly error message
     await ctx.send(
         embed=create_embed(
             "Error",
@@ -114,22 +95,15 @@ async def on_command_error(ctx, error):
     )
 
 @bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.CommandNotFound):
-        return
-    print(f"Error: {str(error)}")
-
-@bot.event
 async def on_voice_state_update(member, before, after):
     """Event handler for voice state updates"""
-    global music_bot
-    await handle_voice_state_update(music_bot, member, before, after)
+    music_bot = getattr(bot, 'music_bot', None)
+    if music_bot:
+        await handle_voice_state_update(music_bot, member, before, after)
 
-music_bot = None
 @bot.event
 async def on_ready():
     """Called when the bot is ready"""
-    global music_bot 
     clear_downloads_folder()
     set_high_priority()
     prefix = config_vars.get('PREFIX', '!')  # Get prefix from config
@@ -171,7 +145,9 @@ async def on_ready():
     load_scripts()
     await load_commands(bot)
     update_checker.start(bot) 
-    if not music_bot:
+    
+    # Initialize MusicBot if not already done
+    if not hasattr(bot, 'music_bot') or bot.music_bot is None:
         music_bot = MusicBot()
         await music_bot.setup(bot)
 

@@ -5,12 +5,11 @@ from scripts.messages import create_embed
 class MaxCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='max')
     async def max(self, ctx):
         """Play Radio Max stream"""
-        from bot import music_bot
+        music_bot = self.bot.music_bot
         
         try:
             play_cog = self.bot.get_cog('PlayCog')

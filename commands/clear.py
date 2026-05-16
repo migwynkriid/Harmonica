@@ -8,13 +8,12 @@ from scripts.voice_checks import check_voice_state
 class ClearCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='clear', aliases=['clearqueue'])
     @check_dj_role()
     async def clear(self, ctx, position: int = None):
         """Clear the queue or remove a specific song"""
-        from bot import music_bot
+        music_bot = self.bot.music_bot
 
         try:
             # Check voice state

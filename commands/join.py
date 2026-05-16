@@ -6,13 +6,12 @@ from scripts.permissions import check_dj_role
 class JoinCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='join', aliases=['summon'])
     @check_dj_role()
     async def join(self, ctx):
         """Join the user's voice channel"""
-        from bot import music_bot
+        music_bot = ctx.bot.music_bot
 
         # Check if user is in a voice channel
         if not ctx.author.voice:

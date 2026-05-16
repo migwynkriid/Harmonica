@@ -11,7 +11,6 @@ from scripts.process_queue import process_queue
 class SearchCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
         self.config = load_config()
 
     async def search_youtube(self, query):
@@ -37,7 +36,7 @@ class SearchCog(commands.Cog):
     @commands.command(name='search')
     async def search(self, ctx, *, query: str = None):
         """Search for a song on YouTube and select from results"""
-        from bot import music_bot
+        music_bot = self.bot.music_bot
 
         if not query:
             prefix = self.config['PREFIX']

@@ -1,13 +1,12 @@
 import discord
 from discord.ext import commands
-import json
 import os
+from scripts.config import load_config
 
 class Log(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        with open('config.json', 'r') as f:
-            config = json.load(f)
+        config = load_config()
         self.OWNER_ID = int(config['OWNER_ID'])
 
     def read_last_lines(self, filename, max_lines=1000):
@@ -45,14 +44,6 @@ class Log(commands.Cog):
     @commands.is_owner()
     async def log(self, ctx):
         """Send the last 1000 lines of both log files - Owner only command"""
-        if ctx.author.id != self.OWNER_ID:
-            await ctx.send(embed=discord.Embed(
-                title="Error",
-                description="This command is only available to the bot owner.",
-                color=0xe74c3c
-            ))
-            return
-            
         try:
             # Read both log files
             system_log_lines = self.read_last_lines('log.txt')

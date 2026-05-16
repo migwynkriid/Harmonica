@@ -4,22 +4,15 @@ from discord.ext import tasks, commands
 import subprocess
 import os
 import sys
-from datetime import datetime
-import pytz
 import json
 
-def create_embed(title, description, color=0x3498db):
-    embed = discord.Embed(
-        title=title,
-        description=description,
-        color=color,
-        timestamp=datetime.now(pytz.utc)
-    )
-    return embed
+# Import shared functions instead of duplicating
+from scripts.messages import create_embed
+from scripts.config import load_config as get_config
 
 def load_config():
-    with open('config.json', 'r') as f:
-        return json.load(f)
+    """Load config - wrapper for backwards compatibility"""
+    return get_config()
 
 async def check_updates(bot):
     config = load_config()
@@ -49,7 +42,7 @@ async def check_updates(bot):
 
         if "Your branch is behind" in status:
             # Only proceed with update if not in voice chat
-            from bot import music_bot
+            music_bot = bot.music_bot
             is_in_voice = music_bot and music_bot.voice_client and music_bot.voice_client.is_connected()
             
             if not is_in_voice:
@@ -76,7 +69,7 @@ async def check_updates(bot):
             update_msg = '\n'.join(line for line in updates if "Would install" in line)
             
             # Check if bot is in voice chat
-            from bot import music_bot
+            music_bot = bot.music_bot
             is_in_voice = music_bot and music_bot.voice_client and music_bot.voice_client.is_connected()
 
             if not is_in_voice:

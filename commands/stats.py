@@ -9,7 +9,6 @@ from scripts.permissions import check_dj_role
 class StatsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
         self.bandwidth_file = 'bandwidth.json'
         self.current_bytes = psutil.net_io_counters()
         

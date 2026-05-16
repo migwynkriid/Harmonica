@@ -1,4 +1,5 @@
 import discord
+import asyncio
 from scripts.messages import create_embed
 
 async def clear_queue_command(ctx, music_bot, position: int = None):

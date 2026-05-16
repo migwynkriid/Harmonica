@@ -10,13 +10,12 @@ import time
 class ReplayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='replay')
     @check_dj_role()
     async def replay(self, ctx):
         """Restart the currently playing song from the beginning"""
-        from bot import music_bot
+        music_bot = self.bot.music_bot
         
         try:
             # Check voice state

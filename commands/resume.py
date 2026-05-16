@@ -8,13 +8,12 @@ from scripts.voice_checks import check_voice_state
 class ResumeCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='resume')
     @check_dj_role()
     async def resume(self, ctx):
         """Resume the currently paused song"""
-        from bot import music_bot
+        music_bot = self.bot.music_bot
         
         try:
             # Check voice state

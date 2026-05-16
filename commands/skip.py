@@ -8,11 +8,10 @@ from scripts.voice_checks import check_voice_state
 class SkipCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
 
     async def _skip_song(self, amount: int = 1, ctx=None):
         """Core skip functionality that can be used by both command and button"""
-        from bot import music_bot
+        music_bot = self.bot.music_bot
         
         if not music_bot or not music_bot.voice_client:
             return False, "Not connected to a voice channel"
@@ -58,7 +57,7 @@ class SkipCog(commands.Cog):
         """Skip one or multiple songs in the queue
         Usage: !skip [amount]
         amount: number of songs to skip (default: 1)"""
-        from bot import music_bot
+        music_bot = ctx.bot.music_bot
         
         try:
             # Check voice state

@@ -6,13 +6,12 @@ from scripts.permissions import check_dj_role
 class ShuffleCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='shuffle')
     @check_dj_role()
     async def shuffle(self, ctx):
         """Randomly shuffle all songs in the queue"""
-        from bot import music_bot
+        music_bot = ctx.bot.music_bot
         
         # Check if user is in voice chat
         if not ctx.author.voice:

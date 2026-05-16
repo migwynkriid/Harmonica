@@ -19,9 +19,24 @@ class PlaylistCache:
         self.downloads_dir = Path(get_downloads_dir())
         self.cache_dir.mkdir(exist_ok=True)
         self._should_continue_check = True
+        self._import_task = None
         self._load_cache()
-        # Run import asynchronously
-        asyncio.run(self._import_uncached_files())
+        # Schedule async import for when event loop is available
+        self._schedule_import()
+    
+    def _schedule_import(self):
+        """Schedule the async import to run when an event loop is available"""
+        try:
+            loop = asyncio.get_running_loop()
+            # If we're in an async context, create a task
+            self._import_task = loop.create_task(self._import_uncached_files())
+        except RuntimeError:
+            # No running loop, try to run synchronously (startup case)
+            try:
+                asyncio.run(self._import_uncached_files())
+            except RuntimeError:
+                # Event loop already running in another thread, schedule for later
+                pass
 
     def stop_cache_check(self):
         """Stop the cache checking process"""

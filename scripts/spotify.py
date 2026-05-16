@@ -10,19 +10,37 @@ if not spotifyenv_path.exists() and spotifyenv_example_path.exists():
 
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-import os
 from dotenv import load_dotenv
 
 # Load environment variables from .spotifyenv
 load_dotenv('.spotifyenv')
 
-# Initialize Spotify client
-sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
-    client_id=os.getenv('SPOTIPY_CLIENT_ID'),
-    client_secret=os.getenv('SPOTIPY_CLIENT_SECRET')
-))
+# Initialize Spotify client lazily to handle missing credentials gracefully
+_sp = None
+
+def _get_spotify_client():
+    """Get or create the Spotify client, handling missing credentials"""
+    global _sp
+    if _sp is None:
+        client_id = os.getenv('SPOTIPY_CLIENT_ID')
+        client_secret = os.getenv('SPOTIPY_CLIENT_SECRET')
+        if client_id and client_secret:
+            try:
+                _sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
+                    client_id=client_id,
+                    client_secret=client_secret
+                ))
+            except Exception as e:
+                print(f"Error initializing Spotify client: {str(e)}")
+                return None
+        else:
+            return None
+    return _sp
 
 async def get_spotify_track_details(spotify_url):
+    sp = _get_spotify_client()
+    if not sp:
+        return None, None
     try:
         if 'track/' in spotify_url:
             track_id = spotify_url.split('track/')[-1].split('?')[0]
@@ -32,9 +50,12 @@ async def get_spotify_track_details(spotify_url):
             return f"{artist_name} - {track_name}", track_id
     except Exception as e:
         print(f"Error retrieving Spotify track details: {str(e)}")
-        return None, None
+    return None, None
 
 async def get_spotify_album_details(spotify_url):
+    sp = _get_spotify_client()
+    if not sp:
+        return []
     try:
         if 'album/' in spotify_url:
             album_id = spotify_url.split('album/')[-1].split('?')[0]
@@ -43,9 +64,12 @@ async def get_spotify_album_details(spotify_url):
             return tracks
     except Exception as e:
         print(f"Error retrieving Spotify album details: {str(e)}")
-        return []
+    return []
 
 async def get_spotify_playlist_details(spotify_url):
+    sp = _get_spotify_client()
+    if not sp:
+        return []
     try:
         if 'playlist/' in spotify_url:
             playlist_id = spotify_url.split('playlist/')[-1].split('?')[0]
@@ -54,4 +78,4 @@ async def get_spotify_playlist_details(spotify_url):
             return tracks
     except Exception as e:
         print(f"Error retrieving Spotify playlist details: {str(e)}")
-        return []
+    return []

@@ -56,17 +56,18 @@ INACTIVITY_TIMEOUT = config_vars.get('INACTIVITY_TIMEOUT', 60)
 class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
     def __init__(self):
         """Initialize the music bot"""
-        self.queue = []
-        self.current_song = None
-        self.is_playing = False
+        self.queue: list = []
+        self._current_song: dict | None = None
+        self._is_playing: bool = False
         self.voice_client = None
-        self.waiting_for_song = False
+        self._waiting_for_song: bool = False
         self.queue_lock = asyncio.Lock()
-        self.download_queue = asyncio.Queue()
-        self.currently_downloading = False
-        self.command_queue = asyncio.Queue()
+        self.download_queue: asyncio.Queue = asyncio.Queue()
+        self._currently_downloading: bool = False
+        self.command_queue: asyncio.Queue = asyncio.Queue()
         self.command_processor_task = None
         self.download_lock = asyncio.Lock()
+        self._state_lock = asyncio.Lock()  # Lock for critical state changes
         self.bot_loop = None
         self.queued_messages = {}
         self.current_command_msg = None
@@ -149,9 +150,65 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.join_voice_channel = lambda ctx: join_voice_channel(self, ctx)
         self.leave_voice_channel = lambda: leave_voice_channel(self)
 
+    # Thread-safe property accessors for critical state
+    @property
+    def current_song(self) -> dict | None:
+        """Get current song (thread-safe)"""
+        return self._current_song
+    
+    @current_song.setter
+    def current_song(self, value: dict | None) -> None:
+        """Set current song (thread-safe)"""
+        self._current_song = value
+    
+    @property
+    def is_playing(self) -> bool:
+        """Get playing state (thread-safe)"""
+        return self._is_playing
+    
+    @is_playing.setter
+    def is_playing(self, value: bool) -> None:
+        """Set playing state (thread-safe)"""
+        self._is_playing = value
+    
+    @property
+    def waiting_for_song(self) -> bool:
+        """Get waiting state (thread-safe)"""
+        return self._waiting_for_song
+    
+    @waiting_for_song.setter
+    def waiting_for_song(self, value: bool) -> None:
+        """Set waiting state (thread-safe)"""
+        self._waiting_for_song = value
+    
+    @property
+    def currently_downloading(self) -> bool:
+        """Get downloading state (thread-safe)"""
+        return self._currently_downloading
+    
+    @currently_downloading.setter
+    def currently_downloading(self, value: bool) -> None:
+        """Set downloading state (thread-safe)"""
+        self._currently_downloading = value
+
+    async def update_state(self, **kwargs) -> None:
+        """
+        Atomically update multiple state variables under the state lock.
+        
+        Usage:
+            await music_bot.update_state(is_playing=True, current_song=song_info)
+        """
+        async with self._state_lock:
+            for key, value in kwargs.items():
+                if hasattr(self, f'_{key}'):
+                    setattr(self, f'_{key}', value)
+                elif hasattr(self, key):
+                    setattr(self, key, value)
+
     async def setup(self, bot_instance):
         """Setup the bot with the event loop"""
         self.bot = bot_instance
+        self.bot.music_bot = self  # Store reference on bot for easy access
         self.bot_loop = asyncio.get_event_loop()
         await self.start_command_processor()
         await start_inactivity_checker(self)
@@ -498,7 +555,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                         print(f"Added to queue: {song_info['title']}")
                         return first_song
 
-                if is_radio_stream(query):
+                if await is_radio_stream(query):
                     print("Radio stream detected")
                     try:
                         stream_name = query.split('/')[-1].split('.')[0]
@@ -927,3 +984,18 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
     async def update_activity(self):
         """Update the bot's activity status"""
         await update_activity(self.bot, self.current_song, self.is_playing)
+
+
+def get_music_bot(ctx) -> MusicBot | None:
+    """
+    Get the MusicBot instance from the bot context.
+    Use this instead of importing the global music_bot variable.
+    
+    Args:
+        ctx: The command context or bot instance
+        
+    Returns:
+        MusicBot instance or None if not initialized
+    """
+    bot = ctx.bot if hasattr(ctx, 'bot') else ctx
+    return getattr(bot, 'music_bot', None)

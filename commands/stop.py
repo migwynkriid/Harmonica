@@ -10,13 +10,12 @@ import asyncio
 class StopCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='stop')
     @check_dj_role()
     async def stop(self, ctx):
         """Stop playback, clear queue, and leave the voice channel"""
-        from bot import music_bot
+        music_bot = self.bot.music_bot
         
         try:
             # Check voice state
@@ -59,7 +58,7 @@ class StopCog(commands.Cog):
             music_bot.queued_messages.clear()
             
             # Clear the queue and disconnect
-            clear_queue()
+            clear_queue(music_bot)
             if music_bot.voice_client and music_bot.voice_client.is_connected():
                 await music_bot.voice_client.disconnect()
                 

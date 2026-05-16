@@ -7,7 +7,6 @@ import random
 class RandomRadioCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
         self.api_base = "https://de1.api.radio-browser.info/json/stations"
 
     async def get_random_station(self, retry_count=0):
@@ -54,7 +53,7 @@ class RandomRadioCog(commands.Cog):
         """Try to play a radio station and handle potential errors"""
         try:
             # Get the bot instance
-            from bot import music_bot
+            music_bot = self.bot.music_bot
             
             # Check if user is in a voice channel
             if not ctx.author.voice:

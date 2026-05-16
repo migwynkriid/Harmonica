@@ -3,31 +3,20 @@ import os
 # ANSI color codes
 GREEN = '\033[92m'
 BLUE = '\033[94m'
-RED = '\033[91m'
 RESET = '\033[0m'
 
 def load_scripts():
-    """Load all scripts from the scripts directory."""
+    """
+    Validate that all scripts in the scripts directory exist.
+    Actual script importing happens via Python's normal import mechanism.
+    """
     print('----------------------------------------')
-    print(f'{GREEN}Loading scripts...{RESET}')
+    print(f'{GREEN}Validating scripts...{RESET}')
     script_dir = 'scripts'
-    success_count = 0
-    error_count = 0
-    errors = []
+    script_count = 0
 
     for filename in os.listdir(script_dir):
         if filename.endswith('.py') and not filename.startswith('_'):
-            script_name = filename[:-3]
-            try:
-                success_count += 1
-            except Exception as e:
-                error_count += 1
-                errors.append(f'{RED}✗ {filename}: {str(e)}{RESET}')
+            script_count += 1
 
-    # Only show errors if any occurred
-    if errors:
-        print('\nScript loading errors:')
-        for error in errors:
-            print(error)
-    
-    print(f'{GREEN}Scripts loaded:{RESET} {BLUE}{success_count} successful{RESET}, {RED}{error_count} failed{RESET}')
+    print(f'{GREEN}Scripts validated:{RESET} {BLUE}{script_count} files{RESET}')

@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Dict, Any
 from time import sleep
 from scripts.logging import get_ytdlp_logger
 from scripts.paths import get_ytdlp_path, get_ffmpeg_path, get_ffprobe_path, get_cache_dir
@@ -19,9 +20,9 @@ for subdir in ['youtube-sigfuncs', 'youtube-nsig']:
         os.remove(cache_subdir)  # Remove if it's a file
     os.makedirs(cache_subdir, exist_ok=True)
 
-def load_config():
+def load_config() -> Dict[str, Any]:
     """Load or create the configuration file."""
-    default_config = {
+    default_config: Dict[str, Any] = {
         "OWNER_ID": "220301180562046977",               # Owner ID
         "PREFIX": "!",                                  # Prefix for commands
         "LOG_LEVEL": "INFO",                            # Logging level

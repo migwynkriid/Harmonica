@@ -119,22 +119,3 @@ class PlaylistHandler:
                 )
                 await status_msg.edit(embed=error_embed)
             return False
-
-    async def _queue_playlist_videos(self, entries, ctx, is_from_playlist, status_msg, ydl_opts, playlist_title, playlist_url, total_videos):
-        """Process remaining playlist videos in the background"""
-        try:
-            for entry in entries:
-                if entry:
-                    video_url = f"https://youtube.com/watch?v={entry['id']}"
-                    song_info = await self.download_song(video_url, status_msg=None)
-                    if song_info:
-                        song_info['requester'] = ctx.author
-                        song_info['is_from_playlist'] = True
-                        async with self.queue_lock:
-                            self.queue.append(song_info)
-                            if not self.is_playing and not self.voice_client.is_playing() and len(self.queue) == 1:
-                                await play_next(ctx)
-
-
-        except Exception as e:
-            print(f"Error in playlist download processing: {str(e)}")

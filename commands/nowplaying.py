@@ -16,14 +16,13 @@ if parent_dir not in sys.path:
 class NowPlayingCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='nowplaying', aliases=['np'])
     @check_dj_role()
     async def nowplaying(self, ctx):
         """Show the currently playing song"""
-        # Access the music_bot from the global scope
-        from bot import music_bot
+        # Access the music_bot from the bot instance
+        music_bot = self.bot.music_bot
         
         if not music_bot:
             await ctx.send("Music bot is not initialized yet. Please wait a moment and try again.")

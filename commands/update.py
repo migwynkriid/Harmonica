@@ -3,16 +3,14 @@ import discord
 import os
 import sys
 import subprocess
-import json
-import sys
+from scripts.config import load_config
 
 # Add scripts directory to path for importing ytdlp
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'scripts'))
 
-# Load config
-with open('config.json', 'r') as f:
-    config = json.load(f)
-OWNER_ID = int(config['OWNER_ID'])
+# Load config once at module level
+_config = load_config()
+OWNER_ID = int(_config['OWNER_ID'])
 
 async def setup(bot):
     bot.add_command(updateytdlp)
@@ -21,9 +19,6 @@ async def setup(bot):
 @commands.command(name='update')
 @commands.is_owner()
 async def updateytdlp(ctx):
-    if ctx.author.id != OWNER_ID:
-        await ctx.send(embed=discord.Embed(title="Error", description="This command is only available to the bot owner.", color=0xe74c3c))
-        return
     """Update required packages and yt-dlp executable"""
     try:
         status_msg = await ctx.send(embed=discord.Embed(title="Updating bot...", description="Installing required packages...", color=0x2ecc71))

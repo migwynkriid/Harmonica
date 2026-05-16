@@ -8,13 +8,12 @@ from scripts.voice_checks import check_voice_state
 class PauseCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='pause')
     @check_dj_role()
     async def pause(self, ctx):
         """Pause the currently playing song"""
-        from bot import music_bot
+        music_bot = self.bot.music_bot
         
         try:
             # Check voice state

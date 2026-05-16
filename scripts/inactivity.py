@@ -3,9 +3,8 @@ import time
 from scripts.clear_queue import clear_queue
 
 async def start_inactivity_checker(bot_instance):
-    """Start the inactivity checker"""
+    """Start the inactivity checker as a background task"""
     try:
-        await check_inactivity(bot_instance)
         bot_instance._inactivity_task = bot_instance.bot_loop.create_task(check_inactivity(bot_instance))
     except Exception as e:
         print(f"Error starting inactivity checker: {str(e)}")
@@ -29,7 +28,7 @@ async def check_inactivity(bot_instance):
                     # Cancel any active downloads before disconnecting
                     await bot_instance.cancel_downloads()
                     await bot_instance.voice_client.disconnect()
-                    clear_queue()
+                    clear_queue(bot_instance)
         except Exception as e:
             print(f"Error in inactivity checker: {str(e)}")
             await asyncio.sleep(60)

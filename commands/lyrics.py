@@ -139,8 +139,8 @@ async def send_lyrics_embed(ctx, title, artist, lyrics, source=""):
 @commands.command(name='lyrics')
 async def lyrics(ctx):
     """Get lyrics for the current song"""
-    # Access the music_bot from the global scope
-    from bot import music_bot
+    # Access the music_bot from the bot instance
+    music_bot = ctx.bot.music_bot
     
     if not music_bot:
         await ctx.send(embed=create_embed("Error", "Music bot is not initialized yet. Please wait a moment and try again.", color=0xe74c3c, ctx=ctx))

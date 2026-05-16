@@ -8,13 +8,12 @@ from scripts.voice_checks import check_voice_state
 class LeaveCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
 
     @commands.command(name='leave', aliases=['disconnect'])
     @check_dj_role()
     async def leave(self, ctx):
         """Leave the voice channel"""
-        from bot import music_bot
+        music_bot = self.bot.music_bot
         
         try:
             # Check voice state

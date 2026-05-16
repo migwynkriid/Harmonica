@@ -1,21 +1,24 @@
 import discord
 import time
 import asyncio
-import json
 import logging
+from typing import Any, Dict
+from discord.ext import commands
 from scripts.messages import update_or_send_message, create_embed
+from scripts.config import load_config
 
-def get_voice_config():
-    """Get voice configuration from config.json"""
+
+def get_voice_config() -> Dict[str, Any]:
+    """Get voice configuration from config"""
     try:
-        with open('config.json', 'r') as f:
-            config = json.load(f)
-            return config.get('VOICE', {})
+        config = load_config()
+        return config.get('VOICE', {})
     except Exception as e:
-        logging.error(f"Error reading config.json: {str(e)}")
+        logging.error(f"Error reading config: {str(e)}")
         return {"AUTO_LEAVE_EMPTY": True}  # Default values
 
-async def join_voice_channel(bot_instance, ctx):
+
+async def join_voice_channel(bot_instance: Any, ctx: commands.Context) -> bool:
     """Join the user's voice channel"""
     if not ctx.author.voice:
         await update_or_send_message(ctx, embed=create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c))
@@ -50,7 +53,8 @@ async def join_voice_channel(bot_instance, ctx):
         bot_instance.voice_client = None
         return False
 
-async def leave_voice_channel(bot_instance):
+
+async def leave_voice_channel(bot_instance: Any) -> None:
     """Leave voice channel and cleanup"""
     try:
         if bot_instance.voice_client:
@@ -64,7 +68,12 @@ async def leave_voice_channel(bot_instance):
         bot_instance.voice_client = None
         bot_instance.current_song = None
 
-async def handle_voice_state_update(bot_instance, member, before, after):
+async def handle_voice_state_update(
+    bot_instance: Any,
+    member: discord.Member,
+    before: discord.VoiceState,
+    after: discord.VoiceState
+) -> None:
     """Handle voice state updates for the bot"""
     if not bot_instance or not bot_instance.voice_client:
         return

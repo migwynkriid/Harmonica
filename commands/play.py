@@ -8,7 +8,6 @@ from scripts.process_queue import process_queue
 class PlayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._last_member = None
         from scripts.config import load_config
         self.config = load_config()
 
@@ -16,7 +15,7 @@ class PlayCog(commands.Cog):
     @check_dj_role()
     async def play(self, ctx, *, query=None):
         """Play a song in the voice channel"""
-        from bot import music_bot
+        music_bot = ctx.bot.music_bot
         
         # First check if user provided a query
         if not query:
