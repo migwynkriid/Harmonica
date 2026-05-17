@@ -7,8 +7,13 @@ import sys
 from aiohttp import ClientConnectorError, ClientConnectorDNSError
 from scripts.logging import print_connection_message
 from scripts.constants import YELLOW, RED, GREEN, RESET
+from scripts.config import load_config
 
 logger = logging.getLogger(__name__)
+
+# Load connection settings from config
+_config = load_config()
+_connection_config = _config.get('CONNECTION', {})
 
 class ConnectionHandler:
     """
@@ -18,22 +23,28 @@ class ConnectionHandler:
     failures, which can occur when a bot is disconnected for a longer period of time.
     """
     
-    # List of public DNS servers to try if the default DNS fails
-    ALTERNATIVE_DNS = [
+    # List of public DNS servers to try if the default DNS fails - loaded from config
+    ALTERNATIVE_DNS = _connection_config.get('DNS_SERVERS', [
         "8.8.8.8",       # Google DNS
         "8.8.4.4",       # Google DNS (alternative)
         "1.1.1.1",       # Cloudflare DNS
         "1.0.0.1",       # Cloudflare DNS (alternative)
         "9.9.9.9",       # Quad9 DNS
         "149.112.112.112" # Quad9 DNS (alternative)
-    ]
+    ])
+    
+    # Config values
+    DNS_MAX_RETRIES = _connection_config.get('DNS_MAX_RETRIES', 5)
+    DNS_RETRY_DELAY = _connection_config.get('DNS_RETRY_DELAY', 5)
+    RECONNECT_RESET_TIME = _connection_config.get('RECONNECT_RESET_TIME', 300)
+    ERROR_WAIT = _connection_config.get('ERROR_WAIT', 5)
     
     # Track reconnection attempts
     reconnection_attempts = 0
     last_reconnection_time = 0
     
     @staticmethod
-    async def check_dns_resolution(hostname="discord.com", max_retries=5, retry_delay=5):
+    async def check_dns_resolution(hostname="discord.com", max_retries=None, retry_delay=None):
         """
         Check if DNS resolution is working properly.
         
@@ -42,12 +53,17 @@ class ConnectionHandler:
         
         Args:
             hostname (str): The hostname to resolve
-            max_retries (int): Maximum number of retry attempts
-            retry_delay (int): Initial delay between retries in seconds
+            max_retries (int): Maximum number of retry attempts (default from config)
+            retry_delay (int): Initial delay between retries in seconds (default from config)
             
         Returns:
             bool: True if DNS resolution is working, False otherwise
         """
+        if max_retries is None:
+            max_retries = ConnectionHandler.DNS_MAX_RETRIES
+        if retry_delay is None:
+            retry_delay = ConnectionHandler.DNS_RETRY_DELAY
+            
         for attempt in range(max_retries):
             try:
                 # Try to resolve the hostname
@@ -93,7 +109,7 @@ class ConnectionHandler:
         """
         # Track reconnection attempts
         current_time = time.time()
-        if current_time - ConnectionHandler.last_reconnection_time > 300:  # Reset counter after 5 minutes
+        if current_time - ConnectionHandler.last_reconnection_time > ConnectionHandler.RECONNECT_RESET_TIME:
             ConnectionHandler.reconnection_attempts = 0
         
         ConnectionHandler.reconnection_attempts += 1
@@ -136,7 +152,7 @@ class ConnectionHandler:
                     logger.warning(f"Failed to flush DNS cache: {e}")
                 
                 # Wait a bit longer before reconnecting
-                await asyncio.sleep(10)
+                await asyncio.sleep(ConnectionHandler.ERROR_WAIT * 2)
                 return True
         
         # Handle other types of connection errors
@@ -144,7 +160,7 @@ class ConnectionHandler:
             print_connection_message('connection_error', f"Lost connection... Retrying...", YELLOW)
             logger.error(f"Connection error: {error}")
             # Wait a bit before reconnecting
-            await asyncio.sleep(5)
+            await asyncio.sleep(ConnectionHandler.ERROR_WAIT)
             return True
         
         # Unknown error type
@@ -196,7 +212,7 @@ def patch_discord_client():
                     logger.warning(f"Failed to flush DNS cache: {e}")
                 
                 # Wait a bit before retrying
-                await asyncio.sleep(5)
+                await asyncio.sleep(ConnectionHandler.ERROR_WAIT)
                 
                 # Try one more time
                 try:

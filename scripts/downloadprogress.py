@@ -8,6 +8,8 @@ import asyncio
 
 config_vars = load_config()
 SHOW_PROGRESS_BAR = config_vars.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', True)
+PROGRESS_BAR_WIDTH = config_vars.get('MESSAGES', {}).get('PROGRESS_BAR_WIDTH', 20)
+UPDATE_INTERVAL = config_vars.get('MESSAGES', {}).get('PROGRESS_UPDATE_INTERVAL', 2)
 
 class DownloadProgress:
     """
@@ -36,17 +38,19 @@ class DownloadProgress:
         self.update_tasks = {}  # Dict to store per-server update tasks
         self.update_task = None
         
-    def create_progress_bar(self, percentage, width=20):
+    def create_progress_bar(self, percentage, width=None):
         """
         Create a text-based progress bar.
         
         Args:
             percentage: The percentage of completion (0-100)
-            width: The width of the progress bar in characters
+            width: The width of the progress bar in characters (default from config)
             
         Returns:
             str: A text-based progress bar using block characters
         """
+        if width is None:
+            width = PROGRESS_BAR_WIDTH
         filled = int(width * (percentage / 100))
         bar = "▓" * filled + "░" * (width - filled)
         return bar
@@ -173,7 +177,7 @@ class DownloadProgress:
         """
         if d['status'] == 'downloading':
             current_time = time.time()
-            if current_time - self.last_update < 2:
+            if current_time - self.last_update < UPDATE_INTERVAL:
                 return
                 
             self.last_update = current_time

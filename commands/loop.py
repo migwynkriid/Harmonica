@@ -4,7 +4,12 @@ from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO, ERROR_NOT_IN_VOICE, ERROR_DIFFERENT_CHANNEL, ERROR_BOT_NOT_CONNECTED
+from scripts.config import load_config
 import asyncio
+
+# Load default loop count from config
+_config = load_config()
+DEFAULT_LOOP_COUNT = _config.get('PLAYBACK', {}).get('DEFAULT_LOOP_COUNT', 999)
 
 class Loop(commands.Cog):
     """
@@ -25,24 +30,25 @@ class Loop(commands.Cog):
         self.bot = bot
         self.looped_songs = set()  # Set to track which songs are currently looped
 
-    async def _toggle_loop(self, ctx, count: int = 999):
+    async def _toggle_loop(self, ctx, count: int = None):
         """
         Toggle loop for the current song.
         
         Args:
             ctx: The command context
-            count (int): Number of times to add the song to the queue (default: 999)
+            count (int): Number of times to add the song to the queue (default from config)
             
         Returns:
             tuple: (bool, str) - Success status and result message
         """
+        if count is None:
+            count = DEFAULT_LOOP_COUNT
         from bot import MusicBot
         music_bot = MusicBot.get_instance(str(ctx.guild.id))
         
         # Input validation
         if count < 1:
             return False, "Loop count must be a positive number!"
-            
         # If MusicBot doesn't have a voice client but Discord does, try to sync them
         if not music_bot.voice_client and ctx.guild.voice_client:
             music_bot.voice_client = ctx.guild.voice_client
@@ -107,7 +113,7 @@ class Loop(commands.Cog):
 
     @commands.command(name='loop', aliases=['repeat'])
     @check_dj_role()
-    async def loop(self, ctx, count: int = 999):
+    async def loop(self, ctx, count: int = None):
         """
         Toggle loop for the current song.
         
@@ -118,8 +124,10 @@ class Loop(commands.Cog):
         
         Args:
             ctx: The command context
-            count (int): Number of times to add the song to the queue (default: 999)
+            count (int): Number of times to add the song to the queue (default from config)
         """
+        if count is None:
+            count = DEFAULT_LOOP_COUNT
         from bot import MusicBot
         music_bot = MusicBot.get_instance(str(ctx.guild.id))
         

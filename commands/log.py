@@ -21,8 +21,12 @@ class Log(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
+        config = load_config()
+        logging_config = config.get('LOGGING', {})
+        self.max_log_lines = logging_config.get('MAX_LOG_LINES', 1000)
+        self.file_chunk_size = logging_config.get('FILE_CHUNK_SIZE', 8192)
 
-    def read_last_lines(self, filename, max_lines=1000):
+    def read_last_lines(self, filename, max_lines=None):
         """
         Read the last N lines of a file.
         
@@ -31,18 +35,20 @@ class Log(commands.Cog):
         
         Args:
             filename (str): The path to the file to read
-            max_lines (int): Maximum number of lines to read
+            max_lines (int): Maximum number of lines to read (default from config)
             
         Returns:
             list: The last N lines of the file as a list of strings
         """
+        if max_lines is None:
+            max_lines = self.max_log_lines
         try:
             with open(filename, 'r', encoding='utf-8') as f:
                 f.seek(0, 2)  # Seek to end of file
                 file_size = f.tell()
                 
                 lines = []
-                chunk_size = 8192
+                chunk_size = self.file_chunk_size
                 position = file_size
                 
                 while len(lines) < max_lines and position > 0:

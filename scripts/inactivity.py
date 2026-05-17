@@ -2,6 +2,13 @@ import asyncio
 import time
 from scripts.clear_queue import clear_queue
 from scripts.constants import GREEN, BLUE, RESET, RED
+from scripts.config import load_config
+
+# Load config for inactivity settings
+_config = load_config()
+_inactivity_config = _config.get('VOICE', {})
+CHECK_INTERVAL = _inactivity_config.get('INACTIVITY_CHECK_INTERVAL', 60)
+STALE_DOWNLOAD_TIMEOUT = _inactivity_config.get('STALE_DOWNLOAD_TIMEOUT', 300)
 
 async def start_inactivity_checker(bot_instance):
     """
@@ -32,7 +39,7 @@ async def check_inactivity(bot_instance):
     """
     while True:
         try:
-            await asyncio.sleep(60)
+            await asyncio.sleep(CHECK_INTERVAL)
             
             # Get all server instances
             for guild_id, server_bot in bot_instance.__class__._instances.items():
@@ -83,7 +90,7 @@ async def check_inactivity(bot_instance):
                         if (has_active_downloads and 
                             not server_bot.voice_client.is_playing() and 
                             not server_bot.queue and
-                            inactive_time > 300):  # 5 minutes
+                            inactive_time > STALE_DOWNLOAD_TIMEOUT):  # configurable stale download timeout
                             print(f"{RED}Detected stale download flags in {server_name}. Resetting...{RESET}")
                             # Reset download flags
                             server_bot.currently_downloading = False
@@ -115,4 +122,4 @@ async def check_inactivity(bot_instance):
                         
         except Exception as e:
             print(f"Error in inactivity checker: {str(e)}")
-            await asyncio.sleep(60)
+            await asyncio.sleep(CHECK_INTERVAL)

@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO, ERROR_NOT_IN_VOICE, ERROR_DIFFERENT_CHANNEL
+from scripts.config import load_config
 import aiohttp
 import random
 
@@ -21,7 +22,14 @@ class RandomRadioCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self.api_base = "https://de1.api.radio-browser.info/json/stations"
+        config = load_config()
+        radio_config = config.get('RADIO', {})
+        self.api_base = config.get('APIS', {}).get('RADIO_BROWSER_URL', "https://de1.api.radio-browser.info/json/stations")
+        self.max_retries = radio_config.get('MAX_RETRIES', 3)
+        self.fetch_limit = radio_config.get('FETCH_LIMIT', 5)
+        self.min_bitrate = radio_config.get('MIN_BITRATE', 64)
+        self.max_offset = radio_config.get('MAX_OFFSET', 1000)
+        self.fallback_limit = radio_config.get('FALLBACK_LIMIT', 20)
 
     async def get_random_station(self, retry_count=0):
         """
@@ -41,25 +49,25 @@ class RandomRadioCog(commands.Cog):
             params = {
                 'hidebroken': 'true',  # Only working stations
                 'has_extended_info': 'true',  # Stations with complete info
-                'limit': 5,  # Get multiple stations in case some fail
+                'limit': self.fetch_limit,  # Get multiple stations in case some fail
                 'order': 'random'  # Random order from the API
             }
             
             # First try: High quality stations with random offset
             if retry_count == 0:
                 params.update({
-                    'offset': random.randint(0, 1000),
-                    'bitrateMin': 64
+                    'offset': random.randint(0, self.max_offset),
+                    'bitrateMin': self.min_bitrate
                 })
             # Second try: Any quality stations with random offset
             elif retry_count == 1:
                 params.update({
-                    'offset': random.randint(0, 1000)
+                    'offset': random.randint(0, self.max_offset)
                 })
             # Last try: Get more stations without quality filters
             else:
                 params.update({
-                    'limit': 20
+                    'limit': self.fallback_limit
                 })
             
             async with session.get(f"{self.api_base}/search", params=params) as response:
@@ -70,7 +78,7 @@ class RandomRadioCog(commands.Cog):
                     if valid_stations:
                         random.shuffle(valid_stations)  # Extra randomization
                         return valid_stations[0]  # Return the first valid station
-                    elif retry_count < 2:  # Try again with different parameters
+                    elif retry_count < self.max_retries - 1:  # Try again with different parameters
                         return await self.get_random_station(retry_count + 1)
         return None
 
