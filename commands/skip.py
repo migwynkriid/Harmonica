@@ -1,3 +1,4 @@
+from collections import deque
 from discord.ext import commands
 import time
 from scripts.messages import create_embed
@@ -68,8 +69,9 @@ class SkipCog(commands.Cog):
         # If song is looping, remove it from looped songs and clear its instances from queue
         if is_looping:
             loop_cog.looped_songs.remove(current_song['url'])
-            # Remove all instances of the looped song from the queue
-            server_music_bot.queue = [song for song in server_music_bot.queue if song['url'] != current_song['url']]
+            # Remove all instances of the looped song from the queue (maintain deque type)
+            async with server_music_bot.queue_lock:
+                server_music_bot.queue = deque(song for song in server_music_bot.queue if song['url'] != current_song['url'])
             server_music_bot.after_song_callback = None
         
         # Stop current song - this will trigger the after_playing callback
@@ -79,7 +81,10 @@ class SkipCog(commands.Cog):
         if amount > 1:
             songs_to_remove = min(amount - 1, len(server_music_bot.queue))
             if songs_to_remove > 0:
-                del server_music_bot.queue[:songs_to_remove]
+                # Use popleft() to remove songs from deque (slice deletion doesn't work on deque)
+                async with server_music_bot.queue_lock:
+                    for _ in range(songs_to_remove):
+                        server_music_bot.queue.popleft()
                 return True, f"Skipped current song and {songs_to_remove} songs from queue"
         
         # Update last activity timestamp
