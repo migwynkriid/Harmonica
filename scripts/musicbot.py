@@ -1234,10 +1234,15 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                                         song_info = await self.download_song(video_url, status_msg=None)
                                                         if song_info:
                                                             song_info['is_from_playlist'] = True
+                                                            # Check playback conditions BEFORE acquiring lock to avoid deadlock
+                                                            should_start_playback = False
                                                             async with self.queue_lock:
                                                                 self.queue.append(song_info)
                                                                 if not self.is_playing and not self.voice_client.is_playing() and len(self.queue) == 1:
-                                                                    await play_next(progress.ctx)
+                                                                    should_start_playback = True
+                                                            # Call play_next OUTSIDE the queue_lock to avoid deadlock
+                                                            if should_start_playback:
+                                                                await play_next(progress.ctx)
                                             except Exception as e:
                                                 print(f"Error processing Mix playlist: {str(e)}")
                                         

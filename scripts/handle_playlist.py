@@ -58,10 +58,20 @@ class PlaylistHandler:
                             song_info['duration'] = await get_audio_duration(song_info['file_path'])
                             song_info['requester'] = ctx.author
                             song_info['is_from_playlist'] = True
+                            
+                            # Check playback conditions BEFORE acquiring lock to avoid deadlock
+                            # (play_next also acquires queue_lock internally)
+                            should_start_playback = False
                             async with self.queue_lock:
                                 self.queue.append(song_info)
+                                # Only check conditions while holding the lock
                                 if not self.is_playing and not self.voice_client.is_playing() and len(self.queue) == 1:
-                                    await play_next(ctx)
+                                    should_start_playback = True
+                            
+                            # Call play_next OUTSIDE the queue_lock to avoid deadlock
+                            if should_start_playback:
+                                await play_next(ctx)
+                            
                             processed_entries += 1
                         else:
                             failed_entries += 1
@@ -181,10 +191,17 @@ class PlaylistHandler:
                     if song_info:
                         song_info['requester'] = ctx.author
                         song_info['is_from_playlist'] = True
+                        
+                        # Check playback conditions BEFORE acquiring lock to avoid deadlock
+                        should_start_playback = False
                         async with self.queue_lock:
                             self.queue.append(song_info)
                             if not self.is_playing and not self.voice_client.is_playing() and len(self.queue) == 1:
-                                await play_next(ctx)
+                                should_start_playback = True
+                        
+                        # Call play_next OUTSIDE the queue_lock to avoid deadlock
+                        if should_start_playback:
+                            await play_next(ctx)
 
 
         except Exception as e:
