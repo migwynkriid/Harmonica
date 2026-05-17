@@ -4,7 +4,7 @@ import aiohttp
 import random
 import yt_dlp
 from discord.ext import commands
-from scripts.config import BASE_YTDL_OPTIONS, COOKIES_PATH
+from scripts.config import BASE_YTDL_OPTIONS, COOKIES_PATH, load_config
 from scripts.messages import create_embed
 from scripts.process_queue import process_queue
 from scripts.playback import should_start_playback, create_song_entry
@@ -28,7 +28,10 @@ class RandomCommand(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self.random_word_api = "https://random-words-api.kushcreates.com/api?language=en&words=1"
+        config = load_config()
+        self.random_word_api = config.get('APIS', {}).get('RANDOM_WORD_URL', "https://random-words-api.kushcreates.com/api?language=en&words=1")
+        self.search_limit = config.get('SEARCH', {}).get('RANDOM_LIMIT', 5)
+        self.error_delete_delay = config.get('MESSAGES', {}).get('ERROR_DELETE_DELAY', 5)
         # No need to define cookie_file here as we'll use COOKIES_PATH from config.py
 
     async def fetch_random_word(self):

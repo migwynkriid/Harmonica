@@ -26,13 +26,15 @@ class SearchCog(commands.Cog):
         """
         self.bot = bot
         self.config = load_config()
+        self.results_limit = self.config.get('SEARCH', {}).get('RESULTS_LIMIT', 5)
+        self.search_timeout = self.config.get('UI', {}).get('SEARCH_TIMEOUT', 30)
 
     async def search_youtube(self, query):
         """
         Search YouTube for videos using yt-dlp.
         
         This method uses yt-dlp to search YouTube for videos matching
-        the given query and returns the top 5 results.
+        the given query and returns the top results based on config.
         
         Args:
             query (str): The search query
@@ -46,14 +48,14 @@ class SearchCog(commands.Cog):
                 'quiet': True,
                 'no_warnings': True,
                 'extract_flat': True,
-                'default_search': 'ytsearch5'  # Limit to 5 results
+                'default_search': f'ytsearch{self.results_limit}'
             }
             
             with yt_dlp.YoutubeDL(search_opts) as ydl:
-                info = ydl.extract_info(f"ytsearch5:{query}", download=False)
+                info = ydl.extract_info(f"ytsearch{self.results_limit}:{query}", download=False)
                 if 'entries' not in info:
                     return []
-                return info['entries'][:5]  # Return only first 5 results
+                return info['entries'][:self.results_limit]
         except Exception as e:
             logging.error(f"Error searching YouTube: {str(e)}")
             return []
@@ -126,13 +128,13 @@ class SearchCog(commands.Cog):
             for emoji in number_emojis[:len(results)]
         ]
         wait_for_reaction = asyncio.create_task(
-            self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+            self.bot.wait_for('reaction_add', timeout=float(self.search_timeout), check=check)
         )
 
         try:
-            # Start a task to delete the message after 30 seconds
+            # Start a task to delete the message after timeout
             async def delete_after_timeout():
-                await asyncio.sleep(30)
+                await asyncio.sleep(self.search_timeout)
                 try:
                     await message.delete()
                 except (discord.NotFound, discord.Forbidden, discord.HTTPException):

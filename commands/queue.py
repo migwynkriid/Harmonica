@@ -4,6 +4,7 @@ from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 from scripts.duration import get_audio_duration, format_duration
 from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO, ERROR_QUEUE_EMPTY
+from scripts.config import load_config
 
 
 class QueueCog(commands.Cog):
@@ -23,7 +24,8 @@ class QueueCog(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self.page_size = 10  # Number of songs to display per page
+        config = load_config()
+        self.page_size = config.get('QUEUE', {}).get('PAGE_SIZE', 10)  # Number of songs to display per page
         self.queue_messages = {}  # Store queue messages by channel ID
         self.queue_contexts = {}  # Store original contexts by message ID
 

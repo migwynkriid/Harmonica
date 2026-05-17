@@ -5,6 +5,11 @@ from scripts.duration import get_audio_duration, format_duration
 from scripts.ui_components import create_now_playing_view
 from scripts.permissions import check_dj_role
 from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO, ERROR_NOTHING_PLAYING
+from scripts.config import load_config
+
+# Load config for progress bar
+_config = load_config()
+PROGRESS_BAR_SEGMENTS = _config.get('PLAYBACK', {}).get('PROGRESS_BAR_SEGMENTS', 20)
 
 class NowPlayingCog(commands.Cog):
     """
@@ -84,9 +89,10 @@ class NowPlayingCog(commands.Cog):
             total_time = format_duration(total_duration)
             
             # Create progress bar with ▬ and :radio_button:
-            # The bar has 20 segments, and we calculate which segment the playback is at
-            position_segment = int((percentage / 5) + 0.5)  # Round to nearest segment (each segment is 5%)
-            progress_bar = "▬" * position_segment + ":radio_button:" + "▬" * (20 - position_segment - 1)
+            # The bar has configurable segments (default 20)
+            segment_percent = 100 / PROGRESS_BAR_SEGMENTS
+            position_segment = int((percentage / segment_percent) + 0.5)  # Round to nearest segment
+            progress_bar = "▬" * position_segment + ":radio_button:" + "▬" * (PROGRESS_BAR_SEGMENTS - position_segment - 1)
             
             progress_info = f"[{progress_bar}]\n{current_time} / {total_time}"
         

@@ -5,6 +5,11 @@ import os
 from azapi import AZlyrics
 from scripts.messages import create_embed
 from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO, ERROR_NOTHING_PLAYING
+from scripts.config import load_config
+
+# Load lyrics config
+_config = load_config()
+_lyrics_chunk_size = _config.get('MESSAGES', {}).get('LYRICS_CHUNK_SIZE', 900)
 
 def create_token_file(filepath, token_prefix):
     """
@@ -177,8 +182,8 @@ async def send_lyrics_embed(ctx, title, artist, lyrics, source=""):
         color=EMBED_COLOR_INFO
     )
     
-    # Use a slightly smaller chunk size to be safe
-    chunk_size = 900  # Discord's field value limit is 1024, but we'll use less
+    # Use a slightly smaller chunk size to be safe (configurable in config.json)
+    chunk_size = _lyrics_chunk_size  # Discord's field value limit is 1024
     chunks = split_into_chunks(cleaned_lyrics, chunk_size)
     
     # Add chunks as separate fields

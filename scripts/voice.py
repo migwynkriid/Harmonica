@@ -123,10 +123,11 @@ async def join_voice_channel(bot_instance, ctx):
         if bot_instance.voice_client:
             try:
                 if bot_instance.voice_client.is_connected():
-                    # Use proper disconnect method with a timeout
+                    # Use proper disconnect method with a timeout from config
+                    disconnect_timeout = voice_config.get('DISCONNECT_TIMEOUT', 5.0)
                     disconnect_task = asyncio.create_task(bot_instance.voice_client.disconnect(force=True))
                     try:
-                        await asyncio.wait_for(disconnect_task, timeout=5.0)
+                        await asyncio.wait_for(disconnect_task, timeout=disconnect_timeout)
                     except asyncio.TimeoutError:
                         logging.warning("Voice disconnect timed out, proceeding anyway")
                     except Exception as e:
@@ -140,9 +141,10 @@ async def join_voice_channel(bot_instance, ctx):
             await asyncio.sleep(0.5)
 
         # Connect to the voice channel with self_deaf=True to avoid listening to audio
+        connect_timeout = voice_config.get('CONNECT_TIMEOUT', 10.0)
         connect_task = asyncio.create_task(channel.connect(self_deaf=True))
         try:
-            bot_instance.voice_client = await asyncio.wait_for(connect_task, timeout=10.0)
+            bot_instance.voice_client = await asyncio.wait_for(connect_task, timeout=connect_timeout)
             bot_instance.last_activity = time.time()
             return bot_instance.voice_client.is_connected()
         except asyncio.TimeoutError:
