@@ -48,7 +48,8 @@ async def process_queue(music_bot, ctx=None):
         
     # Check if the bot has been explicitly stopped
     if is_bot_explicitly_stopped(music_bot):
-        music_bot.queue.clear()
+        async with music_bot.queue_lock:
+            music_bot.queue.clear()
         return
 
     # Set the flag to prevent multiple simultaneous playbacks
@@ -57,7 +58,8 @@ async def process_queue(music_bot, ctx=None):
 
     try:
         # Get the next song from the queue
-        song = music_bot.queue.pop(0)
+        async with music_bot.queue_lock:
+            song = music_bot.queue.popleft()
         
         # Get the context for the song
         song_ctx = song.get('ctx') or ctx

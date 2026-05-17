@@ -59,15 +59,17 @@ async def play_next(ctx):
     async with server_music_bot.playback_lock:
         # Check if the bot has been explicitly stopped
         if is_bot_explicitly_stopped(server_music_bot):
-            server_music_bot.queue.clear()
+            async with server_music_bot.queue_lock:
+                server_music_bot.queue.clear()
             return
             
         if server_music_bot.queue:
             try:
                 # Store the previous song for reference
                 previous_song = server_music_bot.current_song
-                # Get the next song from the queue
-                server_music_bot.current_song = server_music_bot.queue.pop(0)
+                # Get the next song from the queue (use queue_lock for thread safety)
+                async with server_music_bot.queue_lock:
+                    server_music_bot.current_song = server_music_bot.queue.popleft()
                 # Store the context in the current_song for later use
                 server_music_bot.current_song['ctx'] = ctx
                 # Update last activity time to prevent inactivity timeout

@@ -22,7 +22,7 @@ class PlaylistCache:
         Initialize the cache system and load existing cache data.
         
         Sets up the cache directory structure and loads existing cache data from disk.
-        Also imports any uncached files from the downloads directory.
+        Uncached file import is deferred to avoid blocking startup.
         """
         self.root_dir = Path(get_root_dir())
         self.cache_dir = Path(get_cache_dir())
@@ -32,9 +32,10 @@ class PlaylistCache:
         self.downloads_dir = Path(get_downloads_dir())
         self.cache_dir.mkdir(exist_ok=True)  # Create cache directory if it doesn't exist
         self._should_continue_check = True
+        self._import_task = None  # Track async import task
         self._load_cache()
-        # Run import asynchronously
-        asyncio.run(self._import_uncached_files())
+        # Defer async import to when event loop is available
+        self._schedule_import()
 
     def stop_cache_check(self):
         """
@@ -53,6 +54,33 @@ class PlaylistCache:
         after it has been stopped.
         """
         self._should_continue_check = True
+
+    def _schedule_import(self):
+        """
+        Schedule the async import of uncached files.
+        
+        This method tries to schedule the import task in the current event loop.
+        If no event loop is running, the import will be deferred until one is available.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+            self._import_task = loop.create_task(self._import_uncached_files())
+        except RuntimeError:
+            # No running event loop yet - this is expected during module import
+            # The import will be triggered later when the bot starts
+            pass
+
+    async def ensure_cache_imported(self):
+        """
+        Ensure that uncached files have been imported.
+        
+        Call this method when an event loop is available to trigger
+        the deferred import if it hasn't been done yet.
+        """
+        if self._import_task is None:
+            self._import_task = asyncio.create_task(self._import_uncached_files())
+        elif not self._import_task.done():
+            await self._import_task
 
     def _load_cache(self) -> None:
         """
