@@ -184,8 +184,8 @@ async def on_ready():
     clear_downloads_folder()
     set_high_priority()
     
-    # Import any uncached files from downloads folder to cache
-    await playlist_cache.ensure_cache_imported()
+    # Import uncached files in background (don't block startup)
+    asyncio.create_task(playlist_cache.ensure_cache_imported())
     
     prefix = config_vars.get('PREFIX', '!')  # Get prefix from config
     
