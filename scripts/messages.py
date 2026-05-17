@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from datetime import datetime
+from scripts.constants import EMBED_COLOR_INFO
 
 async def update_or_send_message(bot_instance, ctx, embed, view=None, force_new=False):
     """
@@ -38,7 +39,7 @@ async def update_or_send_message(bot_instance, ctx, embed, view=None, force_new=
         bot_instance.current_command_author = ctx.author.id
         return bot_instance.current_command_msg
 
-def create_embed(title, description, color=0x3498db, thumbnail_url=None, ctx=None):
+def create_embed(title, description, color=EMBED_COLOR_INFO, thumbnail_url=None, ctx=None):
     """
     Create a Discord embed with consistent styling.
     
@@ -89,3 +90,62 @@ def should_send_now_playing(music_bot, song_title):
     # Store current title for next comparison (needed for looped songs)
     music_bot.previous_song_title = song_title
     return True
+
+
+async def send_queue_added_message(
+    music_bot,
+    ctx,
+    song_info: dict,
+    bot=None,
+    color: int = 0x3498db
+) -> discord.Message:
+    """
+    Send a standardized "Added to Queue" message.
+    
+    This helper creates consistent queue addition messages across the bot,
+    handling loop detection for proper queue position display.
+    
+    Args:
+        music_bot: The MusicBot instance
+        ctx: The command context
+        song_info: Song dictionary with 'title', 'url', 'thumbnail', optionally 'requester'
+        bot: The Discord bot instance (for loop cog check). Uses ctx.bot if not provided.
+        color: Embed color (default: info blue)
+        
+    Returns:
+        discord.Message: The sent message (also stored in music_bot.queued_messages)
+    """
+    from scripts.playback import is_song_looping
+    
+    queue_pos = len(music_bot.queue)
+    description = f"[🎵 {song_info['title']}]({song_info['url']})"
+    
+    # Show queue position if current song is not looping
+    if music_bot.current_song:
+        bot_instance = bot or getattr(ctx, 'bot', None)
+        current_song_url = music_bot.current_song.get('url', '')
+        if bot_instance and not is_song_looping(bot_instance, current_song_url):
+            description += f"\nPosition in queue: {queue_pos}"
+    
+    # Create context with requester info if available
+    requester = song_info.get('requester')
+    ctx_with_requester = ctx
+    if requester and hasattr(ctx, 'author') and requester != ctx.author:
+        from scripts.playback import RequesterContext
+        ctx_with_requester = RequesterContext(requester)
+    
+    queue_embed = create_embed(
+        "Added to Queue",
+        description,
+        color=color,
+        thumbnail_url=song_info.get('thumbnail'),
+        ctx=ctx_with_requester
+    )
+    
+    queue_msg = await ctx.send(embed=queue_embed)
+    
+    # Store message for cleanup when song plays
+    async with music_bot.queued_messages_lock:
+        music_bot.queued_messages[song_info['url']] = queue_msg
+    
+    return queue_msg

@@ -2,6 +2,8 @@ import discord
 import time
 from scripts.config import FFMPEG_OPTIONS
 from scripts.messages import create_embed
+from scripts.duration import format_duration
+from scripts.constants import ERROR_BOT_NOT_CONNECTED, ERROR_NOTHING_PLAYING
 
 
 async def seek_audio(ctx, music_bot, seconds, direction="forward"):
@@ -24,11 +26,11 @@ async def seek_audio(ctx, music_bot, seconds, direction="forward"):
     """
     # Validate that there's a song playing
     if not music_bot.current_song:
-        return False, "No song is currently playing!", None
+        return False, ERROR_NOTHING_PLAYING, None
         
     # Check if the bot is connected and playing
     if not music_bot.voice_client or not ctx.voice_client:
-        return False, "Not connected to a voice channel", None
+        return False, ERROR_BOT_NOT_CONNECTED, None
         
     # Get current song info
     current_song = music_bot.current_song
@@ -87,6 +89,10 @@ async def seek_audio(ctx, music_bot, seconds, direction="forward"):
         # Call read() on the audio source before playing to prevent speed-up issue
         source.read()
         
+        # Check if player exists before trying to replace source
+        if not ctx.voice_client._player:
+            return False, "Cannot seek: playback is not active", None
+        
         # Replace the audio source without stopping playback
         ctx.voice_client._player.source = source
         
@@ -96,17 +102,7 @@ async def seek_audio(ctx, music_bot, seconds, direction="forward"):
         # Update last activity
         music_bot.last_activity = time.time()
         
-        # Format the time for display
-        def format_time(seconds):
-            """Format seconds into MM:SS or HH:MM:SS"""
-            hours = seconds // 3600
-            minutes = (seconds % 3600) // 60
-            secs = seconds % 60
-            if hours > 0:
-                return f"{hours}:{minutes:02d}:{secs:02d}"
-            return f"{minutes}:{secs:02d}"
-        
-        position_str = format_time(new_position)
+        position_str = format_duration(new_position)
         return True, position_str, new_position
         
     except Exception as e:

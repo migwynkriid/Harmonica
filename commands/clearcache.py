@@ -1,9 +1,8 @@
-import discord
 from discord.ext import commands
 import os
-import json
 from scripts.messages import create_embed
 from scripts.config import config_vars
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_SUCCESS, EMBED_COLOR_WARNING
 
 class ClearCache(commands.Cog):
     """
@@ -42,7 +41,7 @@ class ClearCache(commands.Cog):
             await ctx.send(embed=create_embed(
                 "Error",
                 "This command can only be used by the bot owner.",
-                color=0xe74c3c,
+                color=EMBED_COLOR_ERROR,
                 ctx=ctx
             ))
             return
@@ -58,7 +57,7 @@ class ClearCache(commands.Cog):
             await ctx.send(embed=create_embed(
                 "Clear Cache Confirmation",
                 f"Are you sure you want to delete the cache? This will cause the next processing to take slightly longer\n\nType **{prefix}clearcache confirm** to proceed.",
-                color=0xf1c40f,
+                color=EMBED_COLOR_WARNING,
                 ctx=ctx
             ))
             return
@@ -68,7 +67,7 @@ class ClearCache(commands.Cog):
             await ctx.send(embed=create_embed(
                 "Error",
                 "Please use !clearcache first to initiate the cache clearing process.",
-                color=0xe74c3c,
+                color=EMBED_COLOR_ERROR,
                 ctx=ctx
             ))
             return
@@ -90,7 +89,7 @@ class ClearCache(commands.Cog):
             await ctx.send(embed=create_embed(
                 "Cache Cleared",
                 "Successfully cleared all cache files.",
-                color=0x2ecc71,
+                color=EMBED_COLOR_SUCCESS,
                 ctx=ctx
             ))
 
@@ -98,7 +97,7 @@ class ClearCache(commands.Cog):
             await ctx.send(embed=create_embed(
                 "Error",
                 f"An error occurred while clearing the cache: {str(e)}",
-                color=0xe74c3c,
+                color=EMBED_COLOR_ERROR,
                 ctx=ctx
             ))
 

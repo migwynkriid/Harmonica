@@ -2,6 +2,7 @@ import discord
 from functools import wraps
 from scripts.config import load_config
 from scripts.messages import create_embed
+from scripts.constants import EMBED_COLOR_ERROR
 
 def check_dj_role():
     """
@@ -32,7 +33,7 @@ def check_dj_role():
                 embed = create_embed(
                     "Permission Denied",
                     "You need the 'DJ' role to use this command!",
-                    color=0xe74c3c,
+                    color=EMBED_COLOR_ERROR,
                     ctx=ctx
                 )
                 await ctx.send(embed=embed)
@@ -70,7 +71,7 @@ def check_admin_role():
                 embed = create_embed(
                     "Permission Denied",
                     "You need the 'Administrator' role to use this command!",
-                    color=0xe74c3c,
+                    color=EMBED_COLOR_ERROR,
                     ctx=ctx
                 )
                 await ctx.send(embed=embed)

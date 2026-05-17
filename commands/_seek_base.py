@@ -11,6 +11,7 @@ from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 from scripts.voice_checks import check_voice_state
 from scripts.seek import seek_audio
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO
 
 
 async def execute_seek_command(ctx, music_bot, seconds, direction):
@@ -36,7 +37,7 @@ async def execute_seek_command(ctx, music_bot, seconds, direction):
             await ctx.send(embed=create_embed(
                 "Error", 
                 f"{action} amount must be greater than 0 seconds!", 
-                color=0xe74c3c, 
+                color=EMBED_COLOR_ERROR, 
                 ctx=ctx
             ))
             return False
@@ -51,7 +52,7 @@ async def execute_seek_command(ctx, music_bot, seconds, direction):
         success, message, new_position = await seek_audio(ctx, music_bot, seconds, direction=direction)
         
         if not success:
-            await ctx.send(embed=create_embed("Error", message, color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", message, color=EMBED_COLOR_ERROR, ctx=ctx))
             return False
         
         # Send success message
@@ -63,7 +64,7 @@ async def execute_seek_command(ctx, music_bot, seconds, direction):
         embed = create_embed(
             f"{emoji} {title}",
             f"Skipped {direction_verb} {seconds} seconds to {message}\n[{current_song['title']}]({current_song['url']})",
-            color=0x3498db,
+            color=EMBED_COLOR_INFO,
             ctx=ctx
         )
         if 'thumbnail' in current_song:
@@ -75,7 +76,7 @@ async def execute_seek_command(ctx, music_bot, seconds, direction):
         await ctx.send(embed=create_embed(
             "Error", 
             "Invalid number of seconds! Please provide a valid integer.", 
-            color=0xe74c3c, 
+            color=EMBED_COLOR_ERROR, 
             ctx=ctx
         ))
         return False
@@ -84,7 +85,7 @@ async def execute_seek_command(ctx, music_bot, seconds, direction):
         await ctx.send(embed=create_embed(
             "Error", 
             f"An error occurred while {action_desc}: {str(e)}", 
-            color=0xe74c3c, 
+            color=EMBED_COLOR_ERROR, 
             ctx=ctx
         ))
         return False

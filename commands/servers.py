@@ -1,5 +1,6 @@
 from discord.ext import commands
 import discord
+from scripts.constants import EMBED_COLOR_INFO
 
 async def setup(bot):
     """
@@ -29,7 +30,7 @@ async def servers(ctx):
     embed = discord.Embed(
         title="Bot Server List", 
         description=f"Currently in {len(guilds)} servers:", 
-        color=0x3498db
+        color=EMBED_COLOR_INFO
     )
     
     # Add each server to the embed

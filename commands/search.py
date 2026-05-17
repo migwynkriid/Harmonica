@@ -6,6 +6,8 @@ from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.config import BASE_YTDL_OPTIONS, load_config
 from scripts.process_queue import process_queue
+from scripts.playback import should_start_playback, create_song_entry
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO, ERROR_NOT_IN_VOICE
 
 class SearchCog(commands.Cog):
     """
@@ -79,7 +81,7 @@ class SearchCog(commands.Cog):
             usage_embed = create_embed(
                 "Usage",
                 f"Usage: {prefix}search <song name/artist>\nExample: {prefix}search never gonna give you up",
-                color=0xe74c3c,
+                color=EMBED_COLOR_ERROR,
                 ctx=ctx
             )
             await ctx.send(embed=usage_embed)
@@ -91,11 +93,11 @@ class SearchCog(commands.Cog):
             results = await self.search_youtube(query)
             
         if not results:
-            await ctx.send(embed=create_embed("Error", "No results found!", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", "No results found!", color=EMBED_COLOR_ERROR, ctx=ctx))
             return
 
         # Create embed with search results
-        embed = discord.Embed(title="Search Results", color=discord.Color.blue())
+        embed = discord.Embed(title="Search Results", color=EMBED_COLOR_INFO)
         number_emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
         
         # Add each search result to the embed
@@ -159,7 +161,7 @@ class SearchCog(commands.Cog):
             
             # Check if user is in a voice channel
             if not ctx.author.voice:
-                await ctx.send(embed=create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c, ctx=ctx))
+                await ctx.send(embed=create_embed("Error", ERROR_NOT_IN_VOICE, color=EMBED_COLOR_ERROR, ctx=ctx))
                 return
 
             # Connect to voice channel if needed
@@ -186,7 +188,7 @@ class SearchCog(commands.Cog):
             processing_embed = create_embed(
                 "Processing",
                 f"Searching for {selected_video['title']}",
-                color=0x3498db,
+                color=EMBED_COLOR_INFO,
                 ctx=ctx
             )
             status_msg = await ctx.send(embed=processing_embed)
@@ -198,19 +200,10 @@ class SearchCog(commands.Cog):
 
             # Only lock when modifying the queue
             async with music_bot.queue_lock:
-                music_bot.queue.append({
-                    'title': result['title'],
-                    'url': result['url'],
-                    'file_path': result['file_path'],
-                    'thumbnail': result.get('thumbnail'),
-                    'ctx': ctx,
-                    'is_stream': result.get('is_stream', False),
-                    'is_from_playlist': result.get('is_from_playlist', False),
-                    'requester': ctx.author
-                })
+                music_bot.queue.append(create_song_entry(result, ctx))
 
                 # Check if we should start playing
-                should_play = not music_bot.is_playing and not music_bot.waiting_for_song and not music_bot.voice_client.is_playing()
+                should_play = should_start_playback(music_bot)
 
             # These operations don't need the queue lock
             if should_play:
@@ -222,7 +215,7 @@ class SearchCog(commands.Cog):
                 queue_embed = create_embed(
                     "Added to Queue 🎵",
                     f"[{result['title']}]({result['url']})\nPosition in queue: {queue_pos}",
-                    color=0x3498db,
+                    color=EMBED_COLOR_INFO,
                     thumbnail_url=result.get('thumbnail'),
                     ctx=ctx
                 )
@@ -234,7 +227,7 @@ class SearchCog(commands.Cog):
             await message.clear_reactions()
             await message.edit(content="Search timed out!", embed=None)
         except Exception as e:
-            await ctx.send(embed=create_embed("Error", f"An error occurred: {str(e)}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", f"An error occurred: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx))
 
 async def setup(bot):
     """

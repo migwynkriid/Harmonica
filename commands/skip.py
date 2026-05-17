@@ -1,9 +1,9 @@
-import discord
 from discord.ext import commands
 import time
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 from scripts.voice_checks import check_voice_state
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO, ERROR_BOT_NOT_CONNECTED, ERROR_NOTHING_PLAYING
 
 class SkipCog(commands.Cog):
     """
@@ -46,10 +46,10 @@ class SkipCog(commands.Cog):
         server_music_bot = MusicBot.get_instance(str(guild_id))
         
         if not server_music_bot or not server_music_bot.voice_client:
-            return False, "Not connected to a voice channel"
+            return False, ERROR_BOT_NOT_CONNECTED
 
         if not server_music_bot.voice_client.is_playing() and not server_music_bot.voice_client.is_paused():
-            return False, "Nothing is playing to skip"
+            return False, ERROR_NOTHING_PLAYING
 
         if amount < 1:
             return False, "Skip amount must be at least 1"
@@ -118,7 +118,7 @@ class SkipCog(commands.Cog):
             success, result = await self._skip_song(amount, ctx)
             
             if not success:
-                await ctx.send(embed=create_embed("Error", result, color=0xe74c3c, ctx=ctx))
+                await ctx.send(embed=create_embed("Error", result, color=EMBED_COLOR_ERROR, ctx=ctx))
                 return
 
             # Store ctx in current_song for footer information
@@ -128,10 +128,10 @@ class SkipCog(commands.Cog):
             # Don't send a skip message here since it's handled by the after_playing callback
             # Only show message for multiple skips
             if isinstance(result, dict) and amount > 1:
-                await ctx.send(embed=create_embed("Skipped", f"Skipped current song and {amount - 1} songs from queue", color=0x3498db, ctx=ctx))
+                await ctx.send(embed=create_embed("Skipped", f"Skipped current song and {amount - 1} songs from queue", color=EMBED_COLOR_INFO, ctx=ctx))
 
         except Exception as e:
-            await ctx.send(embed=create_embed("Error", f"An error occurred while skipping: {str(e)}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", f"An error occurred while skipping: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx))
 
 async def setup(bot):
     """

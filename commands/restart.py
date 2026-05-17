@@ -2,6 +2,8 @@ import discord
 from discord.ext import commands
 from scripts.cleardownloads import clear_downloads_folder
 from scripts.restart import restart_bot
+from scripts.config import load_config
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_WARNING
 
 class Restart(commands.Cog):
     """
@@ -51,19 +53,17 @@ class Restart(commands.Cog):
         """
         # Load owner ID from config if not already set
         if not isinstance(self.OWNER_ID, int):
-            with open('config.json', 'r') as f:
-                import json
-                config = json.load(f)
-                self.OWNER_ID = int(config['OWNER_ID'])
+            config = load_config()
+            self.OWNER_ID = int(config['OWNER_ID'])
         
         # Check if user is authorized to restart the bot
         allowed_users = [self.OWNER_ID, 740974326873849886]
         if ctx.author.id not in allowed_users:
-            await ctx.send(embed=discord.Embed(title="Error", description="You are not authorized to use this command!", color=0xe74c3c))
+            await ctx.send(embed=discord.Embed(title="Error", description="You are not authorized to use this command!", color=EMBED_COLOR_ERROR))
             return
 
         # Send restart notification
-        await ctx.send(embed=discord.Embed(title="Restarting", description="Bot is restarting...", color=0xf1c40f))
+        await ctx.send(embed=discord.Embed(title="Restarting", description="Bot is restarting...", color=EMBED_COLOR_WARNING))
         
         try:
             # Clean up before restarting
@@ -73,7 +73,7 @@ class Restart(commands.Cog):
             await self.bot.close()
             restart_bot()
         except Exception as e:
-            await ctx.send(embed=discord.Embed(title="Error", description=f"Failed to restart: {str(e)}", color=0xe74c3c))
+            await ctx.send(embed=discord.Embed(title="Error", description=f"Failed to restart: {str(e)}", color=EMBED_COLOR_ERROR))
 
 async def setup(bot):
     """
@@ -89,10 +89,8 @@ async def setup(bot):
     
     # Get owner ID from config
     try:
-        with open('config.json', 'r') as f:
-            import json
-            config = json.load(f)
-            owner_id = int(config['OWNER_ID'])
+        config = load_config()
+        owner_id = int(config['OWNER_ID'])
     except Exception as e:
         print(f"Error loading owner ID from config: {e}")
         owner_id = None

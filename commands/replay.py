@@ -4,6 +4,7 @@ from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 from scripts.config import FFMPEG_OPTIONS
 from scripts.voice_checks import check_voice_state
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO, ERROR_NOTHING_PLAYING
 import time
 
 class ReplayCog(commands.Cog):
@@ -49,7 +50,7 @@ class ReplayCog(commands.Cog):
 
             # Check if there's a song playing
             if not music_bot.current_song:
-                await ctx.send(embed=create_embed("Error", "No song is currently playing!", color=0xe74c3c, ctx=ctx))
+                await ctx.send(embed=create_embed("Error", ERROR_NOTHING_PLAYING, color=EMBED_COLOR_ERROR, ctx=ctx))
                 return
 
             # Get current song info
@@ -72,13 +73,13 @@ class ReplayCog(commands.Cog):
             music_bot.playback_start_time = time.time()
             
             # Send confirmation message
-            embed = create_embed("Replay", f"[{current_song['title']}]({current_song['url']})", color=0x3498db, ctx=ctx)
+            embed = create_embed("Replay", f"[{current_song['title']}]({current_song['url']})", color=EMBED_COLOR_INFO, ctx=ctx)
             if 'thumbnail' in current_song:
                 embed.set_thumbnail(url=current_song['thumbnail'])
             await ctx.send(embed=embed)
 
         except Exception as e:
-            await ctx.send(embed=create_embed("Error", f"An error occurred while replaying: {str(e)}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", f"An error occurred while replaying: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx))
 
 async def setup(bot):
     """

@@ -5,6 +5,7 @@ from discord.ext import commands
 from scripts.config import load_config
 from scripts.messages import create_embed
 from scripts.paths import get_root_dir
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_SUCCESS, EMBED_COLOR_INFO, EMBED_COLOR_WARNING
 from pathlib import Path
 
 class CookieCommand(commands.Cog):
@@ -44,7 +45,7 @@ class CookieCommand(commands.Cog):
                 embed=create_embed(
                     "Error",
                     "Only the bot owner can use this command.",
-                    color=0xe74c3c,
+                    color=EMBED_COLOR_ERROR,
                     ctx=ctx
                 )
             )
@@ -69,7 +70,7 @@ class CookieCommand(commands.Cog):
                         f"**File Size:** {size_kb:.2f} KB\n"
                         f"**Last Modified:** {mod_date}\n\n"
                         f"To update the file, attach a new .txt file to your message with the {prefix}cookie command.",
-                        color=0x3498db,
+                        color=EMBED_COLOR_INFO,
                         ctx=ctx
                     )
                 )
@@ -88,7 +89,7 @@ class CookieCommand(commands.Cog):
                         "2. Log in to YouTube/Google\n"
                         "3. Use the extension to export cookies\n"
                         f"4. Attach the file to your message with this command",
-                        color=0xf39c12,
+                        color=EMBED_COLOR_WARNING,
                         ctx=ctx
                     )
                 )
@@ -103,7 +104,7 @@ class CookieCommand(commands.Cog):
                 embed=create_embed(
                     "Error",
                     "The attached file must be a .txt file.",
-                    color=0xe74c3c,
+                    color=EMBED_COLOR_ERROR,
                     ctx=ctx
                 )
             )
@@ -151,7 +152,7 @@ class CookieCommand(commands.Cog):
                         f"**File Size:** {size_kb:.2f} KB\n\n"
                         f"The bot will now use these cookies for YouTube requests. "
                         f"This will allow access to age-restricted and premium content.",
-                        color=0x2ecc71,
+                        color=EMBED_COLOR_SUCCESS,
                         ctx=ctx
                     )
                 )
@@ -160,7 +161,7 @@ class CookieCommand(commands.Cog):
                     embed=create_embed(
                         "Error",
                         "Failed to save the cookies.txt file.",
-                        color=0xe74c3c,
+                        color=EMBED_COLOR_ERROR,
                         ctx=ctx
                     )
                 )
@@ -169,7 +170,7 @@ class CookieCommand(commands.Cog):
                 embed=create_embed(
                     "Error",
                     f"An error occurred while saving the file: {str(e)}",
-                    color=0xe74c3c,
+                    color=EMBED_COLOR_ERROR,
                     ctx=ctx
                 )
             )
@@ -183,7 +184,7 @@ class CookieCommand(commands.Cog):
                         embed=create_embed(
                             "Recovery",
                             "Previous cookies.txt file has been restored from backup.",
-                            color=0xf39c12,
+                            color=EMBED_COLOR_WARNING,
                             ctx=ctx
                         )
                     )

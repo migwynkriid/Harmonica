@@ -14,7 +14,7 @@ from datetime import datetime
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from scripts.commandlogger import CommandLogger
-from scripts.constants import RED, GREEN, BLUE, RESET, YELLOW
+from scripts.constants import RED, GREEN, BLUE, RESET, YELLOW, EMBED_COLOR_ERROR
 from scripts.musicbot import MusicBot
 from scripts.process_queue import process_queue
 from scripts.clear_queue import clear_queue
@@ -135,10 +135,17 @@ async def on_command_error(ctx, error):
         embed=create_embed(
             "Error",
             f"Error: {str(error)}",
-            color=0xe74c3c,
+            color=EMBED_COLOR_ERROR,
             ctx=ctx
         )
     )
+
+@bot.event
+async def on_guild_remove(guild):
+    """Event handler for when the bot is removed from a guild - clean up resources"""
+    print(f"{YELLOW}Bot removed from guild: {guild.name} ({guild.id}){RESET}")
+    # Clean up the MusicBot instance to free memory
+    MusicBot.cleanup_instance(guild.id)
 
 @bot.event
 async def on_voice_state_update(member, before, after):

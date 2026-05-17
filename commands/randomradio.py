@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from scripts.messages import create_embed
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO, ERROR_NOT_IN_VOICE, ERROR_DIFFERENT_CHANNEL
 import aiohttp
 import random
 
@@ -97,8 +98,8 @@ class RandomRadioCog(commands.Cog):
             if not ctx.author.voice:
                 await status_msg.edit(embed=create_embed(
                     "Error",
-                    "You must be in a voice channel to use this command!",
-                    color=0xe74c3c,
+                    ERROR_NOT_IN_VOICE,
+                    color=EMBED_COLOR_ERROR,
                     ctx=ctx
                 ))
                 return False
@@ -112,7 +113,7 @@ class RandomRadioCog(commands.Cog):
                     await status_msg.edit(embed=create_embed(
                         "Error",
                         "Failed to connect to voice channel. Please try again.",
-                        color=0xe74c3c,
+                        color=EMBED_COLOR_ERROR,
                         ctx=ctx
                     ))
                     return False
@@ -177,12 +178,12 @@ class RandomRadioCog(commands.Cog):
         """
         # Check if user is in voice chat
         if not ctx.author.voice:
-            await ctx.send(embed=create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", ERROR_NOT_IN_VOICE, color=EMBED_COLOR_ERROR, ctx=ctx))
             return
             
         # Check if bot is in same voice chat
         if ctx.voice_client and ctx.author.voice.channel != ctx.voice_client.channel:
-            await ctx.send(embed=create_embed("Error", "You must be in the same voice channel as the bot to use this command!", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", ERROR_DIFFERENT_CHANNEL, color=EMBED_COLOR_ERROR, ctx=ctx))
             return
 
         max_retries = 3
@@ -194,7 +195,7 @@ class RandomRadioCog(commands.Cog):
                 status_msg = await ctx.send(embed=create_embed(
                     "Random Radio",
                     "Fetching a random radio station...",
-                    color=0x3498db,
+                    color=EMBED_COLOR_INFO,
                     ctx=ctx
                 ))
 
@@ -204,7 +205,7 @@ class RandomRadioCog(commands.Cog):
                     await status_msg.edit(embed=create_embed(
                         "Error",
                         "Could not find any available radio stations after multiple attempts. The radio service might be experiencing issues. Please try again in a moment.",
-                        color=0xe74c3c,
+                        color=EMBED_COLOR_ERROR,
                         ctx=ctx
                     ))
                     return
@@ -213,7 +214,7 @@ class RandomRadioCog(commands.Cog):
                 await status_msg.edit(embed=create_embed(
                     "Random Radio",
                     f"Found station: {station['name']}\nTags: {', '.join(station.get('tags', '').split(',')[:3]) if station.get('tags') else 'No tags'}\nCountry: {station.get('country', 'Unknown')}\n\nStarting playback...",
-                    color=0x3498db,
+                    color=EMBED_COLOR_INFO,
                     ctx=ctx
                 ))
 
@@ -227,7 +228,7 @@ class RandomRadioCog(commands.Cog):
                     await status_msg.edit(embed=create_embed(
                         "Random Radio",
                         "That station didn't work, trying another one...",
-                        color=0x3498db,
+                        color=EMBED_COLOR_INFO,
                         ctx=ctx
                     ))
                 await status_msg.delete(delay=5)
@@ -236,7 +237,7 @@ class RandomRadioCog(commands.Cog):
                 await ctx.send(embed=create_embed(
                     "Error",
                     f"An error occurred while fetching a random radio station: {str(e)}",
-                    color=0xe74c3c,
+                    color=EMBED_COLOR_ERROR,
                     ctx=ctx
                 ))
                 return
@@ -245,7 +246,7 @@ class RandomRadioCog(commands.Cog):
         await ctx.send(embed=create_embed(
             "Error",
             "Could not find a working radio station after several attempts. Please try again later.",
-            color=0xe74c3c,
+            color=EMBED_COLOR_ERROR,
             ctx=ctx
         ))
 

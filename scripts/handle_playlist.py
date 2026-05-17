@@ -2,13 +2,13 @@ import asyncio
 import discord
 import yt_dlp
 import os
-import json
 import random
 from pathlib import Path
 from scripts.play_next import play_next
 from scripts.config import load_config, BASE_YTDL_OPTIONS, config_vars
 from scripts.messages import update_or_send_message, create_embed
 from scripts.duration import get_audio_duration
+from scripts.constants import EMBED_COLOR_INFO, EMBED_COLOR_ERROR
 
 class PlaylistHandler:
     """
@@ -120,7 +120,7 @@ class PlaylistHandler:
                     playlist_embed = create_embed(
                         "Processing Playlist",
                         description,
-                        color=0x3498db,
+                        color=EMBED_COLOR_INFO,
                         ctx=ctx
                     )
                     # Try different thumbnail sources
@@ -149,7 +149,7 @@ class PlaylistHandler:
                 error_embed = create_embed(
                     "Error",
                     f"Failed to process playlist: {str(e)}",
-                    color=0xe74c3c,
+                    color=EMBED_COLOR_ERROR,
                     ctx=status_msg.channel
                 )
                 await status_msg.edit(embed=error_embed)
