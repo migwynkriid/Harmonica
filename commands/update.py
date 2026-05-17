@@ -4,9 +4,11 @@ import sys
 import subprocess
 from scripts.messages import create_embed
 from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_SUCCESS
+from scripts.config import load_config
 
-# Git repository URL
-GIT_REPO_URL = "https://github.com/migwynkriid/Harmonica"
+# Get Git repository URL from config (allows users with forks to set their own)
+config = load_config()
+GIT_REPO_URL = config.get('GITHUB_REPO')
 
 
 async def setup(bot):
