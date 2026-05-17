@@ -1,7 +1,9 @@
 import discord
 from discord.ext import commands
-import json
 import os
+import tempfile
+from scripts.config import load_config
+
 
 class Log(commands.Cog):
     """
@@ -19,9 +21,6 @@ class Log(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        with open('config.json', 'r') as f:
-            config = json.load(f)
-        self.OWNER_ID = int(config['OWNER_ID'])
 
     def read_last_lines(self, filename, max_lines=1000):
         """
@@ -79,37 +78,39 @@ class Log(commands.Cog):
         Args:
             ctx: The command context
         """
-        if ctx.author.id != self.OWNER_ID:
-            await ctx.send(embed=discord.Embed(
-                title="Error",
-                description="This command is only available to the bot owner.",
-                color=0xe74c3c
-            ))
-            return
-            
+        temp_files = []
         try:
             # Read both log files
             system_log_lines = self.read_last_lines('log.txt')
             command_log_lines = self.read_last_lines('commandlog.txt')
             
-            # Create temporary files for both logs
+            # Create and send temporary files for both logs using unique temp files
             if system_log_lines:
-                with open('temp_system_log.txt', 'w', encoding='utf-8') as f:
+                with tempfile.NamedTemporaryFile(mode='w', suffix='_system_log.txt', 
+                                                  delete=False, encoding='utf-8') as f:
                     f.write('\n'.join(system_log_lines))
-                await ctx.send("System Log:", file=discord.File('temp_system_log.txt'))
-                os.remove('temp_system_log.txt')
+                    temp_files.append(f.name)
+                await ctx.send("System Log:", file=discord.File(temp_files[-1], filename='system_log.txt'))
             
             if command_log_lines:
-                with open('temp_command_log.txt', 'w', encoding='utf-8') as f:
+                with tempfile.NamedTemporaryFile(mode='w', suffix='_command_log.txt', 
+                                                  delete=False, encoding='utf-8') as f:
                     f.write('\n'.join(command_log_lines))
-                await ctx.send("Command Log:", file=discord.File('temp_command_log.txt'))
-                os.remove('temp_command_log.txt')
+                    temp_files.append(f.name)
+                await ctx.send("Command Log:", file=discord.File(temp_files[-1], filename='command_log.txt'))
                 
             if not system_log_lines and not command_log_lines:
                 await ctx.send("No log files found.")
             
         except Exception as e:
             await ctx.send(f"Error processing log files: {str(e)}")
+        finally:
+            # Clean up temp files
+            for temp_file in temp_files:
+                try:
+                    os.remove(temp_file)
+                except OSError:
+                    pass
 
 async def setup(bot):
     """

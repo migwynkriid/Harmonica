@@ -1,6 +1,30 @@
 import json
 import asyncio
-from typing import Optional
+from typing import Optional, Union
+
+
+def format_duration(seconds: Union[int, float], always_show_hours: bool = False) -> str:
+    """
+    Format duration in seconds to mm:ss or hh:mm:ss format.
+    
+    This is the canonical duration formatting function used throughout the bot.
+    
+    Args:
+        seconds: Duration in seconds (int or float)
+        always_show_hours: If True, always show hours even if 0
+        
+    Returns:
+        str: Formatted duration string (e.g., "03:45" or "1:23:45")
+    """
+    total_seconds = int(seconds)
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    secs = total_seconds % 60
+    
+    if hours > 0 or always_show_hours:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
+
 
 async def get_audio_duration(file_path) -> float:
     """

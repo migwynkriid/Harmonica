@@ -6,10 +6,11 @@ import sys
 import re
 from datetime import datetime
 import pytz
-import json
-from scripts.constants import RED, GREEN, BLUE, YELLOW, RESET
+from scripts.constants import RED, GREEN, BLUE, YELLOW, RESET, EMBED_COLOR_INFO
+from scripts.config import load_config
 
-def create_embed(title, description, color=0x3498db):
+
+def create_embed(title, description, color=EMBED_COLOR_INFO):
     """
     Create a Discord embed with consistent styling.
     
@@ -32,18 +33,6 @@ def create_embed(title, description, color=0x3498db):
     )
     return embed
 
-def load_config():
-    """
-    Load configuration from the config.json file.
-    
-    This function reads and parses the bot's configuration file to access
-    settings related to auto-updates and other features.
-    
-    Returns:
-        dict: The configuration settings as a dictionary
-    """
-    with open('config.json', 'r') as f:
-        return json.load(f)
 
 def get_git_commit_details(from_commit, to_commit):
     """

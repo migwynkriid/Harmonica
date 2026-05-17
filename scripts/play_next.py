@@ -6,9 +6,21 @@ import time
 from scripts.messages import create_embed, should_send_now_playing
 from scripts.config import load_config, FFMPEG_OPTIONS
 from scripts.ui_components import create_now_playing_view
-from scripts.constants import RED, GREEN, BLUE, RESET
+from scripts.constants import RED, GREEN, BLUE, RESET, EMBED_COLOR_FINISHED
 from scripts.process_queue import process_queue
 from scripts.activity import update_activity
+from scripts.playback import (
+    RequesterContext,
+    cleanup_queued_message,
+    verify_audio_file,
+    get_requester_context,
+    send_now_playing_message,
+    update_bot_presence,
+    create_audio_source,
+    create_after_callback,
+    log_now_playing,
+    is_bot_explicitly_stopped,
+)
 
 # Get default volume from config
 config = load_config()
@@ -43,17 +55,10 @@ async def play_next(ctx):
     # Get server-specific music bot instance
     server_music_bot = MusicBot.get_instance(str(ctx.guild.id))
     
-    # Add playback lock to prevent race conditions
-    if hasattr(server_music_bot, 'playback_lock'):
-        playback_lock = server_music_bot.playback_lock
-    else:
-        playback_lock = asyncio.Lock()
-        server_music_bot.playback_lock = playback_lock
-    
-    async with playback_lock:
+    # Use the playback lock to prevent race conditions
+    async with server_music_bot.playback_lock:
         # Check if the bot has been explicitly stopped
-        if hasattr(server_music_bot, 'explicitly_stopped') and server_music_bot.explicitly_stopped:
-            # If the bot was explicitly stopped, don't play anything
+        if is_bot_explicitly_stopped(server_music_bot):
             server_music_bot.queue.clear()
             return
             
@@ -67,28 +72,25 @@ async def play_next(ctx):
                 server_music_bot.current_song['ctx'] = ctx
                 # Update last activity time to prevent inactivity timeout
                 server_music_bot.last_activity = time.time()
-                server_name = ctx.guild.name if ctx and hasattr(ctx, 'guild') and ctx.guild else "Unknown Server"
-                print(f"{GREEN}Now playing:{RESET}{BLUE} {server_music_bot.current_song['title']}{RESET}{GREEN} in server: {RESET}{BLUE}{server_name}{RESET}")
                 
-                # Clean up the queued message for the song that's about to play
-                if server_music_bot.current_song['url'] in server_music_bot.queued_messages:
-                    try:
-                        await server_music_bot.queued_messages[server_music_bot.current_song['url']].delete()
-                        del server_music_bot.queued_messages[server_music_bot.current_song['url']]
-                    except Exception as e:
-                        print(f"Error deleting queued message: {str(e)}")
+                # Log now playing
+                server_name = ctx.guild.name if ctx and hasattr(ctx, 'guild') and ctx.guild else "Unknown Server"
+                log_now_playing(server_music_bot.current_song['title'], server_name)
+                
+                # Clean up the queued message
+                await cleanup_queued_message(server_music_bot, server_music_bot.current_song['url'])
 
+                # Verify audio file exists (for non-streams)
                 if not server_music_bot.current_song.get('is_stream'):
-                    # Check if file exists and download is complete
-                    if not os.path.exists(server_music_bot.current_song['file_path']):
+                    if not verify_audio_file(server_music_bot.current_song['file_path']):
                         print(f"Error: File not found: {server_music_bot.current_song['file_path']}")
                         if server_music_bot.queue:
-                            await process_queue(server_music_bot, ctx)  # Recursively try the next song
+                            await process_queue(server_music_bot, ctx)
                         return
                         
-                    # If we have a download progress object, wait for download to complete
+                    # Wait for download to complete if needed
                     if hasattr(server_music_bot, 'download_progress') and server_music_bot.download_progress:
-                        max_wait = 5  # Maximum seconds to wait
+                        max_wait = 5
                         start_time = time.time()
                         while not server_music_bot.download_progress.download_complete:
                             if time.time() - start_time > max_wait:
@@ -113,136 +115,53 @@ async def play_next(ctx):
                         if server_music_bot.current_song:
                             server_music_bot.queue.appendleft(server_music_bot.current_song)
                             server_music_bot.current_song = None
-                            
-                        # Don't try to restart automatically, just log the error and return
                         print("Voice connection failed. Please try again later or use !join to reconnect manually.")
                         return
                 else:
                     # Handle previous now playing message
                     if server_music_bot.now_playing_message:
-                        try:
-                            # Add null check for bot instance
-                            if server_music_bot.bot:
-                                # Add null check before accessing the cog
-                                loop_cog = server_music_bot.bot.get_cog('Loop') if hasattr(server_music_bot.bot, 'get_cog') else None
-                                is_looped = loop_cog and previous_song and previous_song['url'] in loop_cog.looped_songs if loop_cog else False
+                        await _update_previous_song_message(server_music_bot, previous_song, ctx)
 
-                                # For looped songs that weren't skipped, just delete the message
-                                if is_looped and not (hasattr(server_music_bot, 'was_skipped') and server_music_bot.was_skipped):
-                                    await server_music_bot.now_playing_message.delete()
-                                else:
-                                    # For non-looped songs or skipped songs, show appropriate message
-                                    title = "Skipped song" if hasattr(server_music_bot, 'was_skipped') and server_music_bot.was_skipped else "Finished playing"
-                                    description = f"[{previous_song['title']}]({previous_song['url']})"
-                                    
-                                    # Create a context-like object with the requester information
-                                    class DummyCtx:
-                                        def __init__(self, author):
-                                            self.author = author
-                                    
-                                    # Use the original requester if available, otherwise use the context
-                                    # For playlist songs, the requester is stored in the song info
-                                    requester = previous_song.get('requester', ctx.author)
-                                    ctx_with_requester = DummyCtx(requester) if requester else ctx
-                                    
-                                    finished_embed = create_embed(
-                                        title,
-                                        description,
-                                        color=0x808080,  # Gray color for finished
-                                        thumbnail_url=previous_song.get('thumbnail'),
-                                        ctx=ctx_with_requester
-                                    )
-                                    # Don't include view for status messages
-                                    await server_music_bot.now_playing_message.edit(embed=finished_embed, view=None)
-                                    
-                                    # Reset the skip flag after handling the previous song
-                                    if hasattr(server_music_bot, 'was_skipped'):
-                                        server_music_bot.was_skipped = False
-                        except Exception as e:
-                            print(f"Error updating previous now playing message: {str(e)}")
-
-                    # Create a context-like object with the requester information for the current song
-                    class DummyCtx:
-                        def __init__(self, author):
-                            self.author = author
-                    
-                    # Use the original requester if available, otherwise use the context
-                    requester = server_music_bot.current_song.get('requester', ctx.author)
-                    ctx_with_requester = DummyCtx(requester) if requester else ctx
-
-                    # Check if we should send the now playing message
-                    if should_send_now_playing(server_music_bot, server_music_bot.current_song['title']):
-                        now_playing_embed = create_embed(
-                            "Now playing 🎵",
-                            f"[{server_music_bot.current_song['title']}]({server_music_bot.current_song['url']})",
-                            color=0x00ff00,
-                            thumbnail_url=server_music_bot.current_song.get('thumbnail'),
-                            ctx=ctx_with_requester
-                        )
-                        # Create view with buttons if enabled
-                        view = create_now_playing_view()
-                        # Only pass the view if it's not None
-                        kwargs = {'embed': now_playing_embed}
-                        if view is not None:
-                            kwargs['view'] = view
-                        server_music_bot.now_playing_message = await ctx.send(**kwargs)
+                    # Send now playing message
+                    await send_now_playing_message(server_music_bot, server_music_bot.current_song, ctx)
                     
                     # Update bot presence
-                    try:
-                        if server_music_bot.bot:
-                            await update_activity(server_music_bot.bot, server_music_bot.current_song, is_playing=True)
-                    except Exception as e:
-                        print(f"Error updating presence: {str(e)}")
+                    await update_bot_presence(server_music_bot, server_music_bot.current_song, is_playing=True)
                     
+                    # Reset command tracking
                     server_music_bot.current_command_msg = None
                     server_music_bot.current_command_author = None
 
                     try:
-                        # Check if already playing before attempting to play
+                        # Check if already playing
                         if server_music_bot.voice_client and server_music_bot.voice_client.is_playing():
                             print("Already playing audio, stopping current playback")
                             server_music_bot.voice_client.stop()
                             
-                        # Double-check that voice client is still connected
+                        # Double-check voice client is still connected
                         if not server_music_bot.voice_client or not server_music_bot.voice_client.is_connected():
                             print("Voice client disconnected just before playback, aborting")
-                            # Put the song back in the queue for later
                             if server_music_bot.current_song:
                                 server_music_bot.queue.appendleft(server_music_bot.current_song)
                             return
-                            
-                        audio_source = discord.FFmpegPCMAudio(
+                        
+                        # Create audio source and start playback
+                        audio_source = create_audio_source(
                             server_music_bot.current_song['file_path'],
-                            **FFMPEG_OPTIONS
+                            use_volume_transformer=False
                         )
-                        # Call read() on the audio source before playing to prevent speed-up issue
-                        audio_source.read()
-                        # Set the playback start time right before starting playback
+                        
+                        # Set playback state
                         server_music_bot.playback_start_time = time.time()
                         server_music_bot.playback_state = "playing"
                         
-                        # Create a wrapper for the after_playing_coro that handles exceptions
-                        def safe_after_callback(error):
-                            try:
-                                # Get the event loop
-                                loop = server_music_bot.bot_loop or asyncio.get_event_loop()
-                                # Run the coroutine in the event loop
-                                asyncio.run_coroutine_threadsafe(
-                                    server_music_bot.after_playing_coro(error, ctx), 
-                                    loop
-                                )
-                            except Exception as e:
-                                print(f"Error in after_playing callback: {str(e)}")
+                        # Create callback and play
+                        after_callback = create_after_callback(server_music_bot, ctx)
                         
-                        # Only attempt to play if voice client is still valid
                         if server_music_bot.voice_client and server_music_bot.voice_client.is_connected():
-                            server_music_bot.voice_client.play(
-                                audio_source,
-                                after=safe_after_callback
-                            )
+                            server_music_bot.voice_client.play(audio_source, after=after_callback)
                         else:
                             print("Voice client became invalid during playback setup")
-                            # Put the song back in the queue for later
                             if server_music_bot.current_song:
                                 server_music_bot.queue.appendleft(server_music_bot.current_song)
                     except Exception as e:
@@ -261,3 +180,50 @@ async def play_next(ctx):
             if server_music_bot.download_queue.empty():
                 if server_music_bot.voice_client and server_music_bot.voice_client.is_connected():
                     await server_music_bot.voice_client.disconnect()
+
+
+async def _update_previous_song_message(server_music_bot, previous_song, ctx):
+    """
+    Update the previous now playing message when transitioning to a new song.
+    
+    Args:
+        server_music_bot: The MusicBot instance
+        previous_song: The previous song dict
+        ctx: The context
+    """
+    if not previous_song:
+        return
+        
+    try:
+        if not server_music_bot.bot:
+            return
+            
+        loop_cog = server_music_bot.bot.get_cog('Loop') if hasattr(server_music_bot.bot, 'get_cog') else None
+        is_looped = loop_cog and previous_song['url'] in loop_cog.looped_songs if loop_cog else False
+
+        # For looped songs that weren't skipped, just delete the message
+        if is_looped and not (hasattr(server_music_bot, 'was_skipped') and server_music_bot.was_skipped):
+            await server_music_bot.now_playing_message.delete()
+        else:
+            # For non-looped songs or skipped songs, show appropriate message
+            title = "Skipped song" if hasattr(server_music_bot, 'was_skipped') and server_music_bot.was_skipped else "Finished playing"
+            description = f"[{previous_song['title']}]({previous_song['url']})"
+            
+            # Use the original requester if available
+            requester = previous_song.get('requester', ctx.author)
+            ctx_with_requester = RequesterContext(requester) if requester else ctx
+            
+            finished_embed = create_embed(
+                title,
+                description,
+                color=EMBED_COLOR_FINISHED,
+                thumbnail_url=previous_song.get('thumbnail'),
+                ctx=ctx_with_requester
+            )
+            await server_music_bot.now_playing_message.edit(embed=finished_embed, view=None)
+            
+            # Reset the skip flag
+            if hasattr(server_music_bot, 'was_skipped'):
+                server_music_bot.was_skipped = False
+    except Exception as e:
+        print(f"Error updating previous now playing message: {str(e)}")
