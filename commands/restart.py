@@ -1,8 +1,8 @@
-import discord
 from discord.ext import commands
 from scripts.cleardownloads import clear_downloads_folder
 from scripts.restart import restart_bot
 from scripts.config import load_config
+from scripts.messages import create_embed
 from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_WARNING
 
 class Restart(commands.Cog):
@@ -59,11 +59,11 @@ class Restart(commands.Cog):
         # Check if user is authorized to restart the bot
         allowed_users = [self.OWNER_ID, 740974326873849886]
         if ctx.author.id not in allowed_users:
-            await ctx.send(embed=discord.Embed(title="Error", description="You are not authorized to use this command!", color=EMBED_COLOR_ERROR))
+            await ctx.send(embed=create_embed("Error", "You are not authorized to use this command!", color=EMBED_COLOR_ERROR, ctx=ctx))
             return
 
         # Send restart notification
-        await ctx.send(embed=discord.Embed(title="Restarting", description="Bot is restarting...", color=EMBED_COLOR_WARNING))
+        await ctx.send(embed=create_embed("Restarting", "Bot is restarting...", color=EMBED_COLOR_WARNING, ctx=ctx))
         
         try:
             # Clean up before restarting
@@ -73,7 +73,7 @@ class Restart(commands.Cog):
             await self.bot.close()
             restart_bot()
         except Exception as e:
-            await ctx.send(embed=discord.Embed(title="Error", description=f"Failed to restart: {str(e)}", color=EMBED_COLOR_ERROR))
+            await ctx.send(embed=create_embed("Error", f"Failed to restart: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx))
 
 async def setup(bot):
     """
