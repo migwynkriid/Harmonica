@@ -1,4 +1,5 @@
 import types
+import asyncio
 import pytest
 
 
@@ -11,7 +12,9 @@ async def test_handle_spotify_track_cached(monkeypatch, stub_ctx):
         def __init__(self):
             self.sp = object()
             self.queue = []
+            self.queue_lock = asyncio.Lock()
             self.queued_messages = {}
+            self.queued_messages_lock = asyncio.Lock()
             self.current_song = None
             self.is_playing = False
             self.voice_client = types.SimpleNamespace(is_playing=lambda: False, is_connected=lambda: True)
@@ -56,13 +59,15 @@ async def test_handle_spotify_track_search_flow(monkeypatch, stub_ctx):
         def __init__(self):
             self.sp = types.SimpleNamespace(track=lambda tid: {'artists': [{'name': 'Artist'}], 'name': 'Track'})
             self.queue = []
+            self.queue_lock = asyncio.Lock()
             self.queued_messages = {}
+            self.queued_messages_lock = asyncio.Lock()
             self.current_song = None
             self.is_playing = False
             self.voice_client = types.SimpleNamespace(is_playing=lambda: False, is_connected=lambda: True)
             self.waiting_for_song = False
 
-        async def download_song(self, url, status_msg=None, ctx=None):
+        async def download_song(self, url, status_msg=None, ctx=None, spotify_info=None):
             return {'title': 'Downloaded', 'url': url, 'file_path': __file__, 'thumbnail': None}
 
     mb = MB()

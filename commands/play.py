@@ -1,9 +1,12 @@
 import discord
 from discord.ext import commands
-from scripts.messages import create_embed
+from scripts.messages import create_embed, send_queue_added_message
 from scripts.permissions import check_dj_role
 from scripts.process_queue import process_queue
 from scripts.voice import connect_to_voice
+from scripts.voice_checks import check_user_in_voice
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO
+from scripts.playback import should_start_playback, create_song_entry
 
 class PlayCog(commands.Cog):
     """
@@ -49,16 +52,16 @@ class PlayCog(commands.Cog):
             usage_embed = create_embed(
                 "Error",
                 f"Usage: {prefix}play YouTube Link/Youtube Search/Spotify Link",
-                color=0xe74c3c,
+                color=EMBED_COLOR_ERROR,
                 ctx=ctx
             )
             await ctx.send(embed=usage_embed)
             return
 
         # Then check if user is in a voice channel
-        if not ctx.author.voice:
-            embed = create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c, ctx=ctx)
-            await ctx.send(embed=embed)
+        is_valid, error_embed = check_user_in_voice(ctx)
+        if not is_valid:
+            await ctx.send(embed=error_embed)
             return
 
         # Reset explicitly_stopped flag when play command is used
@@ -68,14 +71,14 @@ class PlayCog(commands.Cog):
         processing_embed = create_embed(
             "Processing",
             f"Searching for {query}",
-            color=0x3498db,
+            color=EMBED_COLOR_INFO,
             ctx=ctx
         )
         status_msg = await ctx.send(embed=processing_embed)
         
         # Use the common connection utility
         if not await connect_to_voice(ctx, server_music_bot):
-            error_embed = create_embed("Error", "Failed to connect to voice channel", color=0xe74c3c, ctx=ctx)
+            error_embed = create_embed("Error", "Failed to connect to voice channel", color=EMBED_COLOR_ERROR, ctx=ctx)
             await status_msg.edit(embed=error_embed)
             return
 
@@ -96,19 +99,10 @@ class PlayCog(commands.Cog):
             # Only lock when modifying the queue
             async with server_music_bot.queue_lock:
                 # Add the song to the queue with all necessary metadata
-                server_music_bot.queue.append({
-                    'title': result['title'],
-                    'url': result['url'],
-                    'file_path': result['file_path'],
-                    'thumbnail': result.get('thumbnail'),
-                    'ctx': ctx,
-                    'is_stream': result.get('is_stream', False),
-                    'is_from_playlist': result.get('is_from_playlist', False),
-                    'requester': ctx.author
-                })
+                server_music_bot.queue.append(create_song_entry(result, ctx))
 
                 # Check if we should start playing
-                should_play = not server_music_bot.is_playing and not server_music_bot.waiting_for_song and not server_music_bot.voice_client.is_playing()
+                should_play = should_start_playback(server_music_bot)
 
             # These operations don't need the queue lock
             if should_play:
@@ -117,29 +111,12 @@ class PlayCog(commands.Cog):
             else:
                 # If something is already playing, just show the queue position
                 if not result.get('is_from_playlist'):
-                    queue_pos = len(server_music_bot.queue)
-                    # Check if current song is looped from the Loop cog
-                    loop_cog = self.bot.get_cog('Loop')
-                    description = f"[🎵 {result['title']}]({result['url']})"
-                    
-                    # Only show position if current song is not looping
-                    if server_music_bot.current_song:
-                        current_song_url = server_music_bot.current_song['url']
-                        is_current_looping = loop_cog and current_song_url in loop_cog.looped_songs
-                        if not is_current_looping:
-                            description += f"\nPosition in queue: {queue_pos}"
-                        
-                    # Create and send the "Added to Queue" embed
-                    queue_embed = create_embed(
-                        "Added to Queue",
-                        description,
-                        color=0x3498db,
-                        thumbnail_url=result.get('thumbnail'),
-                        ctx=ctx
+                    await send_queue_added_message(
+                        server_music_bot,
+                        ctx,
+                        result,
+                        bot=self.bot
                     )
-                    queue_msg = await ctx.send(embed=queue_embed)
-                    # Store the message for later reference (e.g., for deletion when song plays)
-                    server_music_bot.queued_messages[result['url']] = queue_msg
 
 async def setup(bot):
     """

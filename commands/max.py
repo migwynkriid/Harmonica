@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from scripts.messages import create_embed
+from scripts.constants import EMBED_COLOR_ERROR
 
 class MaxCog(commands.Cog):
     """
@@ -41,14 +42,14 @@ class MaxCog(commands.Cog):
                 await ctx.send(embed=create_embed(
                     "Error",
                     "Could not find the play command. Please make sure the bot is properly set up.",
-                    color=0xe74c3c,
+                    color=EMBED_COLOR_ERROR,
                     ctx=ctx
                 ))
         except Exception as e:
             await ctx.send(embed=create_embed(
                 "Error", 
                 f"An error occurred while playing Radio Max: {str(e)}", 
-                color=0xe74c3c, 
+                color=EMBED_COLOR_ERROR, 
                 ctx=ctx
             ))
 

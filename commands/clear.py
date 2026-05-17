@@ -1,9 +1,9 @@
-import discord
 from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 from scripts.queueclear import clear_queue_command
 from scripts.voice_checks import check_voice_state
+from scripts.constants import EMBED_COLOR_ERROR
 
 class ClearCog(commands.Cog):
     """
@@ -52,7 +52,7 @@ class ClearCog(commands.Cog):
             await clear_queue_command(ctx, server_music_bot, position)
 
         except Exception as e:
-            await ctx.send(embed=create_embed("Error", f"An error occurred while clearing: {str(e)}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", f"An error occurred while clearing: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx))
 
 async def setup(bot):
     """

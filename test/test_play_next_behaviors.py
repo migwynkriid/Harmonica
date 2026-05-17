@@ -1,6 +1,7 @@
 import sys
 import types
 import pytest
+import asyncio
 
 
 @pytest.mark.asyncio
@@ -26,6 +27,8 @@ async def test_play_next_skip_handling(monkeypatch, stub_ctx):
             self.was_skipped = True
             self.bot = None
             self.queued_messages = {}
+            self.playback_lock = asyncio.Lock()
+            self.queued_messages_lock = asyncio.Lock()
         @classmethod
         def get_instance(cls, gid):
             if gid not in cls._instances:
@@ -89,6 +92,8 @@ async def test_play_next_looped_song_deletes_message(monkeypatch, stub_ctx):
             self.was_skipped = False
             self.bot = FakeBot(looped_urls={'prev-url'})
             self.queued_messages = {}
+            self.playback_lock = asyncio.Lock()
+            self.queued_messages_lock = asyncio.Lock()
         @classmethod
         def get_instance(cls, gid):
             if gid not in cls._instances:

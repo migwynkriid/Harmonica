@@ -42,6 +42,8 @@ def load_config():
         "PREFIX": "!",                                  # Default prefix for commands (can be overridden per server)
         "LOG_LEVEL": "INFO",                            # Logging level
         "AUTO_UPDATE": True,                            # Enable/disable automatic updates
+        "GITHUB_REPO": "https://github.com/migwynkriid/Harmonica",  # GitHub repository URL for updates
+        "RUN_STARTUP_TESTS": False,                     # if True, run pytest health check on startup (slows down startup)
         "VOICE": {
             "INACTIVITY_LEAVE": False,                  # if True, leave voice channel when bot is inactive
             "INACTIVITY_TIMEOUT": 60,                   # in seconds

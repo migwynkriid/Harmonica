@@ -1,4 +1,4 @@
-import discord
+import logging
 from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
@@ -6,7 +6,10 @@ from scripts.clear_queue import clear_queue, clear_download_queue
 from scripts.voice_checks import check_voice_state
 from scripts.caching import playlist_cache
 from scripts.activity import update_activity
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_FINISHED
 import asyncio
+
+logger = logging.getLogger(__name__)
 
 class StopCog(commands.Cog):
     """
@@ -63,38 +66,38 @@ class StopCog(commands.Cog):
                     finished_embed = create_embed(
                         "Finished playing",
                         f"[{server_music_bot.current_song['title']}]({server_music_bot.current_song['url']})",
-                        color=0x808080,
+                        color=EMBED_COLOR_FINISHED,
                         thumbnail_url=server_music_bot.current_song.get('thumbnail'),
                         ctx=ctx
                     )
                     await server_music_bot.now_playing_message.edit(embed=finished_embed, view=None)
                 except Exception as e:
-                    # Silently handle errors updating now playing message
-                    pass
+                    logger.debug(f"Could not update now playing message: {e}")
             
             # Cancel any active downloads first to prevent new songs from being added
             try:
                 await server_music_bot.cancel_downloads(disconnect_voice=False)  # Don't disconnect yet
             except Exception as e:
-                # Silently handle errors canceling downloads
-                pass
+                logger.warning(f"Error canceling downloads: {e}")
             
             # Stop any current playback
             try:
                 if server_music_bot.voice_client and server_music_bot.voice_client.is_playing():
                     server_music_bot.voice_client.stop()
             except Exception as e:
-                # Silently handle errors stopping playback
-                pass
+                logger.debug(f"Error stopping playback: {e}")
             
             # Clean up all queued messages with small delay between each to avoid rate limiting
-            for message in list(server_music_bot.queued_messages.values()):
+            async with server_music_bot.queued_messages_lock:
+                queued_messages = list(server_music_bot.queued_messages.values())
+                server_music_bot.queued_messages.clear()
+            
+            for message in queued_messages:
                 try:
                     await message.delete()
                     await asyncio.sleep(0.1)  # Add 0.1-second delay between deletions
                 except Exception:
                     pass  # Message might already be deleted
-            server_music_bot.queued_messages.clear()
             
             # Clear the queue
             clear_queue(ctx.guild.id)
@@ -104,8 +107,7 @@ class StopCog(commands.Cog):
                 if server_music_bot.voice_client and server_music_bot.voice_client.is_connected():
                     await server_music_bot.voice_client.disconnect(force=True)
             except Exception as e:
-                # Silently handle errors disconnecting
-                pass
+                logger.debug(f"Error disconnecting from voice: {e}")
                 
             # Reset the music bot state
             server_music_bot.voice_client = None  # Explicitly set to None to prevent further errors
@@ -120,10 +122,10 @@ class StopCog(commands.Cog):
             # Update the bot's activity status to clear the "Playing song" status
             await update_activity(self.bot, current_song=None, is_playing=False)
             
-            await ctx.send(embed=create_embed("Stopped", "Playback stopped and cleared the queue", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Stopped", "Playback stopped and cleared the queue", color=EMBED_COLOR_ERROR, ctx=ctx))
 
         except Exception as e:
-            await ctx.send(embed=create_embed("Error", f"An error occurred while stopping: {str(e)}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", f"An error occurred while stopping: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx))
         finally:
             # Resume cache checking for future commands
             playlist_cache.resume_cache_check()

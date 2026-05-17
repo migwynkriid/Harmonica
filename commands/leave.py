@@ -1,8 +1,8 @@
-import discord
 from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 from scripts.voice_checks import check_voice_state
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_SUCCESS, ERROR_BOT_NOT_CONNECTED
 
 class LeaveCog(commands.Cog):
     """
@@ -49,12 +49,12 @@ class LeaveCog(commands.Cog):
             # Check if bot is connected to a voice channel and disconnect if so
             if server_music_bot.voice_client and server_music_bot.voice_client.is_connected():
                 await server_music_bot.voice_client.disconnect()
-                await ctx.send(embed=create_embed("Left Channel", "Successfully left the voice channel", color=0x2ecc71, ctx=ctx))
+                await ctx.send(embed=create_embed("Left Channel", "Successfully left the voice channel", color=EMBED_COLOR_SUCCESS, ctx=ctx))
             else:
-                await ctx.send(embed=create_embed("Error", "I'm not connected to a voice channel", color=0xe74c3c, ctx=ctx))
+                await ctx.send(embed=create_embed("Error", ERROR_BOT_NOT_CONNECTED, color=EMBED_COLOR_ERROR, ctx=ctx))
 
         except Exception as e:
-            await ctx.send(embed=create_embed("Error", f"An error occurred while leaving: {str(e)}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", f"An error occurred while leaving: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx))
 
 async def setup(bot):
     """

@@ -2,26 +2,9 @@ import discord
 from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
-from scripts.duration import get_audio_duration
+from scripts.duration import get_audio_duration, format_duration
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO, ERROR_QUEUE_EMPTY
 
-def format_duration(duration):
-    """
-    Format duration in seconds to mm:ss or hh:mm:ss format.
-    
-    Args:
-        duration (float): Duration in seconds
-        
-    Returns:
-        str: Formatted duration string in mm:ss or hh:mm:ss format
-    """
-    hours = int(duration // 3600)
-    minutes = int((duration % 3600) // 60)
-    seconds = int(duration % 60)
-    
-    if hours > 0:
-        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-    else:
-        return f"{minutes:02d}:{seconds:02d}"
 
 class QueueCog(commands.Cog):
     """
@@ -119,7 +102,7 @@ class QueueCog(commands.Cog):
         
         # Return empty queue message if nothing is playing or queued
         if not server_music_bot.current_song and not server_music_bot.queue and server_music_bot.download_queue.empty():
-            return create_embed("Queue is empty", "Nothing is in the queue", color=0xe74c3c, ctx=ctx), 0
+            return create_embed("Queue is empty", ERROR_QUEUE_EMPTY, color=EMBED_COLOR_ERROR, ctx=ctx), 0
 
         queue_text = ""
         shown_songs = set()  # Track shown songs to avoid duplicates
@@ -222,7 +205,7 @@ class QueueCog(commands.Cog):
         embed = create_embed(
             f"Queue",
             queue_text + footer_text,
-            color=0x3498db,
+            color=EMBED_COLOR_INFO,
             ctx=ctx
         )
         return embed, queue_count  # Return queue_count for pagination (excludes current song)

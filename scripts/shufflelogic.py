@@ -1,4 +1,5 @@
 import random
+from collections import deque
 from discord.ext import commands
 
 async def shuffle_queue(ctx, music_bot):
@@ -16,8 +17,11 @@ async def shuffle_queue(ctx, music_bot):
         if not music_bot.queue:
             return False
             
-        # Create a copy of the queue and shuffle it
-        random.shuffle(music_bot.queue)
+        # Convert to list, shuffle, and convert back to deque (with lock for thread safety)
+        async with music_bot.queue_lock:
+            queue_list = list(music_bot.queue)
+            random.shuffle(queue_list)
+            music_bot.queue = deque(queue_list)
         return True
         
     except Exception as e:

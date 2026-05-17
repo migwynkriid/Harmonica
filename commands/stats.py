@@ -1,10 +1,10 @@
-import discord
 from discord.ext import commands
 import psutil
 import json
 import os
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
+from scripts.constants import EMBED_COLOR_INFO, EMBED_COLOR_ERROR
 
 class StatsCog(commands.Cog):
     """
@@ -131,10 +131,10 @@ class StatsCog(commands.Cog):
                 f"🧠 Memory Usage: {psutil.virtual_memory().percent}%"
             )
             
-            await ctx.send(embed=create_embed("Bot Statistics", description, color=0x3498db, ctx=ctx))
+            await ctx.send(embed=create_embed("Bot Statistics", description, color=EMBED_COLOR_INFO, ctx=ctx))
             
         except Exception as e:
-            await ctx.send(embed=create_embed("Error", f"Failed to get statistics: {str(e)}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", f"Failed to get statistics: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx))
 
 async def setup(bot):
     """

@@ -2,10 +2,8 @@ import aiohttp
 import asyncio
 import discord
 import json
-import locale
 import logging
 import os
-import pytz
 import re
 import shutil
 import spotipy
@@ -20,9 +18,8 @@ from datetime import datetime
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from pathlib import Path
-from pytz import timezone
 from urllib.parse import urlparse
-from scripts.constants import RED, GREEN, BLUE, RESET, YELLOW
+from scripts.constants import RED, GREEN, BLUE, RESET, YELLOW, EMBED_COLOR_ERROR, EMBED_COLOR_INFO
 from scripts.activity import update_activity
 from scripts.after_playing_coro import AfterPlayingHandler
 from scripts.cleardownloads import clear_downloads_folder
@@ -88,6 +85,28 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 
         return cls._instances[guild_id]
 
+    @classmethod
+    def cleanup_instance(cls, guild_id):
+        """
+        Clean up and remove a server-specific music bot instance.
+        This should be called when the bot leaves a guild to free memory.
+        
+        Args:
+            guild_id: The guild ID to clean up
+        """
+        guild_id = str(guild_id)
+        if guild_id in cls._instances and guild_id != 'setup':
+            instance = cls._instances[guild_id]
+            # Clear any remaining state
+            instance.queue.clear()
+            instance.queued_messages.clear()
+            instance.in_progress_downloads.clear()
+            instance.duration_cache.clear()
+            instance.current_song = None
+            instance.voice_client = None
+            # Remove from instances
+            del cls._instances[guild_id]
+
     def __init__(self, show_credentials=False):
         """
         Initialize the music bot with default values.
@@ -98,7 +117,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         # Discord bot instance (set later)
         self.bot = None
         self.guild_id = None  # Will be set when get_instance is called
-        self.queue = []  # Song queue for this server
+        self.queue = deque()  # Song queue for this server (deque for efficient front/back operations)
         self.current_song = None  # Currently playing song
         self.is_playing = False  # Whether audio is currently playing
         self.voice_client = None  # Voice client connection
@@ -109,8 +128,10 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.command_queue = asyncio.Queue()  # Queue for commands to be processed
         self.command_processor_task = None  # Task for processing commands
         self.download_lock = asyncio.Lock()  # Lock to prevent concurrent downloads
+        self.playback_lock = asyncio.Lock()  # Lock to prevent playback race conditions
         self.bot_loop = None  # Event loop for async operations
         self.queued_messages = {}  # Messages shown when songs are queued
+        self.queued_messages_lock = asyncio.Lock()  # Lock for queued_messages dictionary
         self.current_command_msg = None  # Current command message
         self.current_command_author = None  # User who issued the current command
         self.status_messages = {}  # Status messages for various operations
@@ -118,6 +139,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         self.downloads_dir = Path(__file__).parent.parent / 'downloads'  # Directory for downloaded files
         self.playback_start_time = None  # Track when the current song started playing
         self.in_progress_downloads = {}  # Track downloads in progress for this server
+        self.in_progress_lock = asyncio.Lock()  # Lock for in_progress_downloads dictionary
         if not self.downloads_dir.exists():
             self.downloads_dir.mkdir()
         self.last_activity = time.time()  # Timestamp of last user interaction
@@ -228,7 +250,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 except Exception as e:
                     # Handle errors in command processing
                     print(f"Error processing command: {e}")
-                    error_embed = create_embed("Error", f"Failed to process command: {str(e)}", color=0xe74c3c, ctx=ctx)
+                    error_embed = create_embed("Error", f"Failed to process command: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx)
                     await self.update_or_send_message(ctx, error_embed)
                 finally:
                     # Mark the command as done
@@ -265,11 +287,12 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             print(f"Query '{query}' already downloading - queueing duplicate request")
             if self.in_progress_downloads[query]:  # If we have the song info
                 song_info = self.in_progress_downloads[query]
-                self.queue.append(song_info)
+                async with self.queue_lock:
+                    self.queue.append(song_info)
                 queue_embed = create_embed(
                     "Added to Queue 🎵", 
                     f"[ {song_info['title']}]({song_info['url']})",
-                    color=0x3498db,
+                    color=EMBED_COLOR_INFO,
                     thumbnail_url=song_info.get('thumbnail'),
                     ctx=ctx
                 )
@@ -281,7 +304,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         processing_embed = create_embed(
             "Processing",
             f"Searching for {query}",
-            color=0x3498db,
+            color=EMBED_COLOR_INFO,
             ctx=ctx
         )
         status_msg = await self.update_or_send_message(ctx, processing_embed)
@@ -331,7 +354,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             self.in_progress_downloads[query] = result  # Store the song info
                         if not result:
                             if not status_msg:
-                                error_embed = create_embed("Error", "Failed to download song", color=0xe74c3c, ctx=ctx)
+                                error_embed = create_embed("Error", "Failed to download song", color=EMBED_COLOR_ERROR, ctx=ctx)
                                 await self.update_or_send_message(ctx, error_embed)
                             continue
                         if status_msg and not result.get('is_from_playlist'):
@@ -350,24 +373,26 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 playlist_embed = create_embed(
                                     "Adding Playlist",
                                     f"Adding {len(result['entries'])} songs to queue...",
-                                    color=0x3498db,
+                                    color=EMBED_COLOR_INFO,
                                     ctx=ctx
                                 )
                                 await status_msg.edit(embed=playlist_embed)
                         if self.voice_client and self.voice_client.is_playing():
-                            self.queue.append(result)
+                            async with self.queue_lock:
+                                self.queue.append(result)
                             if not result.get('is_from_playlist'):
                                 queue_embed = create_embed(
                                     "Added to Queue 🎵", 
                                     f"[ {result['title']}]({result['url']})",
-                                    color=0x3498db,
+                                    color=EMBED_COLOR_INFO,
                                     thumbnail_url=result.get('thumbnail'),
                                     ctx=ctx
                                 )
                                 queue_msg = await ctx.send(embed=queue_embed)
                                 self.queued_messages[result['url']] = queue_msg
                         else:
-                            self.queue.append(result)
+                            async with self.queue_lock:
+                                self.queue.append(result)
                             await play_next(ctx)
                 except Exception as e:
                     print(f"Error processing download: {str(e)}")
@@ -375,7 +400,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         error_embed = create_embed(
                             "Error ❌",
                             str(e),
-                            color=0xe74c3c,
+                            color=EMBED_COLOR_ERROR,
                             ctx=ctx if ctx else status_msg.channel
                         )
                         await status_msg.edit(embed=error_embed)
@@ -441,8 +466,8 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
             except asyncio.QueueEmpty:
                 break
                 
-        # Clear any incomplete downloads from the queue
-        self.queue = [song for song in self.queue if not isinstance(song.get('file_path'), type(None))]
+        # Clear any incomplete downloads from the queue (maintain deque type)
+        self.queue = deque(song for song in self.queue if not isinstance(song.get('file_path'), type(None)))
         
         # Clear in-progress downloads tracking for this server
         self.in_progress_downloads.clear()
@@ -457,8 +482,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         if self.voice_client and self.voice_client.is_playing():
             self.voice_client.stop()
         
-        # Clear the queue and disconnect if requested
-        self.queue.clear()
+        # Clear the queue (use lock for thread safety) and disconnect if requested
+        async with self.queue_lock:
+            self.queue.clear()
         if disconnect_voice:
             if self.voice_client and self.voice_client.is_connected():
                 await self.voice_client.disconnect()
@@ -596,7 +622,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                     await status_msg.edit(embed=create_embed(
                                         "Channel Detected",
                                         f"Found channel @{username}. Processing videos...",
-                                        color=0x3498db,
+                                        color=EMBED_COLOR_INFO,
                                         ctx=ctx
                                     ))
                                     
@@ -616,7 +642,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         await status_msg.edit(embed=create_embed(
                             "Channel Detected",
                             f"Found channel {channel_name}. Processing as a playlist...",
-                            color=0x3498db,
+                            color=EMBED_COLOR_INFO,
                             ctx=ctx
                         ))
                     
@@ -629,7 +655,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                         await status_msg.edit(embed=create_embed(
                             "Error",
                             "Could not process this channel. Please try a specific video URL instead.",
-                            color=0xe74c3c,
+                            color=EMBED_COLOR_ERROR,
                             ctx=ctx
                         ))
                     return None
@@ -651,7 +677,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             await status_msg.edit(embed=create_embed(
                                 "Skipped ⚠️",
                                 "This video was previously marked as unavailable.",
-                                color=0xe74c3c,
+                                color=EMBED_COLOR_ERROR,
                                 ctx=ctx
                             ))
                             try:
@@ -773,7 +799,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                     embed=create_embed(
                                         "Error",
                                         "Could not retrieve details from Spotify URL.",
-                                        color=0xe74c3c,
+                                        color=EMBED_COLOR_ERROR,
                                         ctx=status_msg.channel
                                     )
                                 )
@@ -832,7 +858,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                 embed=create_embed(
                                     "Error",
                                     f"Failed to process radio stream: {str(e)}",
-                                    color=0xe74c3c,
+                                    color=EMBED_COLOR_ERROR,
                                     ctx=status_msg.channel
                                 )
                             )
@@ -1045,7 +1071,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                                 await status_msg.edit(embed=create_embed(
                                                     "Channel Detected",
                                                     f"Found channel for {original_query}. Processing as a playlist...",
-                                                    color=0x3498db,
+                                                    color=EMBED_COLOR_INFO,
                                                     ctx=ctx
                                                 ))
                                             
@@ -1090,7 +1116,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                                     await status_msg.edit(embed=create_embed(
                                                         "Channel Detected",
                                                         f"Found channel for {query}. Processing as a playlist...",
-                                                        color=0x3498db,
+                                                        color=EMBED_COLOR_INFO,
                                                         ctx=ctx
                                                     ))
                                                 
@@ -1160,7 +1186,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                         playlist_embed = create_embed(
                                             "Processing YouTube Mix",
                                             description,
-                                            color=0x3498db,
+                                            color=EMBED_COLOR_INFO,
                                             ctx=progress.ctx
                                         )
                                         # Get thumbnail from first entry
@@ -1208,10 +1234,15 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                                         song_info = await self.download_song(video_url, status_msg=None)
                                                         if song_info:
                                                             song_info['is_from_playlist'] = True
+                                                            # Check playback conditions BEFORE acquiring lock to avoid deadlock
+                                                            should_start_playback = False
                                                             async with self.queue_lock:
                                                                 self.queue.append(song_info)
                                                                 if not self.is_playing and not self.voice_client.is_playing() and len(self.queue) == 1:
-                                                                    await play_next(progress.ctx)
+                                                                    should_start_playback = True
+                                                            # Call play_next OUTSIDE the queue_lock to avoid deadlock
+                                                            if should_start_playback:
+                                                                await play_next(progress.ctx)
                                             except Exception as e:
                                                 print(f"Error processing Mix playlist: {str(e)}")
                                         
@@ -1277,7 +1308,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                                         await status_msg.edit(embed=create_embed(
                                             "Channel Detected",
                                             f"Found channel for {uploader}. Processing as a playlist...",
-                                            color=0x3498db,
+                                            color=EMBED_COLOR_INFO,
                                             ctx=ctx
                                         ))
                                     
@@ -1320,7 +1351,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                             playlist_embed = create_embed(
                                 "Adding Playlist 🎵",
                                 f"[ {playlist_title}]({playlist_url})\nDownloading first song...",
-                                color=0x3498db,
+                                color=EMBED_COLOR_INFO,
                                 thumbnail_url=video_thumbnail,
                                 ctx=ctx
                             )
@@ -1446,7 +1477,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                     error_embed = create_embed(
                         "Error ❌",
                         str(e),
-                        color=0xe74c3c,
+                        color=EMBED_COLOR_ERROR,
                         ctx=ctx if ctx else status_msg.channel
                     )
                     await status_msg.edit(embed=error_embed)
@@ -1459,7 +1490,7 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
                 error_embed = create_embed(
                     "Error ❌",
                     str(e),
-                    color=0xe74c3c,
+                    color=EMBED_COLOR_ERROR,
                     ctx=ctx if ctx else status_msg.channel
                 )
                 await status_msg.edit(embed=error_embed)

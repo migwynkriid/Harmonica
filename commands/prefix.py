@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from scripts.server_prefixes import set_prefix, reset_prefix, load_server_prefixes
 from scripts.config import config_vars
+from scripts.constants import EMBED_COLOR_INFO, EMBED_COLOR_SUCCESS, EMBED_COLOR_ERROR
 from datetime import datetime
 
 class PrefixCog(commands.Cog):
@@ -35,7 +36,7 @@ class PrefixCog(commands.Cog):
                 description=f"Current prefix: `{current_prefix}`\n\n"
                             f"To change the prefix: `{current_prefix}prefix new_prefix\n`"
                             f"To reset to default: `{current_prefix}prefix default`",
-                color=discord.Color.blue()
+                color=EMBED_COLOR_INFO
             )
             embed.set_footer(text=footer_text, icon_url=footer_icon)
             embed.timestamp = datetime.now()
@@ -51,13 +52,13 @@ class PrefixCog(commands.Cog):
                 embed = discord.Embed(
                     title="Prefix Reset",
                     description=f"Server prefix has been reset to the default: `{default_prefix}`",
-                    color=discord.Color.green()
+                    color=EMBED_COLOR_SUCCESS
                 )
             else:
                 embed = discord.Embed(
                     title="Prefix Unchanged",
                     description=f"Server is already using the default prefix: `{default_prefix}`",
-                    color=discord.Color.blue()
+                    color=EMBED_COLOR_INFO
                 )
             
             embed.set_footer(text=footer_text, icon_url=footer_icon)
@@ -70,7 +71,7 @@ class PrefixCog(commands.Cog):
             embed = discord.Embed(
                 title="Prefix Too Long",
                 description="The prefix cannot be longer than 10 characters.",
-                color=discord.Color.red()
+                color=EMBED_COLOR_ERROR
             )
             embed.set_footer(text=footer_text, icon_url=footer_icon)
             embed.timestamp = datetime.now()
@@ -85,13 +86,13 @@ class PrefixCog(commands.Cog):
                 title="Prefix Changed",
                 description=f"Server prefix has been changed to: `{new_prefix}`\n\n"
                             f"Example: `{new_prefix}play`",
-                color=discord.Color.green()
+                color=EMBED_COLOR_SUCCESS
             )
         else:
             embed = discord.Embed(
                 title="Prefix Unchanged",
                 description=f"Server is already using the prefix: `{new_prefix}`",
-                color=discord.Color.blue()
+                color=EMBED_COLOR_INFO
             )
         
         embed.set_footer(text=footer_text, icon_url=footer_icon)
@@ -149,7 +150,7 @@ class PrefixCog(commands.Cog):
             title="Custom Prefix",
             description=f"My prefix for this server is `{server_prefix}`\n\n"
                         f"Use `{server_prefix}{command}` instead",
-            color=discord.Color.blue()
+            color=EMBED_COLOR_INFO
         )
         
         # Add timestamp to the embed

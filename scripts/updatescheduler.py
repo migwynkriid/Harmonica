@@ -1,15 +1,32 @@
 import discord
 from discord.ext import tasks, commands
 import subprocess
+import asyncio
 import os
 import sys
 import re
 from datetime import datetime
 import pytz
-import json
-from scripts.constants import RED, GREEN, BLUE, YELLOW, RESET
+from scripts.constants import RED, GREEN, BLUE, YELLOW, RESET, EMBED_COLOR_INFO
+from scripts.config import load_config
 
-def create_embed(title, description, color=0x3498db):
+
+async def run_subprocess(*args, **kwargs):
+    """
+    Run subprocess.run in a thread pool to avoid blocking the event loop.
+    
+    Args:
+        *args: Arguments to pass to subprocess.run
+        **kwargs: Keyword arguments to pass to subprocess.run
+        
+    Returns:
+        subprocess.CompletedProcess: The result of the subprocess
+    """
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, lambda: subprocess.run(*args, **kwargs))
+
+
+def create_embed(title, description, color=EMBED_COLOR_INFO):
     """
     Create a Discord embed with consistent styling.
     
@@ -32,20 +49,8 @@ def create_embed(title, description, color=0x3498db):
     )
     return embed
 
-def load_config():
-    """
-    Load configuration from the config.json file.
-    
-    This function reads and parses the bot's configuration file to access
-    settings related to auto-updates and other features.
-    
-    Returns:
-        dict: The configuration settings as a dictionary
-    """
-    with open('config.json', 'r') as f:
-        return json.load(f)
 
-def get_git_commit_details(from_commit, to_commit):
+async def get_git_commit_details(from_commit, to_commit):
     """
     Get detailed information about git commits between two commit hashes.
     
@@ -63,7 +68,7 @@ def get_git_commit_details(from_commit, to_commit):
         # Get commit details using git log
         log_format = "--pretty=format:%h|%s|%an|%ad"
         log_command = ["git", "log", f"{from_commit}..{to_commit}", log_format]
-        result = subprocess.run(log_command, capture_output=True, text=True, check=True)
+        result = await run_subprocess(log_command, capture_output=True, text=True, check=True)
         
         commits = []
         for line in result.stdout.strip().split('\n'):
@@ -223,12 +228,16 @@ async def check_updates(bot):
         return
 
     try:
-        # First check for git updates
-        current_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
-        # Fetch updates from remote
-        subprocess.run(["git", "fetch"], check=True, capture_output=True, text=True)
-        # Check if we're behind the remote
-        status = subprocess.run(["git", "status", "-uno"], check=True, capture_output=True, text=True).stdout
+        # First check if we're in a git repository
+        git_available = False
+        current_commit = None
+        try:
+            result = await run_subprocess(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True)
+            current_commit = result.stdout.strip()
+            git_available = True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            # Not a git repository or git not installed - skip git updates silently
+            pass
         
         needs_restart = False
         git_updated = False
@@ -236,47 +245,57 @@ async def check_updates(bot):
         git_commits = []
         pip_updates = []
 
-        if "Your branch is behind" in status:
-            # Only proceed with update if not in voice chat
-            from bot import MusicBot
+        if git_available:
+            # Fetch updates from remote (network call - run async)
+            await run_subprocess(["git", "fetch"], check=True, capture_output=True, text=True)
+            # Check if we're behind the remote
+            status_result = await run_subprocess(["git", "status", "-uno"], check=True, capture_output=True, text=True)
+            status = status_result.stdout
             
-            # Check if any server instance is in a voice channel
-            is_in_voice = False
-            for guild_id, instance in MusicBot._instances.items():
-                if instance.voice_client and instance.voice_client.is_connected():
-                    is_in_voice = True
-                    break
-            
-            if not is_in_voice:
-                try:
-                    # Get the remote commit before pulling
+            if "Your branch is behind" in status:
+                # Only proceed with update if not in voice chat
+                from bot import MusicBot
+                
+                # Check if any server instance is in a voice channel
+                is_in_voice = False
+                for guild_id, instance in MusicBot._instances.items():
+                    if instance.voice_client and instance.voice_client.is_connected():
+                        is_in_voice = True
+                        break
+                
+                if not is_in_voice:
                     try:
-                        remote_commit = subprocess.run(
-                            ["git", "rev-parse", "--short", "origin/HEAD"], 
-                            check=True, capture_output=True, text=True
-                        ).stdout.strip()
-                    except subprocess.CalledProcessError:
-                        # origin/HEAD not set, fix it automatically
-                        subprocess.run(["git", "remote", "set-head", "origin", "-a"], check=True, capture_output=True)
-                        remote_commit = subprocess.run(
-                            ["git", "rev-parse", "--short", "origin/HEAD"], 
-                            check=True, capture_output=True, text=True
-                        ).stdout.strip()
-                    
-                    # Pull updates
-                    subprocess.run(["git", "pull"], check=True, capture_output=True, text=True)
-                    new_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
-                    
-                    if current_commit != new_commit:
-                        # Get detailed commit information
-                        git_commits = get_git_commit_details(current_commit, new_commit)
-                        needs_restart = True
-                        git_updated = True
-                except Exception as e:
-                    print(f"{RED}Warning: Failed to pull git updates: {str(e)}{RESET}")
+                        # Get the remote commit before pulling
+                        try:
+                            remote_result = await run_subprocess(
+                                ["git", "rev-parse", "--short", "origin/HEAD"], 
+                                check=True, capture_output=True, text=True
+                            )
+                            remote_commit = remote_result.stdout.strip()
+                        except subprocess.CalledProcessError:
+                            # origin/HEAD not set, fix it automatically
+                            await run_subprocess(["git", "remote", "set-head", "origin", "-a"], check=True, capture_output=True)
+                            remote_result = await run_subprocess(
+                                ["git", "rev-parse", "--short", "origin/HEAD"], 
+                                check=True, capture_output=True, text=True
+                            )
+                            remote_commit = remote_result.stdout.strip()
+                        
+                        # Pull updates (network call - run async)
+                        await run_subprocess(["git", "pull"], check=True, capture_output=True, text=True)
+                        new_result = await run_subprocess(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True)
+                        new_commit = new_result.stdout.strip()
+                        
+                        if current_commit != new_commit:
+                            # Get detailed commit information
+                            git_commits = await get_git_commit_details(current_commit, new_commit)
+                            needs_restart = True
+                            git_updated = True
+                    except Exception as e:
+                        print(f"{RED}Warning: Failed to pull git updates: {str(e)}{RESET}")
 
-        # Continue with pip package updates check
-        result = subprocess.run(
+        # Continue with pip package updates check (network call - run async)
+        result = await run_subprocess(
             [sys.executable, '-m', 'pip', 'install', '--upgrade', '--dry-run', '--pre', '-r', 'requirements.txt', '--break-system-packages'],
             capture_output=True,
             text=True
@@ -301,8 +320,8 @@ async def check_updates(bot):
 
             if not is_in_voice:
                 try:
-                    # Run actual update command
-                    subprocess.run(
+                    # Run actual update command (network call - run async)
+                    await run_subprocess(
                         [sys.executable, '-m', 'pip', 'install', '--upgrade', '--pre', '-r', 'requirements.txt', '--break-system-packages'],
                         check=True,
                         capture_output=True,
@@ -369,6 +388,16 @@ async def update_checker(bot):
         bot: The Discord bot instance
     """
     await check_updates(bot)
+
+@update_checker.before_loop
+async def before_update_checker():
+    """
+    Wait before running the first update check.
+    
+    This delays the first update check by 10 seconds to allow the bot
+    to become fully responsive before running network-heavy operations.
+    """
+    await asyncio.sleep(10)  # Delay first check to not block startup
 
 async def startup_check(bot):
     """

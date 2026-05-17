@@ -1,10 +1,10 @@
-import discord
 from discord.ext import commands
 import time
 from scripts.messages import create_embed
-from scripts.duration import get_audio_duration
+from scripts.duration import get_audio_duration, format_duration
 from scripts.ui_components import create_now_playing_view
 from scripts.permissions import check_dj_role
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO, ERROR_NOTHING_PLAYING
 
 class NowPlayingCog(commands.Cog):
     """
@@ -47,7 +47,7 @@ class NowPlayingCog(commands.Cog):
             return
 
         if not server_music_bot.current_song:
-            await ctx.send(embed=create_embed("Error", "No song is currently playing!", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", ERROR_NOTHING_PLAYING, color=EMBED_COLOR_ERROR, ctx=ctx))
             return
 
         # Calculate elapsed time since song started
@@ -71,8 +71,8 @@ class NowPlayingCog(commands.Cog):
                     # Update the current song with the duration
                     server_music_bot.current_song['duration'] = total_duration
         
-        # Format the current time in MM:SS format
-        current_time = f"{int(current_position // 60):02d}:{int(current_position % 60):02d}"
+        # Format the current time using shared utility
+        current_time = format_duration(current_position)
         
         # Create the progress information based on whether it's a stream or not
         if is_stream:
@@ -81,7 +81,7 @@ class NowPlayingCog(commands.Cog):
         else:
             # For regular songs, calculate percentage and create progress bar
             percentage = min((current_position / total_duration * 100) if total_duration > 0 else 0, 100)
-            total_time = f"{int(total_duration // 60):02d}:{int(total_duration % 60):02d}"
+            total_time = format_duration(total_duration)
             
             # Create progress bar with ▬ and :radio_button:
             # The bar has 20 segments, and we calculate which segment the playback is at
@@ -97,7 +97,7 @@ class NowPlayingCog(commands.Cog):
         embed = create_embed(
             "Now playing 🎵",
             description,
-            color=0x3498db,
+            color=EMBED_COLOR_INFO,
             thumbnail_url=server_music_bot.current_song.get('thumbnail'),
             ctx=ctx
         )

@@ -1,9 +1,10 @@
-import discord
+from collections import deque
 from discord.ext import commands
 import time
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
 from scripts.voice_checks import check_voice_state
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO, ERROR_BOT_NOT_CONNECTED, ERROR_NOTHING_PLAYING
 
 class SkipCog(commands.Cog):
     """
@@ -46,10 +47,10 @@ class SkipCog(commands.Cog):
         server_music_bot = MusicBot.get_instance(str(guild_id))
         
         if not server_music_bot or not server_music_bot.voice_client:
-            return False, "Not connected to a voice channel"
+            return False, ERROR_BOT_NOT_CONNECTED
 
         if not server_music_bot.voice_client.is_playing() and not server_music_bot.voice_client.is_paused():
-            return False, "Nothing is playing to skip"
+            return False, ERROR_NOTHING_PLAYING
 
         if amount < 1:
             return False, "Skip amount must be at least 1"
@@ -68,8 +69,9 @@ class SkipCog(commands.Cog):
         # If song is looping, remove it from looped songs and clear its instances from queue
         if is_looping:
             loop_cog.looped_songs.remove(current_song['url'])
-            # Remove all instances of the looped song from the queue
-            server_music_bot.queue = [song for song in server_music_bot.queue if song['url'] != current_song['url']]
+            # Remove all instances of the looped song from the queue (maintain deque type)
+            async with server_music_bot.queue_lock:
+                server_music_bot.queue = deque(song for song in server_music_bot.queue if song['url'] != current_song['url'])
             server_music_bot.after_song_callback = None
         
         # Stop current song - this will trigger the after_playing callback
@@ -79,7 +81,10 @@ class SkipCog(commands.Cog):
         if amount > 1:
             songs_to_remove = min(amount - 1, len(server_music_bot.queue))
             if songs_to_remove > 0:
-                del server_music_bot.queue[:songs_to_remove]
+                # Use popleft() to remove songs from deque (slice deletion doesn't work on deque)
+                async with server_music_bot.queue_lock:
+                    for _ in range(songs_to_remove):
+                        server_music_bot.queue.popleft()
                 return True, f"Skipped current song and {songs_to_remove} songs from queue"
         
         # Update last activity timestamp
@@ -118,7 +123,7 @@ class SkipCog(commands.Cog):
             success, result = await self._skip_song(amount, ctx)
             
             if not success:
-                await ctx.send(embed=create_embed("Error", result, color=0xe74c3c, ctx=ctx))
+                await ctx.send(embed=create_embed("Error", result, color=EMBED_COLOR_ERROR, ctx=ctx))
                 return
 
             # Store ctx in current_song for footer information
@@ -128,10 +133,10 @@ class SkipCog(commands.Cog):
             # Don't send a skip message here since it's handled by the after_playing callback
             # Only show message for multiple skips
             if isinstance(result, dict) and amount > 1:
-                await ctx.send(embed=create_embed("Skipped", f"Skipped current song and {amount - 1} songs from queue", color=0x3498db, ctx=ctx))
+                await ctx.send(embed=create_embed("Skipped", f"Skipped current song and {amount - 1} songs from queue", color=EMBED_COLOR_INFO, ctx=ctx))
 
         except Exception as e:
-            await ctx.send(embed=create_embed("Error", f"An error occurred while skipping: {str(e)}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", f"An error occurred while skipping: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx))
 
 async def setup(bot):
     """

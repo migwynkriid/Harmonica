@@ -1,7 +1,9 @@
 import discord
+from collections import deque
 from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO, ERROR_NOT_IN_VOICE, ERROR_DIFFERENT_CHANNEL, ERROR_BOT_NOT_CONNECTED
 import asyncio
 
 class Loop(commands.Cog):
@@ -55,7 +57,7 @@ class Loop(commands.Cog):
             
         # Check if the bot is in a voice channel
         if not music_bot.voice_client or not music_bot.voice_client.is_connected():
-            return False, "Bot is not connected to a voice channel!"
+            return False, ERROR_BOT_NOT_CONNECTED
             
         # Check if audio is actually playing
         if not music_bot.voice_client.is_playing():
@@ -73,14 +75,16 @@ class Loop(commands.Cog):
             self.looped_songs.add(current_song_url)
             
             # Add the song to the queue multiple times
-            for _ in range(count):
-                music_bot.queue.append(music_bot.current_song.copy())
+            async with music_bot.queue_lock:
+                for _ in range(count):
+                    music_bot.queue.append(music_bot.current_song.copy())
             
             # Set up a callback to repeat the song when it finishes
             async def repeat_song(music_bot, ctx):
                 # Only add the song back to the queue if it's still looped
                 if current_song_url in self.looped_songs:
-                    music_bot.queue.append(music_bot.current_song.copy())
+                    async with music_bot.queue_lock:
+                        music_bot.queue.append(music_bot.current_song.copy())
                     
             # Set the callback
             music_bot.after_song_callback = lambda: asyncio.create_task(
@@ -95,8 +99,9 @@ class Loop(commands.Cog):
             # Clear the callback when loop is disabled
             music_bot.after_song_callback = None
             
-            # Remove all songs from queue that match the current song's URL
-            music_bot.queue = [song for song in music_bot.queue if song['url'] != current_song_url]
+            # Remove all songs from queue that match the current song's URL (maintain deque type)
+            async with music_bot.queue_lock:
+                music_bot.queue = deque(song for song in music_bot.queue if song['url'] != current_song_url)
             
             return True, "Looping disabled for the current song."
 
@@ -120,7 +125,7 @@ class Loop(commands.Cog):
         
         # Check if user is in voice chat
         if not ctx.author.voice:
-            await ctx.send(embed=create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", ERROR_NOT_IN_VOICE, color=EMBED_COLOR_ERROR, ctx=ctx))
             return
         
         # If MusicBot doesn't have a voice client but Discord does, try to sync them
@@ -140,13 +145,13 @@ class Loop(commands.Cog):
             
         # Check if user is in the same voice chat as the bot
         if music_bot.voice_client and ctx.author.voice.channel != music_bot.voice_client.channel:
-            await ctx.send(embed=create_embed("Error", "You must be in the same voice channel as the bot to use this command!", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", ERROR_DIFFERENT_CHANNEL, color=EMBED_COLOR_ERROR, ctx=ctx))
             return
         
         success, result = await self._toggle_loop(ctx, count)
         
         if not success:
-            await ctx.send(embed=create_embed("Error", result, color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", result, color=EMBED_COLOR_ERROR, ctx=ctx))
             return
 
         # Check if the song is now looped (music_bot already fetched above)

@@ -4,6 +4,7 @@ import lyricsgenius
 import os
 from azapi import AZlyrics
 from scripts.messages import create_embed
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_INFO, ERROR_NOTHING_PLAYING
 
 def create_token_file(filepath, token_prefix):
     """
@@ -173,7 +174,7 @@ async def send_lyrics_embed(ctx, title, artist, lyrics, source=""):
     embed = discord.Embed(
         title=f"Lyrics for: {title}",
         description=f"Artist: {artist}\nSource: {source}",
-        color=0x3498db
+        color=EMBED_COLOR_INFO
     )
     
     # Use a slightly smaller chunk size to be safe
@@ -219,17 +220,17 @@ async def lyrics(ctx):
                     break
     
     if not music_bot:
-        await ctx.send(embed=create_embed("Error", "Music bot is not initialized yet. Please wait a moment and try again.", color=0xe74c3c, ctx=ctx))
+        await ctx.send(embed=create_embed("Error", "Music bot is not initialized yet. Please wait a moment and try again.", color=EMBED_COLOR_ERROR, ctx=ctx))
         return
 
     if not music_bot.current_song:
-        await ctx.send(embed=create_embed("Error", "No song is currently playing!", color=0xe74c3c, ctx=ctx))
+        await ctx.send(embed=create_embed("Error", ERROR_NOTHING_PLAYING, color=EMBED_COLOR_ERROR, ctx=ctx))
         return
         
     # Get current song title and clean it
     query = music_bot.current_song.get('title')
     if not query:
-        await ctx.send(embed=create_embed("Error", "Could not get the current song's title.", color=0xe74c3c, ctx=ctx))
+        await ctx.send(embed=create_embed("Error", "Could not get the current song's title.", color=EMBED_COLOR_ERROR, ctx=ctx))
         return
     
     # Clean the song title before searching
@@ -243,19 +244,19 @@ async def lyrics(ctx):
             if not content.startswith('YOUR_GENIUS_CLIENT_ACCESS_TOKEN='):
                 with open(token_file, 'w') as f:
                     f.write('YOUR_GENIUS_CLIENT_ACCESS_TOKEN=')
-                await ctx.send(embed=create_embed("Configuration Error", "Invalid token format. The `.geniuslyrics` file has been reset. Please add your token after 'YOUR_GENIUS_CLIENT_ACCESS_TOKEN='", color=0xe74c3c, ctx=ctx))
+                await ctx.send(embed=create_embed("Configuration Error", "Invalid token format. The `.geniuslyrics` file has been reset. Please add your token after 'YOUR_GENIUS_CLIENT_ACCESS_TOKEN='", color=EMBED_COLOR_ERROR, ctx=ctx))
                 return
             genius_token = content.split('YOUR_GENIUS_CLIENT_ACCESS_TOKEN=', 1)[1].strip()
     except FileNotFoundError:
         # Try to create the file if it doesn't exist
         try:
             create_token_file(token_file, 'YOUR_GENIUS_CLIENT_ACCESS_TOKEN')
-            await ctx.send(embed=create_embed("Configuration", "Created `.geniuslyrics` file. Please add your Genius API token after 'YOUR_GENIUS_CLIENT_ACCESS_TOKEN='", color=0x3498db, ctx=ctx))
+            await ctx.send(embed=create_embed("Configuration", "Created `.geniuslyrics` file. Please add your Genius API token after 'YOUR_GENIUS_CLIENT_ACCESS_TOKEN='", color=EMBED_COLOR_INFO, ctx=ctx))
         except Exception as e:
-            await ctx.send(embed=create_embed("Error", f"Error creating `.geniuslyrics` file: {str(e)}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", f"Error creating `.geniuslyrics` file: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx))
         return
     except Exception as e:
-        await ctx.send(embed=create_embed("Error", f"Error reading Genius API token: {str(e)}", color=0xe74c3c, ctx=ctx))
+        await ctx.send(embed=create_embed("Error", f"Error reading Genius API token: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx))
         return
     
     if not genius_token:
@@ -281,11 +282,11 @@ async def lyrics(ctx):
                 await send_lyrics_embed(ctx, query, artist if artist else "Unknown Artist", lyrics, "AZLyrics")
                 return
             
-            await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {query}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {query}", color=EMBED_COLOR_ERROR, ctx=ctx))
             return
                 
         except Exception as e:
-            await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {query}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {query}", color=EMBED_COLOR_ERROR, ctx=ctx))
             return
     
     try:
@@ -301,7 +302,7 @@ async def lyrics(ctx):
         if "403" in str(e):
             pass  # Skip to AZLyrics fallback
         else:
-            await ctx.send(embed=create_embed("Error", f"An error occurred while fetching lyrics: {str(e)}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", f"An error occurred while fetching lyrics: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx))
             return
             
     # If Genius fails, try with AZLyrics
@@ -326,7 +327,7 @@ async def lyrics(ctx):
             await send_lyrics_embed(ctx, query, artist if artist else "Unknown Artist", lyrics, "AZLyrics")
             return
         
-        await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {cleaned_query}", color=0xe74c3c, ctx=ctx))
+        await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {cleaned_query}", color=EMBED_COLOR_ERROR, ctx=ctx))
             
     except Exception as e:
-        await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {cleaned_query}", color=0xe74c3c, ctx=ctx))
+        await ctx.send(embed=create_embed("Not Found", f"Could not find lyrics for: {cleaned_query}", color=EMBED_COLOR_ERROR, ctx=ctx))

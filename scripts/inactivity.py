@@ -14,7 +14,6 @@ async def start_inactivity_checker(bot_instance):
         bot_instance: The MusicBot instance to monitor for inactivity
     """
     try:
-        await check_inactivity(bot_instance)
         bot_instance._inactivity_task = bot_instance.bot_loop.create_task(check_inactivity(bot_instance))
     except Exception as e:
         print(f"Error starting inactivity checker: {str(e)}")

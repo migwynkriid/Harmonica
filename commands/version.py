@@ -3,6 +3,7 @@ import discord
 import yt_dlp
 import asyncio
 import os
+from scripts.constants import EMBED_COLOR_INFO, EMBED_COLOR_ERROR
 
 async def setup(bot):
     """
@@ -28,7 +29,7 @@ async def ytdlp(ctx):
     """
     try:
         # Send initial status message
-        status_msg = await ctx.send(embed=discord.Embed(title="Bot Version", description="Checking versions...", color=0x3498db))
+        status_msg = await ctx.send(embed=discord.Embed(title="Bot Version", description="Checking versions...", color=EMBED_COLOR_INFO))
         
         # Get yt-dlp version
         try:
@@ -37,7 +38,7 @@ async def ytdlp(ctx):
             version = "Unknown"
 
         # Create embed with yt-dlp version
-        embed = discord.Embed(title="Bot Version", description=f"yt-dlp: `{version}`", color=0x3498db)
+        embed = discord.Embed(title="Bot Version", description=f"yt-dlp: `{version}`", color=EMBED_COLOR_INFO)
         await status_msg.edit(embed=embed)
             
         # Get git commit hash
@@ -76,4 +77,4 @@ async def ytdlp(ctx):
         await status_msg.edit(embed=embed)
             
     except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"An error occurred: {str(e)}", color=0xe74c3c))
+        await ctx.send(embed=discord.Embed(title="Error", description=f"An error occurred: {str(e)}", color=EMBED_COLOR_ERROR))

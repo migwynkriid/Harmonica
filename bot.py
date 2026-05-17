@@ -14,7 +14,7 @@ from datetime import datetime
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from scripts.commandlogger import CommandLogger
-from scripts.constants import RED, GREEN, BLUE, RESET, YELLOW
+from scripts.constants import RED, GREEN, BLUE, RESET, YELLOW, EMBED_COLOR_ERROR
 from scripts.musicbot import MusicBot
 from scripts.process_queue import process_queue
 from scripts.clear_queue import clear_queue
@@ -27,6 +27,7 @@ from scripts.ytdlp import get_ytdlp_path
 from scripts.ffmpeg import get_ffmpeg_path
 from scripts.js_runtime import get_js_runtime_config
 from scripts.cleardownloads import clear_downloads_folder
+from scripts.caching import playlist_cache
 from scripts.load_commands import load_commands
 from scripts.load_scripts import load_scripts
 from scripts.activity import update_activity
@@ -105,7 +106,8 @@ bot = commands.Bot(
     intents=intents,
     help_command=None,  # Disable default help command
     case_insensitive=True,  # Make commands case-insensitive
-    owner_id=int(OWNER_ID)  # Set bot owner
+    owner_id=int(OWNER_ID),  # Set bot owner
+    chunk_guilds_at_startup=False  # Don't download full member lists on startup (faster)
 )
 
 # Initialize command logger
@@ -135,10 +137,17 @@ async def on_command_error(ctx, error):
         embed=create_embed(
             "Error",
             f"Error: {str(error)}",
-            color=0xe74c3c,
+            color=EMBED_COLOR_ERROR,
             ctx=ctx
         )
     )
+
+@bot.event
+async def on_guild_remove(guild):
+    """Event handler for when the bot is removed from a guild - clean up resources"""
+    print(f"{YELLOW}Bot removed from guild: {guild.name} ({guild.id}){RESET}")
+    # Clean up the MusicBot instance to free memory
+    MusicBot.cleanup_instance(guild.id)
 
 @bot.event
 async def on_voice_state_update(member, before, after):
@@ -175,6 +184,10 @@ async def on_ready():
     
     clear_downloads_folder()
     set_high_priority()
+    
+    # Import uncached files in background (don't block startup)
+    asyncio.create_task(playlist_cache.ensure_cache_imported())
+    
     prefix = config_vars.get('PREFIX', '!')  # Get prefix from config
     
     # Setup a MusicBot instance for initialization
@@ -182,8 +195,19 @@ async def on_ready():
     
     # Display the ASCII art logo first
     with open('scripts/consoleprint.txt', 'r') as f: print(f"{BLUE}{f.read()}{RESET}")
-    commit_count = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD']).decode('utf-8').strip()
-    print(f"{GREEN}\nCurrent commit count: {BLUE}{commit_count}{RESET}")
+    
+    # Try to get git commit count (may fail if not a git repo) - run in thread pool
+    try:
+        loop = asyncio.get_event_loop()
+        commit_count = await loop.run_in_executor(
+            None, 
+            lambda: subprocess.check_output(['git', 'rev-list', '--count', 'HEAD'], stderr=subprocess.DEVNULL).decode('utf-8').strip()
+        )
+        print(f"{GREEN}\nCurrent commit count: {BLUE}{commit_count}{RESET}")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        # Not a git repository or git not installed - skip commit count
+        pass
+    
     print(f"{GREEN}YT-DLP version: {BLUE}{yt_dlp.version.__version__}{RESET}")
     get_js_runtime_config(verbose=True)
     print(f"----------------------------------------")
@@ -192,16 +216,20 @@ async def on_ready():
     setup_bot.show_credentials()
     MusicBot._credentials_shown = True
     
-    # Continue with the rest of initialization
-    await update_activity(bot)
-    owner_name = f"{RED}Not found.\nOwner could not be fetched. Do you share a server with the bot?\nPlease check your config.json{RESET}"
-    try:
-        owner = await bot.fetch_user(OWNER_ID)
+    # Continue with the rest of initialization - run in parallel
+    async def _fetch_owner():
+        try:
+            return await bot.fetch_user(OWNER_ID)
+        except:
+            return None
+    
+    # Run update_activity and fetch_owner in parallel
+    _, owner = await asyncio.gather(update_activity(bot), _fetch_owner())
+    
+    if owner:
         owner_name = f"{BLUE}{owner.name}{RESET}"
-    except discord.NotFound:
-        pass
-    except Exception as e:
-        owner_name = f"{RED}Error contacting owner: {str(e)}{RESET}"
+    else:
+        owner_name = f"{RED}Not found.\\nOwner could not be fetched. Do you share a server with the bot?\\nPlease check your config.json{RESET}"
 
     print(f"{GREEN}Logged in as {RESET}{BLUE}{bot.user.name}")
     print(f"{GREEN}Bot ID: {RESET}{BLUE}{bot.user.id}")
@@ -278,7 +306,9 @@ async def on_ready():
         except Exception as e:
             print(f"{RED}Failed to run tests:{RESET} {BLUE}{str(e)}{RESET}")
 
-    asyncio.create_task(_run_tests_and_report())
+    # Only run tests if enabled in config
+    if config.get('RUN_STARTUP_TESTS', False):
+        asyncio.create_task(_run_tests_and_report())
 
     # Load scripts and commands
     load_scripts()

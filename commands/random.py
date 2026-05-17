@@ -7,6 +7,8 @@ from discord.ext import commands
 from scripts.config import BASE_YTDL_OPTIONS, COOKIES_PATH
 from scripts.messages import create_embed
 from scripts.process_queue import process_queue
+from scripts.playback import should_start_playback, create_song_entry
+from scripts.constants import EMBED_COLOR_INFO, EMBED_COLOR_ERROR, EMBED_COLOR_WARNING, ERROR_NOT_IN_VOICE
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +28,12 @@ class RandomCommand(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self.random_word_api = "https://random-word-api.herokuapp.com/word"
+        self.random_word_api = "https://random-words-api.kushcreates.com/api?language=en&words=1"
         # No need to define cookie_file here as we'll use COOKIES_PATH from config.py
 
     async def fetch_random_word(self):
         """
-        Fetch a random word from the Random Word API.
+        Fetch a random word from the Random Words API.
         
         Returns:
             str: A random word, or None if the API request fails
@@ -40,8 +42,14 @@ class RandomCommand(commands.Cog):
             async with aiohttp.ClientSession() as session:
                 async with session.get(self.random_word_api) as response:
                     if response.status == 200:
-                        words = await response.json()
-                        return words[0] if words else None
+                        data = await response.json()
+                        # API returns a list of words directly
+                        if isinstance(data, list) and len(data) > 0:
+                            return data[0]
+                        # Or it might be in a 'words' key
+                        elif isinstance(data, dict) and 'words' in data:
+                            return data['words'][0] if data['words'] else None
+                        return None
                     else:
                         logger.error(f"Failed to fetch random word. Status: {response.status}")
                         return None
@@ -95,7 +103,7 @@ class RandomCommand(commands.Cog):
         try:
             # Check if user is in a voice channel
             if not ctx.author.voice:
-                embed = create_embed("Error", "You must be in a voice channel to use this command!", discord.Color.red(), ctx=ctx)
+                embed = create_embed("Error", ERROR_NOT_IN_VOICE, EMBED_COLOR_ERROR, ctx=ctx)
                 await ctx.send(embed=embed)
                 return
 
@@ -123,13 +131,13 @@ class RandomCommand(commands.Cog):
                 logger.info("Reset explicitly_stopped flag for new random command")
             
             # Show single status message
-            status_msg = await ctx.send(embed=create_embed("Feeling lucky?", "Searching for something ✨", discord.Color.blue(), ctx=ctx))
+            status_msg = await ctx.send(embed=create_embed("Feeling lucky?", "Searching for something ✨", EMBED_COLOR_INFO, ctx=ctx))
             
             # Fetch random word
             word = await self.fetch_random_word()
             
             if not word:
-                await status_msg.edit(embed=create_embed("Error", "Failed to fetch a random word. Please try again.", discord.Color.red(), ctx=ctx))
+                await status_msg.edit(embed=create_embed("Error", "Failed to fetch a random word. Please try again.", EMBED_COLOR_ERROR, ctx=ctx))
                 await status_msg.delete(delay=5)  # Delete after 5 seconds
                 return
 
@@ -137,7 +145,7 @@ class RandomCommand(commands.Cog):
             search_query = f"{word} music"
             result = await self.search_youtube(search_query)
             if not result:
-                await status_msg.edit(embed=create_embed("Error", f"No results found for '{search_query}'. Trying another word...", discord.Color.orange(), ctx=ctx))
+                await status_msg.edit(embed=create_embed("Error", f"No results found for '{search_query}'. Trying another word...", EMBED_COLOR_WARNING, ctx=ctx))
                 await status_msg.delete(delay=5)  # Delete after 5 seconds
                 return
             
@@ -149,23 +157,10 @@ class RandomCommand(commands.Cog):
 
             # Add to queue
             async with music_bot.queue_lock:
-                music_bot.queue.append({
-                    'title': download_result['title'],
-                    'url': download_result['url'],
-                    'file_path': download_result['file_path'],
-                    'thumbnail': download_result.get('thumbnail'),
-                    'ctx': ctx,
-                    'is_stream': download_result.get('is_stream', False),
-                    'is_from_playlist': False,
-                    'requester': ctx.author
-                })
+                music_bot.queue.append(create_song_entry(download_result, ctx))
 
                 # Check if we should start playing
-                should_play = not music_bot.is_playing and not music_bot.waiting_for_song
-                if music_bot.voice_client:
-                    should_play = should_play and not music_bot.voice_client.is_playing()
-                else:
-                    should_play = True
+                should_play = should_start_playback(music_bot)
 
             # Start playing if needed
             if should_play:
@@ -187,7 +182,7 @@ class RandomCommand(commands.Cog):
                 queue_embed = create_embed(
                     "Added to Queue",
                     description,
-                    color=0x3498db,
+                    color=EMBED_COLOR_INFO,
                     thumbnail_url=download_result.get('thumbnail'),
                     ctx=ctx
                 )
@@ -199,7 +194,7 @@ class RandomCommand(commands.Cog):
             logger.error(f"Error in random command: {str(e)}")
             if 'status_msg' in locals():
                 await status_msg.delete()  # Delete the "Feeling lucky?" message
-            embed = create_embed("Error", f"An error occurred: {str(e)}", discord.Color.red(), ctx=ctx)
+            embed = create_embed("Error", f"An error occurred: {str(e)}", EMBED_COLOR_ERROR, ctx=ctx)
             error_msg = await ctx.send(embed=embed)
             await error_msg.delete(delay=5)  # Delete error message after 5 seconds
 

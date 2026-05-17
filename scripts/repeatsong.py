@@ -18,6 +18,7 @@ async def repeat_song(music_bot, ctx):
               was no current song to repeat
     """
     if music_bot.current_song:
-        music_bot.queue.append(music_bot.current_song)
+        async with music_bot.queue_lock:
+            music_bot.queue.append(music_bot.current_song)
         return True
     return False

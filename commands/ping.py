@@ -1,7 +1,7 @@
-import discord
 from discord.ext import commands
 import time
 from scripts.messages import create_embed
+from scripts.constants import EMBED_COLOR_INFO, EMBED_COLOR_SUCCESS
 
 class PingCog(commands.Cog):
     """
@@ -40,7 +40,7 @@ class PingCog(commands.Cog):
         embed = create_embed(
             "Pinging... 🏓",
             "Measuring latency...",
-            color=0x3498db,
+            color=EMBED_COLOR_INFO,
             ctx=ctx
         )
         msg = await ctx.send(embed=embed)
@@ -66,7 +66,7 @@ class PingCog(commands.Cog):
         result_embed = create_embed(
             "Pong! 🏓",
             description,
-            color=0x2ecc71,  # Green color for success
+            color=EMBED_COLOR_SUCCESS,
             ctx=ctx
         )
         

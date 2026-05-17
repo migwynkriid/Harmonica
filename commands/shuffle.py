@@ -2,6 +2,9 @@ from discord.ext import commands
 from scripts.shufflelogic import shuffle_queue
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
+from scripts.voice_checks import check_voice_state
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_SUCCESS
+
 
 class ShuffleCog(commands.Cog):
     """
@@ -37,23 +40,19 @@ class ShuffleCog(commands.Cog):
         # Get server-specific music bot instance
         server_music_bot = MusicBot.get_instance(str(ctx.guild.id))
         
-        # Check if user is in voice chat
-        if not ctx.author.voice:
-            await ctx.send(embed=create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c, ctx=ctx))
-            return
-            
-        # Check if bot is in same voice chat
-        if not ctx.voice_client or ctx.author.voice.channel != ctx.voice_client.channel:
-            await ctx.send(embed=create_embed("Error", "You must be in the same voice channel as the bot to use this command!", color=0xe74c3c, ctx=ctx))
+        # Check voice state
+        is_valid, error_embed = await check_voice_state(ctx, server_music_bot)
+        if not is_valid:
+            await ctx.send(embed=error_embed)
             return
             
         # Call the shuffle_queue function from shufflelogic.py to perform the actual shuffling
         success = await shuffle_queue(ctx, server_music_bot)
         
         if success:
-            await ctx.send(embed=create_embed("Queue Shuffled", "The queue has been randomly shuffled!\n Pending downloads are not shuffled", color=0x2ecc71, ctx=ctx))
+            await ctx.send(embed=create_embed("Queue Shuffled", "The queue has been randomly shuffled!\n Pending downloads are not shuffled", color=EMBED_COLOR_SUCCESS, ctx=ctx))
         else:
-            await ctx.send(embed=create_embed("Cannot Shuffle", "Nothing is playing or nothing is waiting in the queue!", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Cannot Shuffle", "Nothing is playing or nothing is waiting in the queue!", color=EMBED_COLOR_ERROR, ctx=ctx))
 
 async def setup(bot):
     """

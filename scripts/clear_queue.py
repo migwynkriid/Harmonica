@@ -47,10 +47,12 @@ def clear_queue(guild_id=None):
             server_music_bot.queue.clear()
             clear_download_queue(server_music_bot)
         else:
-            # Clear queues for all servers
-            for guild_id, server_music_bot in MusicBot._instances.items():
-                server_music_bot.queue.clear()
-                clear_download_queue(server_music_bot)
+            # Clear queues for all servers - use list() to avoid modification during iteration
+            for gid in list(MusicBot._instances.keys()):
+                server_music_bot = MusicBot._instances.get(gid)
+                if server_music_bot:
+                    server_music_bot.queue.clear()
+                    clear_download_queue(server_music_bot)
             
     except Exception as e:
         print(f"Error clearing queue: {e}")

@@ -1,12 +1,13 @@
 import discord
 import time
 import asyncio
-import json
 import logging
 from scripts.messages import update_or_send_message, create_embed
-from scripts.constants import GREEN, BLUE, RESET
+from scripts.constants import GREEN, BLUE, RESET, EMBED_COLOR_ERROR, EMBED_COLOR_FINISHED, ERROR_NOT_IN_VOICE
+from scripts.config import load_config
 import sys
 import warnings
+
 
 def get_voice_config():
     """
@@ -19,11 +20,10 @@ def get_voice_config():
         dict: Voice configuration settings or default values if file can't be read
     """
     try:
-        with open('config.json', 'r') as f:
-            config = json.load(f)
-            return config.get('VOICE', {})
+        config = load_config()
+        return config.get('VOICE', {})
     except Exception as e:
-        logging.error(f"Error reading config.json: {str(e)}")
+        logging.error(f"Error reading config: {str(e)}")
         return {"AUTO_LEAVE_EMPTY": True}  # Default values
 
 # Set up task exception handling
@@ -105,7 +105,7 @@ async def join_voice_channel(bot_instance, ctx):
     
     # Check if user is in a voice channel
     if not ctx.author.voice:
-        await update_or_send_message(bot_instance, ctx, embed=create_embed("Error", "You must be in a voice channel to use this command!", color=0xe74c3c))
+        await update_or_send_message(bot_instance, ctx, embed=create_embed("Error", ERROR_NOT_IN_VOICE, color=EMBED_COLOR_ERROR))
         return False
 
     try:
@@ -116,7 +116,7 @@ async def join_voice_channel(bot_instance, ctx):
         if voice_config.get('AUTO_LEAVE_EMPTY', True):
             members_in_channel = len([m for m in channel.members if not m.bot])
             if members_in_channel == 0:
-                await update_or_send_message(bot_instance, ctx, embed=create_embed("Error", "Cannot join an empty voice channel!", color=0xe74c3c))
+                await update_or_send_message(bot_instance, ctx, embed=create_embed("Error", "Cannot join an empty voice channel!", color=EMBED_COLOR_ERROR))
                 return False
 
         # Clean up existing voice connection
@@ -154,7 +154,7 @@ async def join_voice_channel(bot_instance, ctx):
 
     except Exception as e:
         logging.error(f"Error joining voice channel: {str(e)}")
-        await update_or_send_message(bot_instance, ctx, embed=create_embed("Error", "Failed to join voice channel!", color=0xe74c3c))
+        await update_or_send_message(bot_instance, ctx, embed=create_embed("Error", "Failed to join voice channel!", color=EMBED_COLOR_ERROR))
         bot_instance.voice_client = None
         return False
 
@@ -231,12 +231,15 @@ async def handle_voice_state_update(bot_instance, member, before, after):
                 server_name = bot_voice_channel.guild.name if bot_voice_channel and hasattr(bot_voice_channel, 'guild') else "Unknown Server"
                 print(f"{GREEN}Leaving empty voice channel: {RESET}{BLUE}{bot_voice_channel.name}{RESET}{GREEN} in server: {RESET}{BLUE}{server_name}{RESET}")
 
-                # First, disconnect from voice channel immediately
-                await bot_instance.voice_client.disconnect()
-                # Then stop playback and clear the queue
-                if bot_instance.voice_client.is_playing() or bot_instance.queue:
+                # First stop playback and clear the queue before disconnecting
+                if bot_instance.voice_client.is_playing():
                     bot_instance.voice_client.stop()
+                
+                async with bot_instance.queue_lock:
                     bot_instance.queue.clear()
+                
+                # Then disconnect from voice channel
+                await bot_instance.voice_client.disconnect()
 
                 # Cancel any active downloads
                 await bot_instance.cancel_downloads()
@@ -248,15 +251,17 @@ async def handle_voice_state_update(bot_instance, member, before, after):
                 else:
                     clear_queue()
 
-                # Create a list of messages to delete to avoid dictionary size change during iteration
-                queued_messages = list(bot_instance.queued_messages.values())
+                # Create a list of messages to delete to avoid dictionary size change during iteration (with lock)
+                async with bot_instance.queued_messages_lock:
+                    queued_messages = list(bot_instance.queued_messages.values())
+                    bot_instance.queued_messages.clear()
+                
                 for msg in queued_messages:
                     try:
                         await msg.delete()
                         await asyncio.sleep(0.5)  # Add 0.5-second delay between deletions to avoid rate limits
                     except Exception:
                         pass  # Message might already be deleted or be inaccessible
-                bot_instance.queued_messages.clear()
                 
                 # Update the now playing message to show it was stopped
                 if bot_instance.now_playing_message and bot_instance.current_song:
@@ -266,7 +271,7 @@ async def handle_voice_state_update(bot_instance, member, before, after):
                         stopped_embed = create_embed(
                             "Finished playing",
                             description,
-                            color=0x808080,
+                            color=EMBED_COLOR_FINISHED,
                             thumbnail_url=bot_instance.current_song.get('thumbnail'),
                             ctx=bot_instance.current_song.get('ctx')  # Pass the original context to maintain requester info
                         )

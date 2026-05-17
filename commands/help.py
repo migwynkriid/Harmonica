@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from scripts.config import load_config
+from scripts.constants import EMBED_COLOR_INFO
 import logging
 from datetime import datetime
 
@@ -39,7 +40,7 @@ class HelpCog(commands.Cog):
         prefix = ctx.prefix
         
         # Create embeds for different categories
-        music_embed = discord.Embed(title="Help - Music Commands", description="Music playback related commands:", color=0x3498db)
+        music_embed = discord.Embed(title="Help - Music Commands", description="Music playback related commands:", color=EMBED_COLOR_INFO)
         music_embed.timestamp = datetime.now()
         
         # Music playback commands
@@ -57,7 +58,7 @@ class HelpCog(commands.Cog):
         music_embed.add_field(name=f"{prefix}lyrics", value="Get lyrics for the current song", inline=True)
         
         # Voice and Search commands embed
-        voice_embed = discord.Embed(title="Help - Voice & Search Commands", description="Voice channel and search related commands:", color=0x3498db)
+        voice_embed = discord.Embed(title="Help - Voice & Search Commands", description="Voice channel and search related commands:", color=EMBED_COLOR_INFO)
         voice_embed.timestamp = datetime.now()
         
         voice_embed.add_field(name=f"{prefix}join", value="Join a voice channel.", inline=True)
@@ -89,7 +90,7 @@ class HelpCog(commands.Cog):
         
         # Send admin commands embed only to the owner
         if user_id == owner_id and owner_id != "YOUR_DISCORD_USER_ID":
-            admin_embed = discord.Embed(title="Help - Admin Commands", description="Owner only commands:", color=0x3498db)
+            admin_embed = discord.Embed(title="Help - Admin Commands", description="Owner only commands:", color=EMBED_COLOR_INFO)
             admin_embed.timestamp = datetime.now()
             
             admin_embed.add_field(name=f"{prefix}log", value="Show the log file (Owner Only).", inline=True)
@@ -97,6 +98,7 @@ class HelpCog(commands.Cog):
             admin_embed.add_field(name=f"{prefix}logclear", value="Clear the log file (Owner Only).", inline=True)
             admin_embed.add_field(name=f"{prefix}version", value="Check the version of yt-dlp and commit info (Owner Only).", inline=True)
             admin_embed.add_field(name=f"{prefix}update", value="Updates the yt-dlp executable and does a git pull (Owner Only).", inline=True)
+            admin_embed.add_field(name=f"{prefix}branch", value="Switch git branches (Owner Only).", inline=True)
             admin_embed.add_field(name=f"{prefix}cookie", value="Update cookies.txt (Owner Only).", inline=True)
             admin_embed.add_field(name=f"{prefix}restart", value="Restart the bot (Owner Only).", inline=True)
             

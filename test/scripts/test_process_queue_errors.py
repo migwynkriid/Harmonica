@@ -11,6 +11,7 @@ async def test_process_queue_missing_file(monkeypatch, stub_ctx):
         def is_playing(self): return False
         def play(self, *a, **kw): pass
         def stop(self): pass
+    import asyncio
     class MB:
         def __init__(self):
             self.queue = [{'title': 't', 'url': 'u', 'file_path': 'nonexistent.file', 'is_stream': False, 'ctx': stub_ctx}]
@@ -18,6 +19,7 @@ async def test_process_queue_missing_file(monkeypatch, stub_ctx):
             self.waiting_for_song = False
             self.is_playing = False
             self.queued_messages = {}
+            self.queued_messages_lock = asyncio.Lock()
             self.bot = None
         async def after_playing_coro(self, e, ctx): pass
         bot_loop = None
@@ -49,6 +51,7 @@ async def test_process_queue_stream_handling(monkeypatch, stub_ctx):
         def is_playing(self): return False
         def play(self, *a, **kw): self._played = True
         def stop(self): pass
+    import asyncio
     class MB:
         def __init__(self):
             self.queue = [{'title': 'stream', 'url': 's', 'file_path': 'http://stream.example', 'is_stream': True, 'ctx': stub_ctx}]
@@ -56,6 +59,7 @@ async def test_process_queue_stream_handling(monkeypatch, stub_ctx):
             self.waiting_for_song = False
             self.is_playing = False
             self.queued_messages = {}
+            self.queued_messages_lock = asyncio.Lock()
             self.bot = None
             self.playback_state = None
         async def after_playing_coro(self, e, ctx): pass
@@ -79,6 +83,7 @@ async def test_process_queue_presence_update_failure(monkeypatch, stub_ctx):
         def is_playing(self): return False
         def play(self, *a, **kw): pass
         def stop(self): pass
+    import asyncio
     class MB:
         def __init__(self):
             self.queue = [{'title': 't', 'url': 'u', 'file_path': __file__, 'is_stream': False, 'ctx': stub_ctx}]
@@ -86,6 +91,7 @@ async def test_process_queue_presence_update_failure(monkeypatch, stub_ctx):
             self.waiting_for_song = False
             self.is_playing = False
             self.queued_messages = {}
+            self.queued_messages_lock = asyncio.Lock()
             self.bot = types.SimpleNamespace()
         async def after_playing_coro(self, e, ctx): pass
         bot_loop = None

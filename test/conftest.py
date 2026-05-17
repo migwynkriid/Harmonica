@@ -106,12 +106,16 @@ def stub_ctx():
 @pytest.fixture
 def stub_bot_instance():
     """Provide a simple bot_instance stub used by messages.update_or_send_message."""
+    from collections import deque
     class StubBotInstance:
         def __init__(self):
             self.current_command_msg = None
             self.current_command_author = None
-            self.queue = []
+            self.queue = deque()
             self.queue_lock = asyncio.Lock()
+            self.playback_lock = asyncio.Lock()
+            self.queued_messages_lock = asyncio.Lock()
+            self.in_progress_lock = asyncio.Lock()
             self.voice_client = None
             self.now_playing_message = None
             self.current_song = None
@@ -119,6 +123,8 @@ def stub_bot_instance():
             self.waiting_for_song = False
             self.is_playing = False
             self.bot_loop = None
+            self.in_progress_downloads = {}
+            self.duration_cache = {}
             
         async def cancel_downloads(self):
             return None

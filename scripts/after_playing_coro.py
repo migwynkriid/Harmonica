@@ -3,6 +3,7 @@ import discord
 from scripts.play_next import play_next
 from scripts.messages import update_or_send_message, create_embed
 from scripts.activity import update_activity
+from scripts.constants import EMBED_COLOR_FINISHED
 
 class AfterPlayingHandler:
     """
@@ -51,7 +52,8 @@ class AfterPlayingHandler:
         # Check if the bot has been explicitly stopped
         if hasattr(self, 'explicitly_stopped') and self.explicitly_stopped:
             # If the bot was explicitly stopped, don't play anything
-            self.queue.clear()
+            async with self.queue_lock:
+                self.queue.clear()
             return
             
         # Play the next song if available
@@ -99,7 +101,7 @@ class AfterPlayingHandler:
                         finished_embed = create_embed(
                             title,
                             f"[{self.current_song['title']}]({self.current_song['url']})",
-                            color=0x808080,
+                            color=EMBED_COLOR_FINISHED,
                             thumbnail_url=self.current_song.get('thumbnail'),
                             ctx=message_ctx
                         )

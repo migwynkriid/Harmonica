@@ -1,13 +1,15 @@
 from discord.ext import commands
-import discord
 import os
 import sys
 import subprocess
+from scripts.messages import create_embed
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_SUCCESS
 from scripts.config import load_config
 
-# Load config
+# Get Git repository URL from config (allows users with forks to set their own)
 config = load_config()
-OWNER_ID = int(config['OWNER_ID'])
+GIT_REPO_URL = config.get('GITHUB_REPO')
+
 
 async def setup(bot):
     """
@@ -18,6 +20,7 @@ async def setup(bot):
     """
     bot.add_command(updateytdlp)
     return None
+
 
 @commands.command(name='update')
 @commands.is_owner()
@@ -34,13 +37,9 @@ async def updateytdlp(ctx):
     Args:
         ctx: The command context
     """
-    if ctx.author.id != OWNER_ID:
-        await ctx.send(embed=discord.Embed(title="Error", description="This command is only available to the bot owner.", color=0xe74c3c))
-        return
-    
     try:
         # Send initial status message
-        status_msg = await ctx.send(embed=discord.Embed(title="Updating bot...", description="Installing required packages...", color=0x2ecc71))
+        status_msg = await ctx.send(embed=create_embed("Updating bot...", "Installing required packages...", color=EMBED_COLOR_SUCCESS, ctx=ctx))
         
         # Get current commit hash and count before update
         try:
@@ -52,7 +51,7 @@ async def updateytdlp(ctx):
         
         # Git pull from repository to update code
         try:
-            subprocess.run(["git", "pull", "https://github.com/migwynkriid/Harmonica"], check=True, capture_output=True, text=True)
+            subprocess.run(["git", "pull", GIT_REPO_URL], check=True, capture_output=True, text=True)
             # Get new commit hash and count after pull
             new_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
             new_count = subprocess.run(["git", "rev-list", "--count", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
@@ -85,7 +84,7 @@ async def updateytdlp(ctx):
             description += f"❌ Failed to install packages: {error_msg}\n"
         description += f"\nPlease restart the bot using `{ctx.prefix}restart`"
         
-        embed = discord.Embed(title="Update Complete!", description=description, color=0x2ecc71)
+        embed = create_embed("Update Complete!", description, color=EMBED_COLOR_SUCCESS, ctx=ctx)
         await status_msg.edit(embed=embed)
     except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"Error during update: {str(e)}", color=0xe74c3c))
+        await ctx.send(embed=create_embed("Error", f"Error during update: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx))

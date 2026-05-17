@@ -1,5 +1,6 @@
 import sys
 import types
+import asyncio
 from collections import deque
 import pytest
 
@@ -17,6 +18,8 @@ async def test_play_next_reconnect_failure_puts_song_back(monkeypatch, stub_ctx)
             self.was_skipped = False
             self.bot = None
             self.queued_messages = {}
+            self.queued_messages_lock = asyncio.Lock()
+            self.playback_lock = asyncio.Lock()
             self.waiting_for_song = False
         @classmethod
         def get_instance(cls, gid):

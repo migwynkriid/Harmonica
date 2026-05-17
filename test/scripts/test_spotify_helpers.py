@@ -11,7 +11,9 @@ async def test_spotify_helpers(monkeypatch):
             return {'items': [{'artists': [{'name': 'A'}], 'name': 'T'}]}
         def playlist_tracks(self, pid):
             return {'items': [{'track': {'artists': [{'name': 'B'}], 'name': 'U'}}]}
-    monkeypatch.setattr(spm, 'sp', FakeSP())
+    
+    fake_sp = FakeSP()
+    monkeypatch.setattr(spm, '_get_spotify_client', lambda: fake_sp)
 
     name, tid = await spm.get_spotify_track_details('https://open.spotify.com/track/123')
     assert 'Artist - Track' == name and tid == '123'

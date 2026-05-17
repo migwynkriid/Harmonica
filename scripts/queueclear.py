@@ -1,6 +1,7 @@
 import discord
 from scripts.messages import create_embed
 from scripts.clear_queue import clear_download_queue
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_SUCCESS, ERROR_BOT_NOT_CONNECTED
 
 async def clear_queue_command(ctx, music_bot, position: int = None):
     """
@@ -15,7 +16,7 @@ async def clear_queue_command(ctx, music_bot, position: int = None):
         None
     """
     if not ctx.voice_client:
-        embed = create_embed("Error", "I'm not connected to a voice channel!", discord.Color.red(), ctx=ctx)
+        embed = create_embed("Error", ERROR_BOT_NOT_CONNECTED, EMBED_COLOR_ERROR, ctx=ctx)
         await ctx.send(embed=embed)
         return
 
@@ -27,7 +28,7 @@ async def clear_queue_command(ctx, music_bot, position: int = None):
             embed = create_embed(
                 "Error",
                 f"Nothing on queue order {position}.",
-                discord.Color.red(),
+                EMBED_COLOR_ERROR,
                 ctx=ctx
             )
             await ctx.send(embed=embed)
@@ -38,7 +39,7 @@ async def clear_queue_command(ctx, music_bot, position: int = None):
         embed = create_embed(
             "Song Removed",
             f"Removed song at position {position}: {removed_song['title']}",
-            discord.Color.green(),
+            EMBED_COLOR_SUCCESS,
             ctx=ctx
         )
     else:
@@ -48,13 +49,14 @@ async def clear_queue_command(ctx, music_bot, position: int = None):
         # Use shared utility to clear download queue
         clear_download_queue(music_bot)
         
-        # Clear the queue
-        music_bot.queue.clear()
+        # Clear the queue (use lock for thread safety)
+        async with music_bot.queue_lock:
+            music_bot.queue.clear()
         
         embed = create_embed(
             "Queue cleared",
             f"Successfully cleared {queue_length} songs from the queue!",
-            discord.Color.green(),
+            EMBED_COLOR_SUCCESS,
             ctx=ctx
         )
     

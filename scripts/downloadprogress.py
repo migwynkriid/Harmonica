@@ -1,11 +1,10 @@
 import discord
 import time
-import concurrent.futures
 from datetime import datetime
 from scripts.format_size import format_size
 from scripts.config import load_config
+from scripts.constants import EMBED_COLOR_INFO
 import asyncio
-import functools
 
 config_vars = load_config()
 SHOW_PROGRESS_BAR = config_vars.get('MESSAGES', {}).get('SHOW_PROGRESS_BAR', True)
@@ -225,7 +224,7 @@ class DownloadProgress:
                 embed = discord.Embed(
                     title="Downloading",
                     description=status,
-                    color=0x3498db,
+                    color=EMBED_COLOR_INFO,
                     timestamp=datetime.now()
                 )
                 

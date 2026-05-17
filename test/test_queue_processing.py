@@ -49,6 +49,7 @@ async def test_process_queue_plays_audio(monkeypatch, tmp_path, stub_bot_instanc
 
 @pytest.mark.asyncio
 async def test_play_next_plays_audio(monkeypatch, tmp_path, stub_ctx):
+    import asyncio
     # Prepare fake classes to stand-in for bot.MusicBot
     class FakeMusicBot:
         _instances = {}
@@ -57,6 +58,8 @@ async def test_play_next_plays_audio(monkeypatch, tmp_path, stub_ctx):
             self.voice_client = StubVoiceClient()
             self.queue = []
             self.queued_messages = {}
+            self.queued_messages_lock = asyncio.Lock()
+            self.playback_lock = asyncio.Lock()
             self.bot_loop = None
             self.current_song = None
             self.bot = None
