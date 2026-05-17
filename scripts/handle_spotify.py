@@ -13,7 +13,7 @@ from scripts.messages import create_embed
 from scripts.duration import get_audio_duration
 from scripts.config import config_vars
 from scripts.caching import playlist_cache
-from scripts.constants import RED, GREEN, RESET, BLUE
+from scripts.constants import RED, GREEN, RESET, BLUE, EMBED_COLOR_ERROR, EMBED_COLOR_INFO, EMBED_COLOR_SPOTIFY
 from scripts.logging import setup_logging, get_ytdlp_logger, CachedVideoFound
 
 class SpotifyHandler:
@@ -61,7 +61,7 @@ class SpotifyHandler:
         except Exception as e:
             print(f"Error handling Spotify URL: {str(e)}")
             if status_msg:
-                error_embed = create_embed("Error", f"Failed to process Spotify content: {str(e)}", color=0xe74c3c, ctx=status_msg.channel)
+                error_embed = create_embed("Error", f"Failed to process Spotify content: {str(e)}", color=EMBED_COLOR_ERROR, ctx=status_msg.channel)
                 await status_msg.edit(embed=error_embed)
             return None
 
@@ -106,9 +106,11 @@ class SpotifyHandler:
                     'duration': await get_audio_duration(cached_info['file_path']),
                     'ctx': ctx
                 }
-                self.queue.append(song_info)
+                async with self.queue_lock:
+                    self.queue.append(song_info)
+                    should_play = not self.is_playing and not self.voice_client.is_playing()
                 
-                if not self.is_playing and not self.voice_client.is_playing():
+                if should_play:
                     await process_queue(self)
                 else:
                     queue_pos = len(self.queue)
@@ -123,12 +125,13 @@ class SpotifyHandler:
                     queue_embed = create_embed(
                         "Added to Queue",
                         description,
-                        color=0x3498db,
+                        color=EMBED_COLOR_INFO,
                         thumbnail_url=song_info.get('thumbnail'),
                         ctx=ctx
                     )
                     queue_msg = await ctx.send(embed=queue_embed)
-                    self.queued_messages[song_info['url']] = queue_msg
+                    async with self.queued_messages_lock:
+                        self.queued_messages[song_info['url']] = queue_msg
                 
                 return song_info
 
@@ -144,7 +147,7 @@ class SpotifyHandler:
                 await status_msg.edit(embed=create_embed(
                     "Processing",
                     f"Searching for {search_query}",
-                    color=0x1DB954,
+                    color=EMBED_COLOR_SPOTIFY,
                     ctx=ctx
                 ))
 
@@ -187,14 +190,16 @@ class SpotifyHandler:
                 song_info['requester'] = ctx.author
                 song_info['duration'] = await get_audio_duration(song_info['file_path'])
                 song_info['ctx'] = ctx
-                self.queue.append(song_info)
+                async with self.queue_lock:
+                    self.queue.append(song_info)
+                    should_play = not self.is_playing and not self.voice_client.is_playing()
+                    queue_pos = len(self.queue)
                 
                 # If not currently playing, start playback
-                if not self.is_playing and not self.voice_client.is_playing():
+                if should_play:
                     await process_queue(self)
                 else:
                     # Send "Added to Queue" message if we're not starting playback immediately
-                    queue_pos = len(self.queue)
                     description = f"[🎵 {song_info['title']}]({song_info['url']})"
                     
                     # Only show position if current song is not looping
@@ -208,7 +213,7 @@ class SpotifyHandler:
                     queue_embed = create_embed(
                         "Added to Queue",
                         description,
-                        color=0x3498db,
+                        color=EMBED_COLOR_INFO,
                         thumbnail_url=song_info.get('thumbnail'),
                         ctx=ctx
                     )
@@ -223,7 +228,7 @@ class SpotifyHandler:
                 await status_msg.edit(embed=create_embed(
                     "Error",
                     f"Failed to process Spotify track: {str(e)}",
-                    color=0xe74c3c,
+                    color=EMBED_COLOR_ERROR,
                     ctx=ctx
                 ))
             raise
@@ -252,7 +257,7 @@ class SpotifyHandler:
                 await status_msg.edit(embed=create_embed(
                     "Processing Album",
                     f"Processing album: {album['name']}\nTotal tracks: {album['total_tracks']}",
-                    color=0x1DB954,
+                    color=EMBED_COLOR_SPOTIFY,
                     thumbnail_url=album['images'][0]['url'] if album['images'] else None,
                     ctx=ctx
                 ))
@@ -299,7 +304,9 @@ class SpotifyHandler:
                         'duration': await get_audio_duration(cached_info['file_path']),
                         'ctx': ctx
                     }
-                    self.queue.append(first_song)
+                    async with self.queue_lock:
+                        self.queue.append(first_song)
+                        should_play = not self.is_playing and not self.voice_client.is_playing()
                 else:
                     # Download if not in cache
                     search_query = f"{first_track['name']} {artists}"
@@ -315,9 +322,13 @@ class SpotifyHandler:
                         first_song['duration'] = await get_audio_duration(first_song['file_path'])
                         first_song['ctx'] = ctx
                         
-                        self.queue.append(first_song)
+                        async with self.queue_lock:
+                            self.queue.append(first_song)
+                            should_play = not self.is_playing and not self.voice_client.is_playing()
+                    else:
+                        should_play = False
                 
-                if not self.is_playing and not self.voice_client.is_playing():
+                if should_play:
                     await process_queue(self)
 
             if len(tracks) > 1:
@@ -358,7 +369,7 @@ class SpotifyHandler:
                 await status_msg.edit(embed=create_embed(
                     "Processing Playlist",
                     f"Processing playlist: {playlist['name']}\nTotal tracks: {playlist['tracks']['total']}",
-                    color=0x1DB954,
+                    color=EMBED_COLOR_SPOTIFY,
                     thumbnail_url=playlist['images'][0]['url'] if playlist['images'] else None,
                     ctx=ctx
                 ))
@@ -422,7 +433,9 @@ class SpotifyHandler:
                         'duration': await get_audio_duration(cached_info['file_path']),
                         'ctx': ctx
                     }
-                    self.queue.append(first_song)
+                    async with self.queue_lock:
+                        self.queue.append(first_song)
+                        should_play = not self.is_playing and not self.voice_client.is_playing()
                 else:
                     # Download if not in cache
                     search_query = f"{first_track['name']} {artists}"
@@ -438,9 +451,13 @@ class SpotifyHandler:
                         first_song['duration'] = await get_audio_duration(first_song['file_path'])
                         first_song['ctx'] = ctx
                         
-                        self.queue.append(first_song)
+                        async with self.queue_lock:
+                            self.queue.append(first_song)
+                            should_play = not self.is_playing and not self.voice_client.is_playing()
+                    else:
+                        should_play = False
                 
-                if not self.is_playing and not self.voice_client.is_playing():
+                if should_play:
                     await process_queue(self)
 
             if len(tracks) > 1:
@@ -512,8 +529,10 @@ class SpotifyHandler:
                     
                     if not playlist_cache._should_continue_check:
                         return
-                        
-                    self.queue.append(song_info)
+                    
+                    # Use queue lock to prevent race conditions
+                    async with self.queue_lock:
+                        self.queue.append(song_info)
                     processed += 1
                     
                     # Add a small delay between tracks to prevent blocking
@@ -523,7 +542,8 @@ class SpotifyHandler:
                     continue
             
             # Save cache after processing all cached tracks
-            await asyncio.get_event_loop().run_in_executor(None, playlist_cache._save_cache)
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, playlist_cache._save_cache)
             
             # Now process uncached tracks normally
             for track in uncached_tracks:
@@ -552,10 +572,13 @@ class SpotifyHandler:
                         
                         if not playlist_cache._should_continue_check:
                             return
-                            
-                        self.queue.append(song_info)
                         
-                        if not self.is_playing and not self.voice_client.is_playing():
+                        # Use queue lock to prevent race conditions
+                        async with self.queue_lock:
+                            self.queue.append(song_info)
+                            should_play = not self.is_playing and not self.voice_client.is_playing()
+                        
+                        if should_play:
                             await process_queue(self)
                             
                         # Add a small delay between tracks to prevent blocking

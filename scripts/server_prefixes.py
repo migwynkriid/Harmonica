@@ -53,7 +53,7 @@ async def load_server_prefixes():
     async with _file_lock:
         if not os.path.exists(SERVER_PREFIXES_FILE):
             # Create empty file if it doesn't exist
-            await save_server_prefixes({})
+            _save_server_prefixes_unlocked({})
             print(f"Created new server_prefixes.json file at {SERVER_PREFIXES_FILE}")
             return {}
         
@@ -62,9 +62,19 @@ async def load_server_prefixes():
                 return json.load(f)
         except json.JSONDecodeError:
             # If the file is corrupted, create a new empty one
-            await save_server_prefixes({})
+            _save_server_prefixes_unlocked({})
             print(f"Recreated server_prefixes.json due to JSON decode error")
             return {}
+
+
+def _save_server_prefixes_unlocked(prefixes):
+    """
+    Internal function to save prefixes without acquiring lock.
+    Caller must hold _file_lock.
+    """
+    with open(SERVER_PREFIXES_FILE, 'w') as f:
+        json.dump(prefixes, f, indent=4)
+
 
 async def save_server_prefixes(prefixes):
     """
@@ -74,8 +84,7 @@ async def save_server_prefixes(prefixes):
         prefixes (dict): A dictionary mapping guild IDs to their custom prefixes
     """
     async with _file_lock:
-        with open(SERVER_PREFIXES_FILE, 'w') as f:
-            json.dump(prefixes, f, indent=4)
+        _save_server_prefixes_unlocked(prefixes)
 
 async def get_prefix(bot, message):
     """

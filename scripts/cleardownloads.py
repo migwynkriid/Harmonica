@@ -1,27 +1,27 @@
 import os
 import shutil
 import logging
-import json
+from scripts.config import load_config
 
 DOWNLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'downloads')
 
-def get_config():
+
+def get_auto_clear_config():
     """
-    Get configuration from config.json.
+    Get AUTO_CLEAR configuration from config.
     
-    Reads the AUTO_CLEAR setting from the config.json file to determine
-    whether downloads should be automatically cleared.
+    Reads the AUTO_CLEAR setting to determine whether downloads
+    should be automatically cleared.
     
     Returns:
         bool: True if auto-clear is enabled, False otherwise.
               Defaults to True if config can't be read.
     """
     try:
-        with open('config.json', 'r') as f:
-            config = json.load(f)
-            return config.get('DOWNLOADS', {}).get('AUTO_CLEAR', True)
+        config = load_config()
+        return config.get('DOWNLOADS', {}).get('AUTO_CLEAR', True)
     except Exception as e:
-        logging.error(f"Error reading config.json: {str(e)}")
+        logging.error(f"Error reading config: {str(e)}")
         return True  # Default to True if config can't be read
 
 def clear_downloads_folder():
@@ -35,7 +35,7 @@ def clear_downloads_folder():
     Returns:
         None
     """
-    auto_clear = get_config()
+    auto_clear = get_auto_clear_config()
     
     if not auto_clear:
         logging.info("Auto-clear downloads is disabled, skipping cleanup")
