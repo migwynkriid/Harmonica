@@ -1,6 +1,7 @@
 import discord
 from discord.ext import tasks, commands
 import subprocess
+import asyncio
 import os
 import sys
 import re
@@ -8,6 +9,21 @@ from datetime import datetime
 import pytz
 from scripts.constants import RED, GREEN, BLUE, YELLOW, RESET, EMBED_COLOR_INFO
 from scripts.config import load_config
+
+
+async def run_subprocess(*args, **kwargs):
+    """
+    Run subprocess.run in a thread pool to avoid blocking the event loop.
+    
+    Args:
+        *args: Arguments to pass to subprocess.run
+        **kwargs: Keyword arguments to pass to subprocess.run
+        
+    Returns:
+        subprocess.CompletedProcess: The result of the subprocess
+    """
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, lambda: subprocess.run(*args, **kwargs))
 
 
 def create_embed(title, description, color=EMBED_COLOR_INFO):
@@ -34,7 +50,7 @@ def create_embed(title, description, color=EMBED_COLOR_INFO):
     return embed
 
 
-def get_git_commit_details(from_commit, to_commit):
+async def get_git_commit_details(from_commit, to_commit):
     """
     Get detailed information about git commits between two commit hashes.
     
@@ -52,7 +68,7 @@ def get_git_commit_details(from_commit, to_commit):
         # Get commit details using git log
         log_format = "--pretty=format:%h|%s|%an|%ad"
         log_command = ["git", "log", f"{from_commit}..{to_commit}", log_format]
-        result = subprocess.run(log_command, capture_output=True, text=True, check=True)
+        result = await run_subprocess(log_command, capture_output=True, text=True, check=True)
         
         commits = []
         for line in result.stdout.strip().split('\n'):
@@ -216,7 +232,8 @@ async def check_updates(bot):
         git_available = False
         current_commit = None
         try:
-            current_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+            result = await run_subprocess(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True)
+            current_commit = result.stdout.strip()
             git_available = True
         except (subprocess.CalledProcessError, FileNotFoundError):
             # Not a git repository or git not installed - skip git updates silently
@@ -229,10 +246,11 @@ async def check_updates(bot):
         pip_updates = []
 
         if git_available:
-            # Fetch updates from remote
-            subprocess.run(["git", "fetch"], check=True, capture_output=True, text=True)
+            # Fetch updates from remote (network call - run async)
+            await run_subprocess(["git", "fetch"], check=True, capture_output=True, text=True)
             # Check if we're behind the remote
-            status = subprocess.run(["git", "status", "-uno"], check=True, capture_output=True, text=True).stdout
+            status_result = await run_subprocess(["git", "status", "-uno"], check=True, capture_output=True, text=True)
+            status = status_result.stdout
             
             if "Your branch is behind" in status:
                 # Only proceed with update if not in voice chat
@@ -249,32 +267,35 @@ async def check_updates(bot):
                     try:
                         # Get the remote commit before pulling
                         try:
-                            remote_commit = subprocess.run(
+                            remote_result = await run_subprocess(
                                 ["git", "rev-parse", "--short", "origin/HEAD"], 
                                 check=True, capture_output=True, text=True
-                            ).stdout.strip()
+                            )
+                            remote_commit = remote_result.stdout.strip()
                         except subprocess.CalledProcessError:
                             # origin/HEAD not set, fix it automatically
-                            subprocess.run(["git", "remote", "set-head", "origin", "-a"], check=True, capture_output=True)
-                            remote_commit = subprocess.run(
+                            await run_subprocess(["git", "remote", "set-head", "origin", "-a"], check=True, capture_output=True)
+                            remote_result = await run_subprocess(
                                 ["git", "rev-parse", "--short", "origin/HEAD"], 
                                 check=True, capture_output=True, text=True
-                            ).stdout.strip()
+                            )
+                            remote_commit = remote_result.stdout.strip()
                         
-                        # Pull updates
-                        subprocess.run(["git", "pull"], check=True, capture_output=True, text=True)
-                        new_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+                        # Pull updates (network call - run async)
+                        await run_subprocess(["git", "pull"], check=True, capture_output=True, text=True)
+                        new_result = await run_subprocess(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True)
+                        new_commit = new_result.stdout.strip()
                         
                         if current_commit != new_commit:
                             # Get detailed commit information
-                            git_commits = get_git_commit_details(current_commit, new_commit)
+                            git_commits = await get_git_commit_details(current_commit, new_commit)
                             needs_restart = True
                             git_updated = True
                     except Exception as e:
                         print(f"{RED}Warning: Failed to pull git updates: {str(e)}{RESET}")
 
-        # Continue with pip package updates check
-        result = subprocess.run(
+        # Continue with pip package updates check (network call - run async)
+        result = await run_subprocess(
             [sys.executable, '-m', 'pip', 'install', '--upgrade', '--dry-run', '--pre', '-r', 'requirements.txt', '--break-system-packages'],
             capture_output=True,
             text=True
@@ -299,8 +320,8 @@ async def check_updates(bot):
 
             if not is_in_voice:
                 try:
-                    # Run actual update command
-                    subprocess.run(
+                    # Run actual update command (network call - run async)
+                    await run_subprocess(
                         [sys.executable, '-m', 'pip', 'install', '--upgrade', '--pre', '-r', 'requirements.txt', '--break-system-packages'],
                         check=True,
                         capture_output=True,
@@ -367,6 +388,16 @@ async def update_checker(bot):
         bot: The Discord bot instance
     """
     await check_updates(bot)
+
+@update_checker.before_loop
+async def before_update_checker():
+    """
+    Wait before running the first update check.
+    
+    This delays the first update check by 10 seconds to allow the bot
+    to become fully responsive before running network-heavy operations.
+    """
+    await asyncio.sleep(10)  # Delay first check to not block startup
 
 async def startup_check(bot):
     """

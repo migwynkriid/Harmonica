@@ -106,7 +106,8 @@ bot = commands.Bot(
     intents=intents,
     help_command=None,  # Disable default help command
     case_insensitive=True,  # Make commands case-insensitive
-    owner_id=int(OWNER_ID)  # Set bot owner
+    owner_id=int(OWNER_ID),  # Set bot owner
+    chunk_guilds_at_startup=False  # Don't download full member lists on startup (faster)
 )
 
 # Initialize command logger
@@ -195,9 +196,13 @@ async def on_ready():
     # Display the ASCII art logo first
     with open('scripts/consoleprint.txt', 'r') as f: print(f"{BLUE}{f.read()}{RESET}")
     
-    # Try to get git commit count (may fail if not a git repo)
+    # Try to get git commit count (may fail if not a git repo) - run in thread pool
     try:
-        commit_count = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD'], stderr=subprocess.DEVNULL).decode('utf-8').strip()
+        loop = asyncio.get_event_loop()
+        commit_count = await loop.run_in_executor(
+            None, 
+            lambda: subprocess.check_output(['git', 'rev-list', '--count', 'HEAD'], stderr=subprocess.DEVNULL).decode('utf-8').strip()
+        )
         print(f"{GREEN}\nCurrent commit count: {BLUE}{commit_count}{RESET}")
     except (subprocess.CalledProcessError, FileNotFoundError):
         # Not a git repository or git not installed - skip commit count
@@ -211,16 +216,20 @@ async def on_ready():
     setup_bot.show_credentials()
     MusicBot._credentials_shown = True
     
-    # Continue with the rest of initialization
-    await update_activity(bot)
-    owner_name = f"{RED}Not found.\nOwner could not be fetched. Do you share a server with the bot?\nPlease check your config.json{RESET}"
-    try:
-        owner = await bot.fetch_user(OWNER_ID)
+    # Continue with the rest of initialization - run in parallel
+    async def _fetch_owner():
+        try:
+            return await bot.fetch_user(OWNER_ID)
+        except:
+            return None
+    
+    # Run update_activity and fetch_owner in parallel
+    _, owner = await asyncio.gather(update_activity(bot), _fetch_owner())
+    
+    if owner:
         owner_name = f"{BLUE}{owner.name}{RESET}"
-    except discord.NotFound:
-        pass
-    except Exception as e:
-        owner_name = f"{RED}Error contacting owner: {str(e)}{RESET}"
+    else:
+        owner_name = f"{RED}Not found.\\nOwner could not be fetched. Do you share a server with the bot?\\nPlease check your config.json{RESET}"
 
     print(f"{GREEN}Logged in as {RESET}{BLUE}{bot.user.name}")
     print(f"{GREEN}Bot ID: {RESET}{BLUE}{bot.user.id}")
