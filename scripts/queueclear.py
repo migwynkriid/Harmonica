@@ -49,8 +49,9 @@ async def clear_queue_command(ctx, music_bot, position: int = None):
         # Use shared utility to clear download queue
         clear_download_queue(music_bot)
         
-        # Clear the queue
-        music_bot.queue.clear()
+        # Clear the queue (use lock for thread safety)
+        async with music_bot.queue_lock:
+            music_bot.queue.clear()
         
         embed = create_embed(
             "Queue cleared",

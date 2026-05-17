@@ -482,8 +482,9 @@ class MusicBot(PlaylistHandler, AfterPlayingHandler, SpotifyHandler):
         if self.voice_client and self.voice_client.is_playing():
             self.voice_client.stop()
         
-        # Clear the queue and disconnect if requested
-        self.queue.clear()
+        # Clear the queue (use lock for thread safety) and disconnect if requested
+        async with self.queue_lock:
+            self.queue.clear()
         if disconnect_voice:
             if self.voice_client and self.voice_client.is_connected():
                 await self.voice_client.disconnect()
