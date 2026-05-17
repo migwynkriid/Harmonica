@@ -28,12 +28,12 @@ class RandomCommand(commands.Cog):
             bot: The bot instance
         """
         self.bot = bot
-        self.random_word_api = "https://random-word-api.herokuapp.com/word"
+        self.random_word_api = "https://random-words-api.kushcreates.com/api?language=en&words=1"
         # No need to define cookie_file here as we'll use COOKIES_PATH from config.py
 
     async def fetch_random_word(self):
         """
-        Fetch a random word from the Random Word API.
+        Fetch a random word from the Random Words API.
         
         Returns:
             str: A random word, or None if the API request fails
@@ -42,8 +42,14 @@ class RandomCommand(commands.Cog):
             async with aiohttp.ClientSession() as session:
                 async with session.get(self.random_word_api) as response:
                     if response.status == 200:
-                        words = await response.json()
-                        return words[0] if words else None
+                        data = await response.json()
+                        # API returns a list of words directly
+                        if isinstance(data, list) and len(data) > 0:
+                            return data[0]
+                        # Or it might be in a 'words' key
+                        elif isinstance(data, dict) and 'words' in data:
+                            return data['words'][0] if data['words'] else None
+                        return None
                     else:
                         logger.error(f"Failed to fetch random word. Status: {response.status}")
                         return None
