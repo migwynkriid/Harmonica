@@ -297,7 +297,9 @@ async def on_ready():
         except Exception as e:
             print(f"{RED}Failed to run tests:{RESET} {BLUE}{str(e)}{RESET}")
 
-    asyncio.create_task(_run_tests_and_report())
+    # Only run tests if enabled in config
+    if config.get('RUN_STARTUP_TESTS', False):
+        asyncio.create_task(_run_tests_and_report())
 
     # Load scripts and commands
     load_scripts()
