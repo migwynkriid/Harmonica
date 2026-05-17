@@ -62,7 +62,7 @@ async def test_handle_spotify_track_search_flow(monkeypatch, stub_ctx):
             self.voice_client = types.SimpleNamespace(is_playing=lambda: False, is_connected=lambda: True)
             self.waiting_for_song = False
 
-        async def download_song(self, url, status_msg=None, ctx=None):
+        async def download_song(self, url, status_msg=None, ctx=None, spotify_info=None):
             return {'title': 'Downloaded', 'url': url, 'file_path': __file__, 'thumbnail': None}
 
     mb = MB()

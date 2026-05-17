@@ -7,6 +7,15 @@ async def test_spotify_process_tracks_cached_and_uncached(monkeypatch, stub_ctx)
     from scripts import caching as caching
     import asyncio
 
+    # Store real sleep before patching to avoid infinite recursion
+    _real_sleep = asyncio.sleep
+
+    # Ensure processing continues
+    caching.playlist_cache._should_continue_check = True
+    
+    # Mock _save_cache to avoid file I/O
+    caching.playlist_cache._save_cache = lambda: None
+
     # Patch playlist_cache behaviors
     cached_ids = {'c1'}
     def fake_get_cached(track_id):
@@ -14,21 +23,23 @@ async def test_spotify_process_tracks_cached_and_uncached(monkeypatch, stub_ctx)
             return {'file_path': __file__, 'title': f'Cached-{track_id}', 'url': f'https://open.spotify.com/track/{track_id}', 'thumbnail': None}
         return None
     caching.playlist_cache.get_cached_spotify_track = fake_get_cached
-    added = []
-    caching.playlist_cache.add_spotify_track = lambda tid, fp, title=None, thumbnail=None, artist=None, skip_save=False: added.append((tid, fp))
-    monkeypatch.setattr(asyncio, 'sleep', lambda s: asyncio.sleep(0))
+    monkeypatch.setattr(asyncio, 'sleep', lambda s: _real_sleep(0))
 
     async def fake_duration(fp):
         return 2.0
     monkeypatch.setattr(hs, 'get_audio_duration', fake_duration)
+
+    # Track download_song calls for uncached tracks
+    download_calls = []
 
     class MB(hs.SpotifyHandler):
         def __init__(self):
             self.queue = []
             self.is_playing = False
             self.voice_client = type('VC', (), {'is_playing': lambda self: False})()
-        async def download_song(self, query, status_msg=None, ctx=None):
-            # produce a fake song
+        async def download_song(self, query, status_msg=None, ctx=None, spotify_info=None):
+            # Track the call to verify uncached tracks are processed
+            download_calls.append(spotify_info.get('track_id') if spotify_info else None)
             return {'title': 'DL', 'url': 'http://yt', 'file_path': __file__, 'thumbnail': None}
 
     mb = MB()
@@ -45,6 +56,6 @@ async def test_spotify_process_tracks_cached_and_uncached(monkeypatch, stub_ctx)
 
     # One cached + one uncached queued
     assert len(mb.queue) == 2
-    # Uncached track was cached via add_spotify_track
-    assert any(tid == 'u1' for (tid, fp) in added)
+    # Uncached track was processed via download_song
+    assert 'u1' in download_calls
     assert calls['proc'] >= 1

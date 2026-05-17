@@ -17,7 +17,10 @@ async def test_start_inactivity_checker_schedules(monkeypatch):
 
     mb = MB()
     await ia.start_inactivity_checker(mb)
-    assert called['ran'] is True
     assert mb._inactivity_task is not None
+    # Give the event loop a chance to run the task
+    await asyncio.sleep(0)
+    assert called['ran'] is True
     # Cleanup
-    mb._inactivity_task.cancel()
+    if not mb._inactivity_task.done():
+        mb._inactivity_task.cancel()

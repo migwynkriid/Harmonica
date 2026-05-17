@@ -22,7 +22,7 @@ async def test_handle_spotify_album_first_track(monkeypatch, stub_ctx):
             self.voice_client = types.SimpleNamespace(is_playing=lambda: False, is_connected=lambda: True)
             self.waiting_for_song = False
 
-        async def download_song(self, query, status_msg=None, ctx=None):
+        async def download_song(self, query, status_msg=None, ctx=None, spotify_info=None):
             return {'title': 'Downloaded', 'url': 'http://yt', 'file_path': __file__, 'thumbnail': None}
 
     mb = MB()
@@ -74,7 +74,7 @@ async def test_handle_spotify_playlist_first_track(monkeypatch, stub_ctx):
             self.voice_client = types.SimpleNamespace(is_playing=lambda: False, is_connected=lambda: True)
             self.waiting_for_song = False
 
-        async def download_song(self, query, status_msg=None, ctx=None):
+        async def download_song(self, query, status_msg=None, ctx=None, spotify_info=None):
             return {'title': 'DownloadedP', 'url': 'http://ytp', 'file_path': __file__, 'thumbnail': None}
 
     mb = MB()

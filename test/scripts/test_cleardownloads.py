@@ -11,10 +11,10 @@ def test_clear_downloads_folder_respects_config(tmp_path, monkeypatch):
     f = downloads / 'file.txt'
     f.write_text('data')
     # Disable auto clear
-    monkeypatch.setattr(cd, 'get_config', lambda: False)
+    monkeypatch.setattr(cd, 'get_auto_clear_config', lambda: False)
     cd.clear_downloads_folder()
     assert f.exists()
     # Enable auto clear
-    monkeypatch.setattr(cd, 'get_config', lambda: True)
+    monkeypatch.setattr(cd, 'get_auto_clear_config', lambda: True)
     cd.clear_downloads_folder()
     assert not f.exists()
