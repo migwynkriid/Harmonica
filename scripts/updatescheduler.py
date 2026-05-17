@@ -212,12 +212,15 @@ async def check_updates(bot):
         return
 
     try:
-        # First check for git updates
-        current_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
-        # Fetch updates from remote
-        subprocess.run(["git", "fetch"], check=True, capture_output=True, text=True)
-        # Check if we're behind the remote
-        status = subprocess.run(["git", "status", "-uno"], check=True, capture_output=True, text=True).stdout
+        # First check if we're in a git repository
+        git_available = False
+        current_commit = None
+        try:
+            current_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+            git_available = True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            # Not a git repository or git not installed - skip git updates silently
+            pass
         
         needs_restart = False
         git_updated = False
@@ -225,44 +228,50 @@ async def check_updates(bot):
         git_commits = []
         pip_updates = []
 
-        if "Your branch is behind" in status:
-            # Only proceed with update if not in voice chat
-            from bot import MusicBot
+        if git_available:
+            # Fetch updates from remote
+            subprocess.run(["git", "fetch"], check=True, capture_output=True, text=True)
+            # Check if we're behind the remote
+            status = subprocess.run(["git", "status", "-uno"], check=True, capture_output=True, text=True).stdout
             
-            # Check if any server instance is in a voice channel
-            is_in_voice = False
-            for guild_id, instance in MusicBot._instances.items():
-                if instance.voice_client and instance.voice_client.is_connected():
-                    is_in_voice = True
-                    break
-            
-            if not is_in_voice:
-                try:
-                    # Get the remote commit before pulling
+            if "Your branch is behind" in status:
+                # Only proceed with update if not in voice chat
+                from bot import MusicBot
+                
+                # Check if any server instance is in a voice channel
+                is_in_voice = False
+                for guild_id, instance in MusicBot._instances.items():
+                    if instance.voice_client and instance.voice_client.is_connected():
+                        is_in_voice = True
+                        break
+                
+                if not is_in_voice:
                     try:
-                        remote_commit = subprocess.run(
-                            ["git", "rev-parse", "--short", "origin/HEAD"], 
-                            check=True, capture_output=True, text=True
-                        ).stdout.strip()
-                    except subprocess.CalledProcessError:
-                        # origin/HEAD not set, fix it automatically
-                        subprocess.run(["git", "remote", "set-head", "origin", "-a"], check=True, capture_output=True)
-                        remote_commit = subprocess.run(
-                            ["git", "rev-parse", "--short", "origin/HEAD"], 
-                            check=True, capture_output=True, text=True
-                        ).stdout.strip()
-                    
-                    # Pull updates
-                    subprocess.run(["git", "pull"], check=True, capture_output=True, text=True)
-                    new_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
-                    
-                    if current_commit != new_commit:
-                        # Get detailed commit information
-                        git_commits = get_git_commit_details(current_commit, new_commit)
-                        needs_restart = True
-                        git_updated = True
-                except Exception as e:
-                    print(f"{RED}Warning: Failed to pull git updates: {str(e)}{RESET}")
+                        # Get the remote commit before pulling
+                        try:
+                            remote_commit = subprocess.run(
+                                ["git", "rev-parse", "--short", "origin/HEAD"], 
+                                check=True, capture_output=True, text=True
+                            ).stdout.strip()
+                        except subprocess.CalledProcessError:
+                            # origin/HEAD not set, fix it automatically
+                            subprocess.run(["git", "remote", "set-head", "origin", "-a"], check=True, capture_output=True)
+                            remote_commit = subprocess.run(
+                                ["git", "rev-parse", "--short", "origin/HEAD"], 
+                                check=True, capture_output=True, text=True
+                            ).stdout.strip()
+                        
+                        # Pull updates
+                        subprocess.run(["git", "pull"], check=True, capture_output=True, text=True)
+                        new_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+                        
+                        if current_commit != new_commit:
+                            # Get detailed commit information
+                            git_commits = get_git_commit_details(current_commit, new_commit)
+                            needs_restart = True
+                            git_updated = True
+                    except Exception as e:
+                        print(f"{RED}Warning: Failed to pull git updates: {str(e)}{RESET}")
 
         # Continue with pip package updates check
         result = subprocess.run(

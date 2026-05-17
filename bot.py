@@ -194,8 +194,15 @@ async def on_ready():
     
     # Display the ASCII art logo first
     with open('scripts/consoleprint.txt', 'r') as f: print(f"{BLUE}{f.read()}{RESET}")
-    commit_count = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD']).decode('utf-8').strip()
-    print(f"{GREEN}\nCurrent commit count: {BLUE}{commit_count}{RESET}")
+    
+    # Try to get git commit count (may fail if not a git repo)
+    try:
+        commit_count = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD'], stderr=subprocess.DEVNULL).decode('utf-8').strip()
+        print(f"{GREEN}\nCurrent commit count: {BLUE}{commit_count}{RESET}")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        # Not a git repository or git not installed - skip commit count
+        pass
+    
     print(f"{GREEN}YT-DLP version: {BLUE}{yt_dlp.version.__version__}{RESET}")
     get_js_runtime_config(verbose=True)
     print(f"----------------------------------------")
