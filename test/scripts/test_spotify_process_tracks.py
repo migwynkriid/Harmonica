@@ -35,6 +35,7 @@ async def test_spotify_process_tracks_cached_and_uncached(monkeypatch, stub_ctx)
     class MB(hs.SpotifyHandler):
         def __init__(self):
             self.queue = []
+            self.queue_lock = asyncio.Lock()
             self.is_playing = False
             self.voice_client = type('VC', (), {'is_playing': lambda self: False})()
         async def download_song(self, query, status_msg=None, ctx=None, spotify_info=None):

@@ -1,4 +1,5 @@
 import types
+import asyncio
 import pytest
 
 
@@ -16,7 +17,9 @@ async def test_handle_spotify_album_first_track(monkeypatch, stub_ctx):
                 next=lambda results: {'items': [], 'next': None},
             )
             self.queue = []
+            self.queue_lock = asyncio.Lock()
             self.queued_messages = {}
+            self.queued_messages_lock = asyncio.Lock()
             self.current_song = None
             self.is_playing = False
             self.voice_client = types.SimpleNamespace(is_playing=lambda: False, is_connected=lambda: True)
@@ -68,7 +71,9 @@ async def test_handle_spotify_playlist_first_track(monkeypatch, stub_ctx):
                 next=lambda results: {'items': [], 'next': None},
             )
             self.queue = []
+            self.queue_lock = asyncio.Lock()
             self.queued_messages = {}
+            self.queued_messages_lock = asyncio.Lock()
             self.current_song = None
             self.is_playing = False
             self.voice_client = types.SimpleNamespace(is_playing=lambda: False, is_connected=lambda: True)
