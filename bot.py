@@ -27,6 +27,7 @@ from scripts.ytdlp import get_ytdlp_path
 from scripts.ffmpeg import get_ffmpeg_path
 from scripts.js_runtime import get_js_runtime_config
 from scripts.cleardownloads import clear_downloads_folder
+from scripts.caching import playlist_cache
 from scripts.load_commands import load_commands
 from scripts.load_scripts import load_scripts
 from scripts.activity import update_activity
@@ -182,6 +183,10 @@ async def on_ready():
     
     clear_downloads_folder()
     set_high_priority()
+    
+    # Import any uncached files from downloads folder to cache
+    await playlist_cache.ensure_cache_imported()
+    
     prefix = config_vars.get('PREFIX', '!')  # Get prefix from config
     
     # Setup a MusicBot instance for initialization
