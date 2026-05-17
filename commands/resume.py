@@ -1,8 +1,8 @@
-import discord
 from discord.ext import commands
 from scripts.messages import create_embed
 from scripts.permissions import check_dj_role
-from scripts.voice_checks import check_voice_state
+from scripts.voice_checks import requires_voice
+from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_SUCCESS
 
 class ResumeCog(commands.Cog):
     """
@@ -23,7 +23,8 @@ class ResumeCog(commands.Cog):
 
     @commands.command(name='resume')
     @check_dj_role()
-    async def resume(self, ctx):
+    @requires_voice()
+    async def resume(self, ctx, music_bot):
         """
         Resume the currently paused song.
         
@@ -32,28 +33,18 @@ class ResumeCog(commands.Cog):
         
         Args:
             ctx: The command context
+            music_bot: The MusicBot instance (injected by @requires_voice)
         """
-        from bot import MusicBot
-        
         try:
-            # Get server-specific music bot instance
-            server_music_bot = MusicBot.get_instance(str(ctx.guild.id))
-            
-            # Check voice state (user must be in same voice channel as bot)
-            is_valid, error_embed = await check_voice_state(ctx, server_music_bot)
-            if not is_valid:
-                await ctx.send(embed=error_embed)
-                return
-
             # Check if the bot has a paused song that can be resumed
-            if server_music_bot.voice_client and server_music_bot.voice_client.is_paused():
-                server_music_bot.voice_client.resume()
-                await ctx.send(embed=create_embed("Resumed", "Playback resumed", color=0x2ecc71, ctx=ctx))
+            if music_bot.voice_client and music_bot.voice_client.is_paused():
+                music_bot.voice_client.resume()
+                await ctx.send(embed=create_embed("Resumed", "Playback resumed", color=EMBED_COLOR_SUCCESS, ctx=ctx))
             else:
-                await ctx.send(embed=create_embed("Error", "Nothing is currently paused", color=0xe74c3c, ctx=ctx))
+                await ctx.send(embed=create_embed("Error", "Nothing is currently paused", color=EMBED_COLOR_ERROR, ctx=ctx))
 
         except Exception as e:
-            await ctx.send(embed=create_embed("Error", f"An error occurred while resuming: {str(e)}", color=0xe74c3c, ctx=ctx))
+            await ctx.send(embed=create_embed("Error", f"An error occurred while resuming: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx))
 
 async def setup(bot):
     """

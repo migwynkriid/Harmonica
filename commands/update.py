@@ -1,8 +1,8 @@
 from discord.ext import commands
-import discord
 import os
 import sys
 import subprocess
+from scripts.messages import create_embed
 from scripts.constants import EMBED_COLOR_ERROR, EMBED_COLOR_SUCCESS
 
 # Git repository URL
@@ -37,7 +37,7 @@ async def updateytdlp(ctx):
     """
     try:
         # Send initial status message
-        status_msg = await ctx.send(embed=discord.Embed(title="Updating bot...", description="Installing required packages...", color=EMBED_COLOR_SUCCESS))
+        status_msg = await ctx.send(embed=create_embed("Updating bot...", "Installing required packages...", color=EMBED_COLOR_SUCCESS, ctx=ctx))
         
         # Get current commit hash and count before update
         try:
@@ -82,7 +82,7 @@ async def updateytdlp(ctx):
             description += f"❌ Failed to install packages: {error_msg}\n"
         description += f"\nPlease restart the bot using `{ctx.prefix}restart`"
         
-        embed = discord.Embed(title="Update Complete!", description=description, color=EMBED_COLOR_SUCCESS)
+        embed = create_embed("Update Complete!", description, color=EMBED_COLOR_SUCCESS, ctx=ctx)
         await status_msg.edit(embed=embed)
     except Exception as e:
-        await ctx.send(embed=discord.Embed(title="Error", description=f"Error during update: {str(e)}", color=EMBED_COLOR_ERROR))
+        await ctx.send(embed=create_embed("Error", f"Error during update: {str(e)}", color=EMBED_COLOR_ERROR, ctx=ctx))
